@@ -1,22 +1,31 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: (process.env.NEXT_PUBLIC_API_BASE_URL || "https://growthbackend.onrender.com/api"),
-  headers: {
-    Accept: "application/json",
-  },
+  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL,
+  headers: { "Content-Type": "application/json" },
 });
 
-// Attach token to all requests
-api.interceptors.request.use(
-  (config) => {
+// Attach JWT token from localStorage on every request
+api.interceptors.request.use((config) => {
+  if (typeof window !== "undefined") {
     const token = localStorage.getItem("token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    return config;
-  },
-  (error) => Promise.reject(error)
+  }
+  return config;
+});
+
+// Handle 401 globally — clear token and redirect to login
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401 && typeof window !== "undefined") {
+      localStorage.removeItem("token");
+      window.location.href = "/login";
+    }
+    return Promise.reject(error);
+  }
 );
 
 export default api;

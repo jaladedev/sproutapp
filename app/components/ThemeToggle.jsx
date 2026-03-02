@@ -1,39 +1,80 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Moon, Sun } from "lucide-react";
+import { useTheme } from "@/context/ThemeContext";
 
-export default function ThemeToggle() {
-  const [darkMode, setDarkMode] = useState(false);
-  const [mounted, setMounted] = useState(false);
+/**
+ * ThemeToggle
+ * Props:
+ *   size: "sm" | "md"   (default "md")
+ *   showLabel: boolean  (default false)
+ */
+export default function ThemeToggle({ size = "md", showLabel = false }) {
+  const { theme, toggleTheme, mounted } = useTheme();
 
-  // Read persisted preference only on the client
-  useEffect(() => {
-    setMounted(true);
-    const stored = localStorage.getItem("theme");
-    if (stored === "dark") setDarkMode(true);
-  }, []);
+  if (!mounted) {
+    return (
+      <div
+        className={`rounded-full animate-pulse ${
+          size === "sm" ? "w-8 h-4" : "w-12 h-6"
+        }`}
+        style={{ background: "var(--bg-surface)", border: "1px solid var(--border)" }}
+      />
+    );
+  }
 
-  useEffect(() => {
-    if (!mounted) return;
-    if (darkMode) {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("theme", "dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
-    }
-  }, [darkMode, mounted]);
-
-  if (!mounted) return null; // avoid hydration mismatch
+  const isDark = theme === "dark";
 
   return (
     <button
-      onClick={() => setDarkMode((prev) => !prev)}
-      aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
-      className="w-9 h-9 flex items-center justify-center rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-all"
+      onClick={toggleTheme}
+      aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+      title={isDark ? "Switch to light mode" : "Switch to dark mode"}
+      className="group inline-flex items-center gap-2.5 rounded-full transition-all duration-200"
+      style={{
+        padding: size === "sm" ? "4px" : "5px",
+        background: "var(--bg-surface)",
+        border: "1px solid var(--border)",
+      }}
     >
-      {darkMode ? <Sun size={16} /> : <Moon size={16} />}
+      {/* Toggle track */}
+      <div
+        className="relative flex-shrink-0 rounded-full transition-all duration-300"
+        style={{
+          width: size === "sm" ? 36 : 44,
+          height: size === "sm" ? 20 : 24,
+          background: isDark
+            ? "rgba(255,255,255,0.08)"
+            : "var(--accent-gradient)",
+        }}
+      >
+        {/* Thumb */}
+        <div
+          className="absolute top-0.5 flex items-center justify-center rounded-full shadow transition-all duration-300"
+          style={{
+            width: size === "sm" ? 16 : 20,
+            height: size === "sm" ? 16 : 20,
+            background: "#fff",
+            left: isDark ? 2 : size === "sm" ? 18 : 22,
+          }}
+        >
+          <span style={{ fontSize: size === "sm" ? 8 : 10, lineHeight: 1 }}>
+            {isDark ? "🌙" : "☀️"}
+          </span>
+        </div>
+      </div>
+
+      {/* Label */}
+      {showLabel && (
+        <span
+          className="font-medium select-none"
+          style={{
+            fontSize: size === "sm" ? 12 : 14,
+            color: "var(--text-secondary)",
+          }}
+        >
+          {isDark ? "Dark" : "Light"}
+        </span>
+      )}
     </button>
   );
 }

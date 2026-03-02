@@ -1,29 +1,40 @@
 import toast from "react-hot-toast";
 
-export default function handleApiError(err, fallbackMessage, setError) {
-  console.log("🔥 Full error object:", err);
-
-  if (!err.response) {
-    console.error("Network or CORS error:", err);
-    const message = "Network error — please check your connection.";
-    if (typeof setError === "function") setError(message);
-    else toast.error(message);
+/**
+ * Extracts and displays error messages from Laravel API error responses.
+ *
+ * Laravel error shapes:
+ *  - Validation (422): { message, errors: { field: ["msg"] } }
+ *  - General errors:   { message, errors? }
+ *  - Single error:     { error }
+ */
+export default function handleApiError(error, fallback = "Something went wrong.") {
+  if (!error.response) {
+    toast.error("Network error. Please check your connection.");
     return;
   }
 
-  const data = err.response.data;
-  console.log("📦 Response data:", data);
+  const { data, status } = error.response;
 
-  const message =
-    data?.message ||
-    data?.error ||
-    (data?.errors
-      ? Object.values(data.errors).flat().join("\n")
-      : fallbackMessage || "Something went wrong.");
-
-  if (typeof setError === "function") {
-    setError(message);
-  } else {
-    toast.error(message);
+  if (status === 422 && data.errors) {
+    // Show first validation error
+    const firstField = Object.keys(data.errors)[0];
+    const firstMsg = Array.isArray(data.errors[firstField])
+      ? data.errors[firstField][0]
+      : data.errors[firstField];
+    toast.error(firstMsg || fallback);
+    return;
   }
+
+  if (data?.message) {
+    toast.error(data.message);
+    return;
+  }
+
+  if (data?.error) {
+    toast.error(data.error);
+    return;
+  }
+
+  toast.error(fallback);
 }
