@@ -1,275 +1,545 @@
+"use client";
+
 import Link from "next/link";
-import FaqSection from "./components/FaqSection";
-import FeaturedProperties from "./components/FeaturedProperties";
+import { useRouter } from "next/navigation";
+import { useAuth } from "../../context/AuthContext";
+import toast from "react-hot-toast";
+import api from "../../utils/api";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { formatNairaShort } from "../../utils/currency";
 import {
-  ArrowRight, CheckCircle, Shield, Zap, FileCheck,
-  Users, TrendingUp, Clock, Award, Star,
+  TrendingUp, Wallet, MapPin, Activity,
+  ArrowUpRight, LayoutGrid, ChevronRight,
+  ArrowDownLeft, Sparkles, RefreshCw,
 } from "lucide-react";
 
-const appname = process.env.NEXT_PUBLIC_APP_NAME || "Sproutvest";
-const appurl  = process.env.NEXT_PUBLIC_APP_URL  || "https://yourdomain.com";
+/* ── Helpers ──────────────────────────────────────────────────────────────── */
 
-// ─── SEO Metadata ─────────────────────────────────────────────────────────────
-export const metadata = {
-  metadataBase: new URL(appurl),
-  title: `${appname} — Invest in Verified Land Across Nigeria`,
-  description:
-    "Join investors securing their financial future through verified land investments across Nigeria. Start with as low as ₦5,000. Safe, transparent, and legally verified.",
-  keywords: ["land investment Nigeria", "buy land Lagos", "real estate investment Nigeria", "verified land", appname],
-  openGraph: {
-    title: `${appname} — Invest in Verified Land Across Nigeria`,
-    description: "Secure your financial future with verified land investments. Start with as low as ₦5,000.",
-    url: appurl,
-    siteName: appname,
-    images: [{ url: `${appurl}/og-image.jpg`, width: 1200, height: 630, alt: `${appname} Land Investment Platform` }],
-    type: "website",
-    locale: "en_NG",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: `${appname} — Invest in Verified Land Across Nigeria`,
-    description: "Secure your financial future with verified land investments.",
-    images: [`${appurl}/og-image.jpg`],
-  },
-  alternates: { canonical: appurl },
-  robots: { index: true, follow: true, googleBot: { index: true, follow: true } },
+const statusCfg = (status = "") => {
+  const s = status?.toLowerCase() || "";
+  if (s.includes("success") || s.includes("complete"))
+    return { cls: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20", dot: "bg-emerald-400" };
+  if (s.includes("pending"))
+    return { cls: "bg-amber-500/10 text-amber-400 border-amber-500/20", dot: "bg-amber-400" };
+  return { cls: "bg-red-500/10 text-red-400 border-red-500/20", dot: "bg-red-400" };
 };
 
-// ─── JSON-LD ──────────────────────────────────────────────────────────────────
-function JsonLd() {
-  const schema = {
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    name: appname,
-    url: appurl,
-    logo: `${appurl}/logo.png`,
-    description: "Nigeria's trusted platform for verified land investments. Start investing from ₦5,000.",
-    address: { "@type": "PostalAddress", addressLocality: "Ibadan", addressRegion: "Oyo State", addressCountry: "NG" },
-    contactPoint: { "@type": "ContactPoint", email: `hello@${appname.toLowerCase()}.com`, contactType: "customer service" },
-  };
-  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />;
+const amountMeta = (type = "") => {
+  const t = type?.toLowerCase() || "";
+  if (t.includes("deposit") || t.includes("sale"))
+    return { sign: "+", color: "text-emerald-400", isCredit: true };
+  if (t.includes("withdraw") || t.includes("purchase") || t.includes("invest"))
+    return { sign: "−", color: "text-red-400", isCredit: false };
+  return { sign: "", color: "text-white/70", isCredit: null };
+};
+
+const formatDate = (date) =>
+  date
+    ? new Date(date).toLocaleString("en-NG", {
+        month: "short", day: "numeric",
+        hour: "2-digit", minute: "2-digit",
+      })
+    : "—";
+
+const greeting = () => {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
+};
+
+// Animated number counter
+function useCountUp(target, duration = 1100, enabled = true) {
+  const [value, setValue] = useState(0);
+  const raf = useRef(null);
+
+  useEffect(() => {
+    if (!enabled || target === 0) { setValue(target); return; }
+    const start = performance.now();
+    const tick = (now) => {
+      const p = Math.min((now - start) / duration, 1);
+      const ease = 1 - Math.pow(1 - p, 3);
+      setValue(Math.round(target * ease));
+      if (p < 1) raf.current = requestAnimationFrame(tick);
+    };
+    raf.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf.current);
+  }, [target, duration, enabled]);
+
+  return value;
 }
 
-// ─── ISR fetch ────────────────────────────────────────────────────────────────
-async function getLands() {
-  try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/land`, { next: { revalidate: 3600 } });
-    if (!res.ok) return [];
-    const json = await res.json();
-    const data = json?.data || json || [];
-    return Array.isArray(data) ? data.slice(0, 5) : [];
-  } catch {
-    return [];
-  }
+/* ── Data hook ────────────────────────────────────────────────────────────── */
+function useDashboardData(enabled) {
+  const [stats, setStats]               = useState(null);
+  const [transactions, setTransactions] = useState([]);
+  const [loadingStats, setLoadingStats] = useState(true);
+  const [loadingTx, setLoadingTx]       = useState(true);
+
+  const loadData = useCallback(async () => {
+    if (!enabled) return;
+    try {
+      const [statsRes, txRes] = await Promise.all([
+        api.get("/user/stats"),
+        api.get("/transactions/user"),
+      ]);
+      setStats(statsRes.data?.data || {});
+      setTransactions(txRes.data?.data || []);
+    } catch (err) {
+      if (err.response?.status !== 401) toast.error("Failed to load dashboard data.");
+    } finally {
+      setLoadingStats(false);
+      setLoadingTx(false);
+    }
+  }, [enabled]);
+
+  useEffect(() => { loadData(); }, [loadData]);
+  return { stats, transactions, loadingStats, loadingTx, refetch: loadData };
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
-export default async function Homepage() {
-  const lands = await getLands();
+/* ── Page ─────────────────────────────────────────────────────────────────── */
+export default function Dashboard() {
+  const { user, loading: loadingUser } = useAuth();
+  const router   = useRouter();
+  const [mounted, setMounted] = useState(false);
+  const [hasToken, setHasToken] = useState(false);
+
+  useEffect(() => {
+    setHasToken(!!localStorage.getItem("token"));
+    requestAnimationFrame(() => setMounted(true));
+  }, []);
+
+  const { stats, transactions, loadingStats, loadingTx, refetch } = useDashboardData(!!user && hasToken);
+
+  useEffect(() => {
+    if (!user) return;
+    if (sessionStorage.getItem("justLoggedIn") === "1") {
+      sessionStorage.removeItem("justLoggedIn");
+      toast.success(`Welcome back, ${user.name?.split(" ")[0] || "Investor"}!`, { duration: 3000 });
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (!loadingUser && !user) router.replace("/login");
+  }, [loadingUser, user, router]);
+
+  if (loadingUser || !user) return (
+    <div className="min-h-screen bg-[#0D1F1A] flex items-center justify-center">
+      <div className="relative w-12 h-12">
+        <div className="absolute inset-0 w-12 h-12 border-2 border-amber-500/15 rounded-full" />
+        <div className="absolute inset-0 w-12 h-12 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    </div>
+  );
 
   return (
-    <>
-      <JsonLd />
-      <main className="bg-[#FDFAF5]" style={{ fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif" }}>
+    <div
+      className="min-h-screen bg-[#0D1F1A] relative overflow-x-hidden"
+      style={{ fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif" }}
+    >
+      {/* ── Background ── */}
+      <div className="fixed inset-0 pointer-events-none select-none">
+        <div className="absolute inset-0"
+          style={{
+            backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.065) 1px, transparent 1px)",
+            backgroundSize: "32px 32px",
+          }} />
+        <div className="absolute -top-[15%] -right-[5%] w-[55vw] h-[55vw] rounded-full"
+          style={{ background: "radial-gradient(circle, rgba(200,135,58,0.11) 0%, transparent 65%)" }} />
+        <div className="absolute -bottom-[10%] -left-[10%] w-[45vw] h-[45vw] rounded-full"
+          style={{ background: "radial-gradient(circle, rgba(45,122,85,0.09) 0%, transparent 65%)" }} />
+        <div className="absolute top-0 left-0 right-0 h-48 bg-gradient-to-b from-black/25 to-transparent" />
+      </div>
 
-        {/* ── HERO ── */}
-        <section className="relative min-h-[88vh] flex items-center justify-center bg-[#0D1F1A]" style={{ paddingBottom: "80px" }}>
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            <div className="absolute top-[-10%] left-[-5%] w-[55vw] h-[55vw] rounded-full opacity-20"
-              style={{ background: "radial-gradient(circle, #C8873A 0%, transparent 70%)" }} />
-            <div className="absolute bottom-[-10%] right-[-5%] w-[45vw] h-[45vw] rounded-full opacity-15"
-              style={{ background: "radial-gradient(circle, #2D7A55 0%, transparent 70%)" }} />
-            <div className="absolute inset-0 opacity-[0.06]"
-              style={{ backgroundImage: "radial-gradient(circle, #fff 1px, transparent 1px)", backgroundSize: "32px 32px" }} />
-          </div>
+      <main className="relative max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-5">
 
-          <div className="relative z-10 max-w-5xl mx-auto px-6 py-20 text-center">
-            <h1 className="text-5xl sm:text-6xl md:text-7xl font-bold text-white mb-5 leading-[1.05] tracking-tight"
-              style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
-              Invest in Land.
-              <br />
-              <span style={{ color: "#C8873A" }}>Build Lasting Wealth.</span>
-            </h1>
-
-            <p className="text-lg sm:text-xl text-white/55 mb-10 max-w-xl mx-auto leading-relaxed">
-              Legally verified land investments across Nigeria.
-              Start with as little as <strong className="text-white/85">₦5,000</strong>.
-            </p>
-
-            <div className="flex flex-col sm:flex-row justify-center gap-4">
-              <Link href="/register"
-                className="group flex items-center justify-center gap-2 px-8 py-4 rounded-xl font-bold text-[#0D1F1A] transition-all hover:scale-105 active:scale-95 shadow-xl"
-                style={{ background: "linear-gradient(135deg, #C8873A 0%, #E8A850 100%)" }}>
-                Start Investing
-                <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-              </Link>
-              <Link href="/login"
-                className="flex items-center justify-center gap-2 px-8 py-4 rounded-xl font-semibold text-white border border-white/20 hover:bg-white/10 transition-all">
-                Sign In
-              </Link>
-            </div>
-
-            <div className="flex flex-wrap justify-center gap-6 mt-10 text-sm text-white/35">
-              {[
-                [CheckCircle, "Verified Properties"],
-                [Shield, "Secure Payments"],
-                [Clock, "Fast Processing"],
-              ].map(([Icon, label]) => (
-                <div key={label} className="flex items-center gap-1.5">
-                  <Icon size={13} className="text-emerald-400" />
-                  <span>{label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="absolute bottom-0 left-0 right-0" style={{ lineHeight: 0, marginBottom: "-2px" }}>
-            <svg viewBox="0 0 1440 80" xmlns="http://www.w3.org/2000/svg"
-              style={{ display: "block", width: "100%" }}>
-              <path d="M0 80H1440V40C1200 0 960 20 720 28C480 36 240 56 0 40V80Z" fill="#FDFAF5" />
-            </svg>
-          </div>
-        </section>
-
-        <section className="py-10 px-6 sm:px-12 bg-[#FDFAF5]">
-          <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-12">
-              <span className="text-xs font-bold tracking-[0.2em] uppercase text-amber-700 mb-2 block">Why {appname}</span>
-              <h2 className="text-3xl sm:text-4xl font-bold text-[#0D1F1A]"
-                style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
-                Simple, Safe, Profitable
-              </h2>
-            </div>
-
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-              {[
-                { icon: <Shield size={24} />,    title: "Verified Lands",    desc: "Legally verified with complete documentation.",        accent: "#C8873A" },
-                { icon: <Zap size={24} />,       title: "Flexible Payments", desc: "Multiple gateways. Pay in full or installments.",      accent: "#2D7A55" },
-                { icon: <FileCheck size={24} />, title: "Fast Processing",   desc: "Quick title transfer and seamless documentation.",     accent: "#8B5CF6" },
-                { icon: <Users size={24} />,     title: "Expert Support",    desc: "Dedicated team guiding you every step of the way.",   accent: "#C8873A" },
-              ].map((f) => (
-                <div key={f.title}
-                  className="bg-white rounded-2xl p-6 border border-stone-100 shadow-sm text-center group hover:shadow-md hover:-translate-y-1 transition-all">
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform"
-                    style={{ background: `${f.accent}18`, color: f.accent }}>
-                    {f.icon}
-                  </div>
-                  <h3 className="font-bold text-[#0D1F1A] mb-1.5">{f.title}</h3>
-                  <p className="text-[#5C6B63] text-sm leading-relaxed">{f.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ── FEATURED PROPERTIES ── */}
-        <section className="py-20 px-6 sm:px-12 bg-[#0D1F1A]">
-          <div className="max-w-6xl mx-auto">
-            <div className="flex items-end justify-between mb-10 flex-wrap gap-4">
-              <div>
-                <span className="text-xs font-bold tracking-[0.2em] uppercase text-amber-500 mb-2 block">Handpicked</span>
-                <h2 className="text-3xl sm:text-4xl font-bold text-white"
-                  style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
-                  Featured Properties
-                </h2>
+        {/* ── Header ── */}
+        <header
+          className="transition-all duration-700"
+          style={{ opacity: mounted ? 1 : 0, transform: mounted ? "none" : "translateY(10px)" }}
+        >
+          <div className="flex items-start justify-between flex-wrap gap-4">
+            <div>
+              <div className="flex items-center gap-2 mb-2.5">
+                <span className="text-[10px] font-black tracking-[0.28em] uppercase text-amber-500/60">
+                  Dashboard
+                </span>
+                <span className="w-1 h-1 rounded-full bg-amber-500/30" />
+                <span className="text-[10px] text-white/20">
+                  {new Date().toLocaleDateString("en-NG", { weekday: "short", month: "short", day: "numeric" })}
+                </span>
               </div>
-              <Link href="/lands"
-                className="flex items-center gap-1.5 text-amber-500 hover:text-amber-400 text-sm font-semibold transition-colors">
-                View all <ArrowRight size={14} />
-              </Link>
+              <h1
+                className="text-3xl sm:text-4xl font-bold leading-tight"
+                style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+              >
+                <span className="text-white">{greeting()}, </span>
+                <span style={{
+                  background: "linear-gradient(135deg, #E8A850 0%, #C8873A 50%, #E8A850 100%)",
+                  backgroundSize: "200% auto",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  backgroundClip: "text",
+                }}>
+                  {user?.name?.split(" ")[0] || "Investor"}
+                </span>
+              </h1>
+              <p className="text-sm text-white/28 mt-1.5">
+                Here's how your investments are performing today.
+              </p>
             </div>
-            <FeaturedProperties lands={lands} />
+
+            <button
+              onClick={refetch}
+              className="group flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-white/30 border border-white/8 hover:border-white/18 hover:text-white/55 hover:bg-white/[0.04] transition-all"
+            >
+              <RefreshCw size={12} className="group-hover:rotate-180 transition-transform duration-500" />
+              Refresh
+            </button>
           </div>
+        </header>
+
+        {/* ── Stat Cards ── */}
+        <section
+          className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 transition-all duration-700 delay-[100ms]"
+          style={{ opacity: mounted ? 1 : 0, transform: mounted ? "none" : "translateY(14px)" }}
+        >
+          {loadingStats ? (
+            [1, 2, 3, 4].map(i => <SkeletonCard key={i} />)
+          ) : (
+            <>
+              <StatCard icon={<Wallet size={16} />}     label="Wallet Balance" value={stats?.balance ?? 0}         accent="amber"   href="/wallet"    mounted={mounted} />
+              <StatCard icon={<TrendingUp size={16} />} label="Total Invested" value={stats?.total_invested ?? 0}  accent="emerald" href="/portfolio" mounted={mounted} />
+              <StatCard icon={<MapPin size={16} />}     label="Lands Owned"    value={stats?.lands_owned ?? 0}     accent="blue"    href="/portfolio" mounted={mounted} isCount sub={`${stats?.units_owned ?? 0} units`} />
+              <StatCard icon={<Activity size={16} />}   label="Withdrawn"      value={stats?.total_withdrawn ?? 0} accent="purple"  href="/wallet"    mounted={mounted} sub={stats?.pending_withdrawals ? `${stats.pending_withdrawals} pending` : null} />
+            </>
+          )}
         </section>
 
-        {/* ── TESTIMONIALS ── */}
-        <section className="py-20 px-6 sm:px-12 bg-[#FDFAF5]">
-          <div className="max-w-4xl mx-auto">
-            <div className="text-center mb-10">
-              <span className="text-xs font-bold tracking-[0.2em] uppercase text-amber-700 mb-2 block">Investors</span>
-              <h2 className="text-3xl sm:text-4xl font-bold text-[#0D1F1A]"
-                style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
-                What They're Saying
-              </h2>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-6">
-              {[
-                { name: "Chidi Okonkwo",  role: "Business Owner, Abuja",   text: "I've invested in 3 properties so far and the process was incredibly smooth. The team is transparent and professional.", rating: 5 },
-                { name: "Amina Bello",    role: "Software Engineer, Lagos", text: "The flexible payment plan made it easy to start. My land value has already appreciated by 15%!", rating: 5 },
-              ].map((t, i) => (
-                <blockquote key={i}
-                  className="bg-white rounded-2xl p-6 border border-stone-200 shadow-sm">
-                  <div className="flex gap-0.5 mb-4">
-                    {[...Array(t.rating)].map((_, j) => (
-                      <Star key={j} size={14} className="fill-amber-400 text-amber-400" />
-                    ))}
-                  </div>
-                  <p className="text-[#3D4D43] leading-relaxed mb-5 text-sm italic">"{t.text}"</p>
-                  <footer>
-                    <p className="font-bold text-[#0D1F1A] text-sm">{t.name}</p>
-                    <p className="text-[#5C6B63] text-xs mt-0.5">{t.role}</p>
-                  </footer>
-                </blockquote>
-              ))}
-            </div>
-          </div>
+        {/* ── Quick Actions ── */}
+        <section
+          className="grid grid-cols-3 gap-3 sm:gap-4 transition-all duration-700 delay-[175ms]"
+          style={{ opacity: mounted ? 1 : 0, transform: mounted ? "none" : "translateY(14px)" }}
+        >
+          <QuickCard title="Wallet"    desc="Fund & manage"         href="/wallet"    icon={<Wallet size={17} />}     accent="#C8873A" />
+          <QuickCard title="Portfolio" desc="Track investments"     href="/portfolio" icon={<LayoutGrid size={17} />} accent="#2D7A55" />
+          <QuickCard title="Explore"   desc="New opportunities"     href="/lands"     icon={<MapPin size={17} />}     accent="#8B5CF6" />
         </section>
 
-        {/* ── CTA ── */}
-        <section className="relative py-20 px-6 sm:px-12 bg-[#0D1F1A] overflow-hidden">
-          <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[70vw] h-[35vh] opacity-15 rounded-full blur-3xl"
-              style={{ background: "radial-gradient(ellipse, #C8873A 0%, transparent 70%)" }} />
-          </div>
-          <div className="relative z-10 max-w-2xl mx-auto text-center">
-            <Award size={40} className="mx-auto mb-5 text-amber-500" />
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4 leading-tight"
-              style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
-              Ready to Build Your Wealth?
-            </h2>
-            <p className="text-white/45 mb-8 max-w-lg mx-auto">
-              Join smart investors securing their financial future through verified land.
-            </p>
-            <div className="flex flex-col sm:flex-row justify-center gap-4">
-              <Link href="/register"
-                className="group flex items-center justify-center gap-2 px-8 py-4 rounded-xl font-bold text-[#0D1F1A] transition-all hover:scale-105 shadow-xl"
-                style={{ background: "linear-gradient(135deg, #C8873A 0%, #E8A850 100%)" }}>
-                Start Investing <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-              </Link>
-              <Link href="/lands"
-                className="flex items-center justify-center gap-2 px-8 py-4 rounded-xl font-semibold text-white border border-white/20 hover:bg-white/10 transition-all">
-                Browse Properties
-              </Link>
-            </div>
-          </div>
+        {/* ── Transactions ── */}
+        <section
+          className="transition-all duration-700 delay-[250ms]"
+          style={{ opacity: mounted ? 1 : 0, transform: mounted ? "none" : "translateY(14px)" }}
+        >
+          <TransactionsSection transactions={transactions} loading={loadingTx} />
         </section>
-
-        {/* ── FAQ ── */}
-        <section className="py-20 px-6 sm:px-12 bg-[#FDFAF5]">
-          <div className="max-w-2xl mx-auto">
-            <div className="text-center mb-10">
-              <span className="text-xs font-bold tracking-[0.2em] uppercase text-amber-700 mb-2 block">FAQ</span>
-              <h2 className="text-3xl sm:text-4xl font-bold text-[#0D1F1A]"
-                style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
-                Common Questions
-              </h2>
-            </div>
-            <FaqSection />
-          </div>
-        </section>
-
       </main>
-    </>
+    </div>
   );
 }
 
-function StatBox({ number, label }) {
+/* ── SkeletonCard ─────────────────────────────────────────────────────────── */
+function SkeletonCard() {
   return (
-    <div className="text-center">
-      <p className="text-2xl sm:text-3xl font-bold text-white mb-1"
-        style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>{number}</p>
-      <p className="text-xs text-white/40 uppercase tracking-widest">{label}</p>
+    <div className="rounded-2xl border border-white/8 bg-white/[0.03] h-32 overflow-hidden relative">
+      <div className="absolute inset-0 animate-pulse bg-white/[0.02]" />
+      <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.8s_infinite]"
+        style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent)" }} />
+    </div>
+  );
+}
+
+/* ── StatCard ─────────────────────────────────────────────────────────────── */
+function StatCard({ icon, label, value, accent, href, mounted, isCount, sub }) {
+  const palette = {
+    amber:   { glow: "rgba(200,135,58,0.14)",  icon: "rgba(200,135,58,1)",   ring: "rgba(200,135,58,0.22)" },
+    emerald: { glow: "rgba(45,122,85,0.14)",   icon: "rgba(74,222,128,1)",   ring: "rgba(45,122,85,0.22)"  },
+    blue:    { glow: "rgba(59,130,246,0.14)",  icon: "rgba(96,165,250,1)",   ring: "rgba(59,130,246,0.22)" },
+    purple:  { glow: "rgba(139,92,246,0.14)",  icon: "rgba(167,139,250,1)",  ring: "rgba(139,92,246,0.22)" },
+  };
+  const a   = palette[accent] || palette.amber;
+  const num = parseFloat(value) || 0;
+  const animated = useCountUp(num, 1000, mounted);
+
+  const display = isCount
+    ? animated.toLocaleString()
+    : "₦" + animated.toLocaleString("en-NG");
+
+  const inner = (
+    <div className="group relative rounded-2xl border border-white/[0.07] bg-white/[0.035] p-4 sm:p-5 hover:bg-white/[0.055] hover:border-white/[0.12] transition-all duration-300 overflow-hidden h-full flex flex-col">
+      {/* hover glow */}
+      <div className="absolute -top-10 -right-10 w-28 h-28 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+        style={{ background: `radial-gradient(circle, ${a.glow}, transparent 70%)` }} />
+
+      {/* icon */}
+      <div
+        className="w-9 h-9 rounded-xl flex items-center justify-center mb-4 shrink-0"
+        style={{ background: a.glow, boxShadow: `0 0 0 1px ${a.ring}`, color: a.icon }}
+      >
+        {icon}
+      </div>
+
+      {/* label */}
+      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/25 mb-1.5 truncate">
+        {label}
+      </p>
+
+      {/* value */}
+      <p
+        className="text-xl sm:text-2xl font-bold text-white leading-none mt-auto"
+        style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+        title={isCount ? String(num) : `₦${num.toLocaleString()}`}
+      >
+        {display}
+      </p>
+
+      {sub && <p className="text-[11px] text-white/22 mt-1.5 truncate">{sub}</p>}
+
+      {/* arrow hint */}
+      <ChevronRight
+        size={12}
+        className="absolute bottom-4 right-4 text-white/15 opacity-0 group-hover:opacity-100 translate-x-1 group-hover:translate-x-0 transition-all duration-300"
+      />
+    </div>
+  );
+
+  return href ? <Link href={href}>{inner}</Link> : <div>{inner}</div>;
+}
+
+/* ── QuickCard ────────────────────────────────────────────────────────────── */
+function QuickCard({ title, desc, href, icon, accent }) {
+  return (
+    <Link
+      href={href}
+      className="group relative rounded-2xl border border-white/[0.07] bg-white/[0.03] hover:bg-white/[0.055] hover:border-white/[0.12] transition-all duration-300 overflow-hidden block"
+    >
+      <div
+        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+        style={{ background: `radial-gradient(ellipse at 20% 60%, ${accent}15, transparent 65%)` }}
+      />
+      <div className="relative p-4 sm:p-5">
+        <div
+          className="w-9 h-9 rounded-xl flex items-center justify-center mb-3.5 transition-transform duration-300 group-hover:scale-[1.08]"
+          style={{ background: `${accent}16`, color: accent, boxShadow: `0 0 0 1px ${accent}28` }}
+        >
+          {icon}
+        </div>
+        <h3 className="font-bold text-white/85 text-sm leading-none">{title}</h3>
+        <p className="text-[11px] text-white/27 mt-1 hidden sm:block leading-snug">{desc}</p>
+        <div className="hidden sm:flex items-center gap-1 mt-3">
+          <span className="text-xs font-bold transition-colors" style={{ color: accent }}>Open</span>
+          <ArrowUpRight
+            size={11}
+            style={{ color: accent }}
+            className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 duration-200"
+          />
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+/* ── TransactionsSection ──────────────────────────────────────────────────── */
+function TransactionsSection({ transactions, loading }) {
+  if (loading) {
+    return (
+      <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] overflow-hidden">
+        <div className="px-5 py-4 border-b border-white/[0.04] bg-white/[0.02]">
+          <div className="h-4 w-44 rounded-lg bg-white/[0.07] animate-pulse" />
+        </div>
+        <div className="divide-y divide-white/[0.04]">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="px-5 py-4 flex items-center gap-4">
+              <div className="w-10 h-10 rounded-xl bg-white/[0.04] animate-pulse shrink-0" />
+              <div className="flex-1 space-y-2">
+                <div className="h-3 rounded bg-white/[0.05] animate-pulse w-2/5" />
+                <div className="h-2.5 rounded bg-white/[0.03] animate-pulse w-1/4" />
+              </div>
+              <div className="h-4 rounded bg-white/[0.05] animate-pulse w-20" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (!transactions?.length) {
+    return (
+      <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] py-16 text-center">
+        <div
+          className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5"
+          style={{ background: "rgba(200,135,58,0.07)", boxShadow: "0 0 0 1px rgba(200,135,58,0.13)" }}
+        >
+          <Sparkles size={22} className="text-amber-500/45" />
+        </div>
+        <h3
+          className="font-bold text-white text-base mb-2"
+          style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+        >
+          No transactions yet
+        </h3>
+        <p className="text-sm text-white/27 mb-7 max-w-xs mx-auto leading-relaxed">
+          Start investing in verified land to see your activity here.
+        </p>
+        <Link
+          href="/lands"
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm text-[#0D1F1A] transition-all hover:scale-[1.03] active:scale-[0.98]"
+          style={{ background: "linear-gradient(135deg, #C8873A 0%, #E8A850 100%)" }}
+        >
+          Browse Properties <ArrowUpRight size={14} />
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.05] bg-white/[0.02]">
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+            style={{ background: "rgba(200,135,58,0.1)", boxShadow: "0 0 0 1px rgba(200,135,58,0.18)" }}>
+            <Activity size={13} className="text-amber-500" />
+          </div>
+          <h2 className="text-[10px] font-black uppercase tracking-[0.22em] text-white/35">
+            Recent Transactions
+          </h2>
+          <span className="text-[9px] font-bold px-2 py-0.5 rounded-full border border-white/[0.08] text-white/20">
+            {transactions.length}
+          </span>
+        </div>
+        <Link href="/wallet"
+          className="flex items-center gap-1 text-xs font-bold text-amber-500/65 hover:text-amber-400 transition-colors">
+          View all <ChevronRight size={11} />
+        </Link>
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden md:block">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-white/[0.04]">
+              {[
+                { label: "Type / Asset", align: "text-left" },
+                { label: "Amount",       align: "text-right" },
+                { label: "Status",       align: "text-left"  },
+                { label: "Date",         align: "text-left"  },
+              ].map(({ label, align }) => (
+                <th key={label}
+                  className={`px-5 py-3 text-[9px] font-black uppercase tracking-[0.22em] text-white/18 ${align}`}>
+                  {label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {transactions.slice(0, 8).map((tx, idx) => {
+              const { sign, color, isCredit } = amountMeta(tx?.type);
+              const { cls, dot }              = statusCfg(tx?.status);
+              return (
+                <tr key={tx?.id ?? idx}
+                  className="border-b border-white/[0.035] hover:bg-white/[0.022] transition-colors group">
+
+                  {/* Type + Asset */}
+                  <td className="px-5 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-[1.04] ${
+                        isCredit === true  ? "bg-emerald-500/[0.09]"
+                        : isCredit === false ? "bg-red-500/[0.09]"
+                        : "bg-white/[0.04]"
+                      }`}>
+                        {isCredit === true
+                          ? <ArrowDownLeft size={14} className="text-emerald-400" />
+                          : isCredit === false
+                          ? <ArrowUpRight size={14} className="text-red-400" />
+                          : <Activity size={14} className="text-white/25" />}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-semibold capitalize text-white/75 text-sm leading-none truncate">
+                          {tx?.type?.replace(/_/g, " ") || "Transaction"}
+                        </p>
+                        <p className="text-[11px] text-white/22 mt-1 truncate">{tx?.land || "Wallet"}</p>
+                      </div>
+                    </div>
+                  </td>
+
+                  {/* Amount */}
+                  <td className="px-5 py-4 text-right">
+                    <span className={`font-bold tabular-nums text-[0.9rem] ${color}`}
+                      style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+                      {sign}₦{Number(tx?.amount ?? 0).toLocaleString()}
+                    </span>
+                  </td>
+
+                  {/* Status */}
+                  <td className="px-5 py-4">
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black border uppercase tracking-[0.1em] ${cls}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
+                      {tx?.status || "—"}
+                    </span>
+                  </td>
+
+                  {/* Date */}
+                  <td className="px-5 py-4 text-[11px] text-white/22 whitespace-nowrap">
+                    {formatDate(tx?.date)}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Mobile list */}
+      <div className="md:hidden divide-y divide-white/[0.04]">
+        {transactions.slice(0, 6).map((tx, idx) => {
+          const { sign, color, isCredit } = amountMeta(tx?.type);
+          const { cls, dot }              = statusCfg(tx?.status);
+          return (
+            <div key={tx?.id ?? idx}
+              className="px-4 py-3.5 flex items-center gap-3 hover:bg-white/[0.02] transition-colors">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                isCredit === true  ? "bg-emerald-500/[0.09]"
+                : isCredit === false ? "bg-red-500/[0.09]"
+                : "bg-white/[0.04]"
+              }`}>
+                {isCredit === true
+                  ? <ArrowDownLeft size={15} className="text-emerald-400" />
+                  : isCredit === false
+                  ? <ArrowUpRight size={15} className="text-red-400" />
+                  : <Activity size={15} className="text-white/25" />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-sm capitalize text-white/75 truncate leading-none">
+                  {tx?.type?.replace(/_/g, " ") || "Transaction"}
+                </p>
+                <p className="text-[11px] text-white/22 mt-1 truncate">
+                  {tx?.land || "Wallet"} · {formatDate(tx?.date)}
+                </p>
+              </div>
+              <div className="flex flex-col items-end gap-1.5 shrink-0">
+                <span className={`font-bold text-sm tabular-nums ${color}`}>
+                  {sign}₦{Number(tx?.amount ?? 0).toLocaleString()}
+                </span>
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black border uppercase tracking-[0.08em] ${cls}`}>
+                  <span className={`w-1 h-1 rounded-full ${dot}`} />
+                  {tx?.status}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Footer */}
+      {transactions.length > 6 && (
+        <div className="px-5 py-3 border-t border-white/[0.04] text-center bg-white/[0.01]">
+          <Link href="/wallet"
+            className="text-xs text-white/20 hover:text-amber-500 transition-colors font-semibold">
+            View all {transactions.length} transactions →
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

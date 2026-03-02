@@ -70,11 +70,11 @@ export default async function Homepage() {
   return (
     <>
       <JsonLd />
-      <main style={{ fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif" }}>
+      <main className="bg-[#FDFAF5]" style={{ fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif" }}>
 
         {/* ── HERO ── */}
-        <section className="relative min-h-[88vh] flex items-center justify-center overflow-hidden bg-[#0D1F1A]">
-          <div className="absolute inset-0 pointer-events-none">
+        <section className="relative min-h-[88vh] flex items-center justify-center bg-[#0D1F1A]" style={{ paddingBottom: "80px" }}>
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
             <div className="absolute top-[-10%] left-[-5%] w-[55vw] h-[55vw] rounded-full opacity-20"
               style={{ background: "radial-gradient(circle, #C8873A 0%, transparent 70%)" }} />
             <div className="absolute bottom-[-10%] right-[-5%] w-[45vw] h-[45vw] rounded-full opacity-15"
@@ -109,7 +109,6 @@ export default async function Homepage() {
               </Link>
             </div>
 
-            {/* Inline trust signals */}
             <div className="flex flex-wrap justify-center gap-6 mt-10 text-sm text-white/35">
               {[
                 [CheckCircle, "Verified Properties"],
@@ -124,15 +123,15 @@ export default async function Homepage() {
             </div>
           </div>
 
-          <div className="absolute bottom-0 left-0 right-0">
-            <svg viewBox="0 0 1440 60" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M0 60L1440 60L1440 30C1200 0 960 15 720 22C480 30 240 45 0 30V60Z" fill="#FDFAF5" />
+          <div className="absolute bottom-0 left-0 right-0" style={{ lineHeight: 0, marginBottom: "-2px" }}>
+            <svg viewBox="0 0 1440 80" xmlns="http://www.w3.org/2000/svg"
+              style={{ display: "block", width: "100%" }}>
+              <path d="M0 80H1440V40C1200 0 960 20 720 28C480 36 240 56 0 40V80Z" fill="#FDFAF5" />
             </svg>
           </div>
         </section>
 
-        {/* ── WHY US + HOW IT WORKS ── */}
-        <section className="py-20 px-6 sm:px-12 bg-[#FDFAF5]">
+        <section className="py-10 px-6 sm:px-12 bg-[#FDFAF5]">
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-12">
               <span className="text-xs font-bold tracking-[0.2em] uppercase text-amber-700 mb-2 block">Why {appname}</span>
