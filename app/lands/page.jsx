@@ -263,7 +263,11 @@ export default function LandList() {
                 <Maximize2 size={13} /> Fullscreen
               </button>
             </div>
-            <MapWithNoSSR {...mapProps} className="h-120 w-full" />
+          <div className="relative rounded-2xl overflow-hidden border border-white/10 mb-10 shadow-2xl shadow-black/50">
+            <div className="h-150 w-full">
+              <MapWithNoSSR {...mapProps} />
+            </div>
+          </div>
           </div>
         )}
 

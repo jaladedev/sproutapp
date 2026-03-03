@@ -124,6 +124,7 @@ export default function LandMap({
       center={defaultCenter}
       zoom={8}
       className="h-full w-full"
+      style={{ height: "100%", width: "100%" }}
       attributionControl={false}
     >
       <AttributionControl prefix={false} />
