@@ -47,12 +47,8 @@ export default function WalletPage() {
       );
       if (isRetry) toast.success("Wallet loaded");
     } catch (err) {
-      const isNetworkError =
-        !err.response ||
-        err.code === "ERR_NETWORK" ||
-        err.code === "ECONNABORTED";
 
-      if (isNetworkError) {
+      if (!err.response) {
         setLoadError(true);
       } else {
         handleApiError(err);
