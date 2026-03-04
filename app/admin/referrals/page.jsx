@@ -62,6 +62,10 @@ export default function AdminReferralManagement() {
 
       <div className="relative z-10 max-w-7xl mx-auto px-6 py-10">
 
+       <Link href="/admin" className="inline-flex items-center gap-1.5 text-xs text-white/30 hover:text-white/60 transition-colors mb-8">
+          ← Back to Dashboard
+        </Link>
+        
         {/* Header */}
         <div className="mb-10">
           <p className="text-xs font-bold tracking-[0.2em] uppercase text-emerald-500 mb-2">Admin Panel</p>
