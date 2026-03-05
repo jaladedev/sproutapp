@@ -102,41 +102,47 @@ function createMarkerIcon({ priceKobo, isActive }) {
 
 function FlyAndPopup({ flyTarget, activeLandId, markerRefs, polygonRefs }) {
   const map = useMap();
-  const lastTarget = useRef(null);
+  const isFlyingRef = useRef(false);
+  // Keep a stable ref to activeLandId so the zoomend closure always sees latest value
+  const activeLandIdRef = useRef(activeLandId);
+  useEffect(() => { activeLandIdRef.current = activeLandId; }, [activeLandId]);
 
   useEffect(() => {
     if (!flyTarget || !map) return;
 
-    // Avoid re-triggering for same target
-    const key = `${flyTarget.lat},${flyTarget.lng}`;
-    if (lastTarget.current === key) return;
-    lastTarget.current = key;
+    isFlyingRef.current = true;
 
-    map.flyTo([flyTarget.lat, flyTarget.lng], 15, { duration: 1.4, easeLinearity: 0.25 });
+    // Zoom to 16 so the individual parcel is clearly visible
+    map.flyTo([flyTarget.lat, flyTarget.lng], 16, { duration: 1.6, easeLinearity: 0.2 });
 
-    // After fly completes, open the popup
-    const onMoveEnd = () => {
-      map.off("moveend", onMoveEnd);
+    const openPopup = () => {
+      if (!isFlyingRef.current) return;
+      isFlyingRef.current = false;
 
-      if (activeLandId) {
-        const markerRef = markerRefs.current[activeLandId];
+      const id = activeLandIdRef.current;
+      if (!id) return;
+
+      // Small delay so tiles finish rendering before popup mounts
+      setTimeout(() => {
+        const markerRef = markerRefs.current[id];
         if (markerRef) {
           markerRef.openPopup();
           return;
         }
-        // Polygon fallback — open popup at centroid
-        const polyRef = polygonRefs.current[activeLandId];
+        const polyRef = polygonRefs.current[id];
         if (polyRef) {
-          const bounds = polyRef.getBounds();
-          const center = bounds.getCenter();
-          polyRef.openPopup(center);
+          polyRef.openPopup(polyRef.getBounds().getCenter());
         }
-      }
+      }, 120);
     };
 
-    map.on("moveend", onMoveEnd);
-    return () => map.off("moveend", onMoveEnd);
-  }, [flyTarget, activeLandId, map, markerRefs, polygonRefs]);
+    map.once("zoomend", openPopup);
+
+    return () => {
+      map.off("zoomend", openPopup);
+      isFlyingRef.current = false;
+    };
+  }, [flyTarget]); 
 
   return null;
 }
