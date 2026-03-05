@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import React, { useEffect, useRef, useCallback } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -41,15 +41,98 @@ function getLandPrice(land) {
   );
 }
 
-function getPriceColor(price) {
-  if (price < 200000) return "#22c55e";
-  if (price < 500000) return "#f59e0b";
+function getPriceColor(naira) {
+  if (naira < 200000) return "#22c55e";
+  if (naira < 500000) return "#f59e0b";
   return "#ef4444";
 }
 
+/**
+ * Decode EWKB hex (PostGIS) → [[lat, lng], ...]
+ * Handles the format returned in the `coordinates` field.
+ */
+function decodeEWKB(hex) {
+  if (!hex || typeof hex !== "string") return null;
+  try {
+    const buf       = new Uint8Array(hex.match(/.{1,2}/g).map((b) => parseInt(b, 16)));
+    const view      = new DataView(buf.buffer);
+    const le        = buf[0] === 1;
+    const rd32      = (o) => view.getUint32(o, le);
+    const rdF64     = (o) => view.getFloat64(o, le);
+    const wkbType   = rd32(1);
+    const hasSRID   = (wkbType & 0x20000000) !== 0;
+    let   offset    = 5;
+    if (hasSRID) offset += 4;            // skip SRID
+    const numRings  = rd32(offset); offset += 4;
+    if (numRings < 1) return null;
+    const numPoints = rd32(offset); offset += 4;
+    const points    = [];
+    for (let i = 0; i < numPoints; i++) {
+      const x = rdF64(offset); offset += 8; // longitude
+      const y = rdF64(offset); offset += 8; // latitude
+      points.push([y, x]);
+    }
+    // Drop closing duplicate point if present
+    if (points.length > 1) {
+      const first = points[0], last = points[points.length - 1];
+      if (first[0] === last[0] && first[1] === last[1]) points.pop();
+    }
+    return points.length >= 3 ? points : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Normalise polygon data from any API format into [[lat, lng], ...].
+ * Priority: coordinates (EWKB hex) → polygon field → GeoJSON → WKT → array
+ */
+function parsePolygon(land) {
+  // 1. PostGIS EWKB hex in `coordinates` field (primary format)
+  if (land.coordinates && typeof land.coordinates === "string") {
+    const decoded = decodeEWKB(land.coordinates);
+    if (decoded) return decoded;
+  }
+
+  const raw = land.polygon;
+  if (!raw) return null;
+
+  // 2. GeoJSON geometry object
+  if (raw?.type === "Polygon" && Array.isArray(raw.coordinates)) {
+    return raw.coordinates[0].map(([lng, lat]) => [lat, lng]);
+  }
+
+  // 3. WKT string
+  if (typeof raw === "string") {
+    const inner = raw.match(/POLYGON\s*\(\(([^)]+)\)/i)?.[1];
+    if (!inner) return null;
+    return inner.split(",").map((pair) => {
+      const [lng, lat] = pair.trim().split(/\s+/).map(Number);
+      return [lat, lng];
+    });
+  }
+
+  // 4. Array of objects or pairs
+  if (Array.isArray(raw) && raw.length > 0) {
+    const first = raw[0];
+    if (Array.isArray(first))   return raw.map(([lat, lng]) => [lat, lng]);
+    if (first?.lat != null)     return raw.map((p) => [+p.lat, +p.lng]);
+    if (first?.latitude != null) return raw.map((p) => [+p.latitude, +p.longitude]);
+  }
+
+  return null;
+}
+
+/** Get centroid of a [[lat,lng],...] ring */
+function centroid(points) {
+  const lat = points.reduce((s, p) => s + p[0], 0) / points.length;
+  const lng = points.reduce((s, p) => s + p[1], 0) / points.length;
+  return [lat, lng];
+}
+
 function createMarkerIcon({ priceKobo, isActive }) {
-  const price = koboToNaira(priceKobo);
-  const color = getPriceColor(price);
+  const naira = koboToNaira(priceKobo);
+  const color = getPriceColor(naira);
 
   if (isActive) {
     return L.divIcon({
@@ -330,27 +413,50 @@ export default function LandMap({
         </MarkerClusterGroup>
       )}
 
-      {/* POLYGONS */}
+      {/* POLYGONS — rendered outside cluster so they always show as shapes */}
       {!showHeatmap &&
         landsWithPolygons.map((land) => {
-          const isActive = activeLandId === land.id;
+          const isActive  = activeLandId === land.id;
+          const isHovered = hoverLandId  === land.id;
+          const highlight = isActive || isHovered;
+          const points    = parsePolygon(land);
+          if (!points || points.length < 3) return null;
+          const center    = centroid(points);
+
           return (
-            <Polygon
-              key={land.id}
-              positions={land.polygon.map((p) => [p.lat, p.lng])}
-              pathOptions={{
-                color: isActive ? "#E8A850" : "#f59e0b",
-                fillOpacity: isActive ? 0.45 : 0.25,
-                weight: isActive ? 3 : 1.5,
-              }}
-              ref={(ref) => setPolygonRef(land.id, ref)}
-            >
-              <Popup closeButton={false} className="land-popup">
-                <LandPopup land={land} />
-              </Popup>
-            </Polygon>
+            <React.Fragment key={land.id}>
+              <Polygon
+                positions={points}
+                pathOptions={{
+                  color:       highlight ? "#E8A850" : "#f59e0b",
+                  fillColor:   highlight ? "#E8A850" : "#f59e0b",
+                  fillOpacity: highlight ? 0.35 : 0.18,
+                  weight:      highlight ? 3    : 1.5,
+                  opacity:     1,
+                }}
+                ref={(ref) => setPolygonRef(land.id, ref)}
+              >
+                <Popup closeButton={false} className="land-popup">
+                  <LandPopup land={land} />
+                </Popup>
+              </Polygon>
+
+              {/* Centroid marker so polygon lands appear in cluster when zoomed out */}
+              <Marker
+                key={`${land.id}-centroid`}
+                position={center}
+                icon={createMarkerIcon({ priceKobo: getLandPrice(land), isActive: highlight })}
+                ref={(ref) => setMarkerRef(land.id, ref)}
+                zIndexOffset={highlight ? 1000 : 0}
+              >
+                <Popup offset={[0, -20]} closeButton={false} className="land-popup">
+                  <LandPopup land={land} />
+                </Popup>
+              </Marker>
+            </React.Fragment>
           );
         })}
+
 
       {/* HEATMAP */}
       {showHeatmap && <HeatmapLayer lands={allLandsWithCoords} />}

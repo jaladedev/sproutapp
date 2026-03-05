@@ -27,7 +27,13 @@ function getLandPrice(land) {
 }
 
 function hasPolygon(land) {
-  return Array.isArray(land.polygon) && land.polygon.length > 0;
+  // PostGIS EWKB hex in coordinates field (primary format from API)
+  if (land.coordinates && typeof land.coordinates === "string" && land.coordinates.length > 10) return true;
+  const p = land.polygon;
+  if (!p) return false;
+  if (typeof p === "string") return p.toUpperCase().includes("POLYGON");
+  if (p?.type === "Polygon") return true;
+  return Array.isArray(p) && p.length >= 3;
 }
 
 function getPriceTag(priceKobo) {
@@ -147,9 +153,10 @@ export default function LandList() {
   const filterByBounds = useCallback((bounds) => {
     setVisibleLands(
       lands.filter((l) => {
-        if (l.lat && l.lng && !hasPolygon(l)) return bounds.contains([+l.lat, +l.lng]);
-        if (hasPolygon(l) && l.polygon)       return l.polygon.some((p) => bounds.contains([p.lat, p.lng]));
-        if (l.lat && l.lng)                   return bounds.contains([+l.lat, +l.lng]);
+        // All lands have lat/lng — use it as the visibility check
+        if (l.lat && l.lng) return bounds.contains([+l.lat, +l.lng]);
+        if (hasPolygon(l) && Array.isArray(l.polygon))
+          return l.polygon.some((p) => bounds.contains([p.lat, p.lng]));
         return false;
       })
     );
@@ -235,7 +242,7 @@ export default function LandList() {
       {/* Fullscreen map overlay */}
       {isFullScreen && (
         <div className="fixed inset-0 z-99999 bg-[#0D1F1A]">
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-100000lex items-center gap-2 px-3 py-2 rounded-2xl"
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-100000 flex items-center gap-2 px-3 py-2 rounded-2xl"
             style={{ background: "rgba(8,20,15,0.92)", border: "1px solid rgba(255,255,255,0.12)", backdropFilter: "blur(12px)", boxShadow: "0 8px 32px rgba(0,0,0,0.6)" }}>
             <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg" style={{ background: "rgba(255,255,255,0.05)" }}>
               <MapPin size={12} className="text-amber-500" />
