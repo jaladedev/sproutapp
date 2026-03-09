@@ -33,12 +33,8 @@ export default function Portfolio() {
 
   const fetchPortfolioAndUser = useCallback(async () => {
     try {
-      const [portfolioRes, userRes] = await Promise.all([
-        api.get("/user/lands"),
-        api.get("/me"),
-      ]);
-      setLands((portfolioRes.data.owned_lands || []).filter((l) => l.units_owned > 0));
-      setHasPin(!!userRes.data.user?.transaction_pin);
+      const userRes = await api.get("/me");
+      setHasPin(!!userRes.data.data?.pin_is_set);
     } catch (err) {
       handleApiError(err);
     }
@@ -50,7 +46,27 @@ export default function Portfolio() {
         api.get("/portfolio/summary"),
         api.get("/transactions/user"),
       ]);
-      setSummary(summaryRes.data.data);
+      const d = summaryRes.data.data;
+
+      setSummary({
+        current_portfolio_value: d.current_portfolio_value_naira,
+        total_invested:          d.total_invested_naira,
+        total_profit_loss:       d.total_profit_loss_naira,
+        profit_loss_percent:     d.profit_loss_percent,
+      });
+
+      setLands(
+        (d.lands || [])
+          .filter((l) => l.units > 0)
+          .map((l) => ({
+            land_id:             l.land_id,
+            land_name:           l.land_name,
+            units_owned:         l.units,
+            price_per_unit_kobo: l.price_per_unit_kobo,
+            current_value:       l.total_portfolio_value_naira,
+          }))
+      );
+
       setTransactions(
         (txRes.data.data || []).filter(
           (t) => t.type === "Purchase" || t.type === "Sale"

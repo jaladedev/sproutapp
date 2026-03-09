@@ -41,7 +41,7 @@ export default function FeaturedProperties({ lands }) {
       <div className="relative overflow-hidden rounded-3xl h-130 md:h-145">
         {lands.map((land, i) => {
           const imageUrl =
-            land.images?.length > 0 ? land.images[0].url : "/no-image.jpeg";
+            land.images?.length > 0 ? land.images[0].image_url : "/no-image.jpeg";
           const pricePerUnit = (land.current_price_per_unit_kobo || 0) / 100;
 
           return (
