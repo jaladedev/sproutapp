@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import {
   CheckCircle, Camera, CreditCard, ImageIcon, MapPin, User,
 } from "lucide-react";
-import api from "../../utils/api";
+import api from "../../../utils/api";
 
 import { STEPS, ID_TYPES } from "./constants";
 import StatusBanner          from "./StatusBanner";
