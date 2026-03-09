@@ -16,20 +16,19 @@ const FEE_CAP = 3000;
 const QUICK_AMOUNTS = [1000, 5000, 10000, 50000];
 
 export default function WalletPage() {
-  const [balance, setBalance]           = useState(0);
-  const [depositAmount, setDepositAmount] = useState("");
+  const [balance, setBalance]               = useState(0);
+  const [depositAmount, setDepositAmount]   = useState("");
   const [withdrawAmount, setWithdrawAmount] = useState("");
-  const [pin, setPin]                   = useState("");
-  const [loading, setLoading]           = useState(null);
-  const [transactions, setTransactions] = useState([]);
-  const [gateway, setGateway]           = useState("monnify");
-  const [feePreview, setFeePreview]     = useState(0);
-  const [totalPreview, setTotalPreview] = useState(0);
-  const [activeTab, setActiveTab]       = useState("deposit");
-  const [isLoadingData, setIsLoadingData] = useState(true);
-  // null = no error | "network" = no internet | "server" = backend 5xx
-  const [loadError, setLoadError]       = useState(null);
-  const [serverError, setServerError]   = useState("");
+  const [pin, setPin]                       = useState("");
+  const [loading, setLoading]               = useState(null);
+  const [transactions, setTransactions]     = useState([]);
+  const [gateway, setGateway]               = useState("monnify");
+  const [feePreview, setFeePreview]         = useState(0);
+  const [totalPreview, setTotalPreview]     = useState(0);
+  const [activeTab, setActiveTab]           = useState("deposit");
+  const [isLoadingData, setIsLoadingData]   = useState(true);
+  const [loadError, setLoadError]           = useState(null);
+  const [serverError, setServerError]       = useState("");
   const router = useRouter();
 
   /* ─── FETCH ─────────────────────────────────────────────────────────── */
@@ -37,28 +36,22 @@ export default function WalletPage() {
     setIsLoadingData(true);
     setLoadError(null);
     setServerError("");
-
     try {
       const [walletRes, txRes] = await Promise.all([
         api.get("/me"),
         api.get("/transactions/user"),
       ]);
 
-      // /me returns { data: { ...user } }  (ProfileController shape)
       const user = walletRes.data?.data ?? walletRes.data?.user ?? {};
-
-      // balance may be stored as wallet_balance (kobo) or balance_kobo
       const balanceKobo =
-        user.wallet_balance ??
-        user.balance_kobo ??
-        user.balance ??
-        0;
-
+        user.wallet_balance ?? user.balance_kobo ?? user.balance ?? 0;
       setBalance(balanceKobo);
 
       const txList = txRes.data?.data ?? txRes.data ?? [];
       setTransactions(
-        txList.filter((t) => t.type === "Deposit" || t.type === "Withdrawal")
+        (Array.isArray(txList) ? txList : []).filter(
+          (t) => t.type === "Deposit" || t.type === "Withdrawal"
+        )
       );
 
       if (isRetry) toast.success("Wallet loaded");
@@ -146,12 +139,12 @@ export default function WalletPage() {
 
   /* ─── STATUS HELPERS ────────────────────────────────────────────────── */
   const getStatusIcon = (status) => {
-    if (!status) return <Clock size={13} />;
+    if (!status) return <Clock size={12} />;
     const s = status.toLowerCase();
-    if (s.includes("complete")) return <CheckCircle size={13} />;
-    if (s.includes("pend"))     return <Clock size={13} />;
-    if (s.includes("fail") || s.includes("reject")) return <XCircle size={13} />;
-    return <AlertCircle size={13} />;
+    if (s.includes("complete")) return <CheckCircle size={12} />;
+    if (s.includes("pend"))     return <Clock size={12} />;
+    if (s.includes("fail") || s.includes("reject")) return <XCircle size={12} />;
+    return <AlertCircle size={12} />;
   };
 
   const getStatusStyle = (status) => {
@@ -165,6 +158,12 @@ export default function WalletPage() {
 
   const formatDate = (d) =>
     new Date(d).toLocaleString("en-NG", { dateStyle: "medium", timeStyle: "short" });
+
+  const formatAmount = (t) =>
+    Number(t.amount ?? 0).toLocaleString("en-NG", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
 
   /* ─── LOADING ───────────────────────────────────────────────────────── */
   if (isLoadingData) {
@@ -185,7 +184,6 @@ export default function WalletPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0D1F1A] px-4"
         style={{ fontFamily: "'DM Sans', sans-serif" }}>
-  
         <div className="text-center max-w-sm w-full">
           <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-5">
             {isServer
@@ -202,7 +200,7 @@ export default function WalletPage() {
               : "Unable to load your wallet. Please check your connection and try again."}
           </p>
           {isServer && serverError && (
-            <p className="text-red-400/70 text-xs font-mono mb-6 px-3 py-2 rounded-lg bg-red-500/5 border border-red-500/10 wrap-break-word">
+            <p className="text-red-400/70 text-xs font-mono mb-6 px-3 py-2 rounded-lg bg-red-500/5 border border-red-500/10 break-words">
               {serverError}
             </p>
           )}
@@ -403,6 +401,7 @@ export default function WalletPage() {
               <span className="ml-auto text-xs text-white/30">{transactions.length} records</span>
             )}
           </div>
+
           <div className="p-4 sm:p-5">
             {transactions.length === 0 ? (
               <div className="text-center py-10">
@@ -412,38 +411,52 @@ export default function WalletPage() {
                 <p className="text-white/30 text-sm">No transactions yet</p>
               </div>
             ) : (
-              <div className="space-y-3">
-                {transactions.map((t, i) => (
-                  <div key={t.id ?? t.reference ?? i}
-                    className="flex items-center justify-between rounded-xl border border-white/8 bg-white/3 px-3 sm:px-4 py-3 hover:border-white/15 transition-all gap-2">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                        t.type === "Deposit" ? "bg-emerald-500/10" : "bg-blue-500/10"
-                      }`}>
-                        {t.type === "Deposit"
-                          ? <ArrowDownCircle size={16} className="text-emerald-400" />
-                          : <ArrowUpCircle   size={16} className="text-blue-400" />}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-white">{t.type}</p>
-                        <p className="text-xs text-white/30 truncate">{formatDate(t.created_at ?? t.date)}</p>
+              <div className="space-y-2">
+                {transactions.map((t, i) => {
+                  const isDeposit = t.type === "Deposit";
+                  const statusStyle = getStatusStyle(t.status);
+                  const txDate = t.date ?? t.created_at;
+
+                  return (
+                    <div
+                      key={t.reference ?? i}
+                      className="rounded-xl border border-white/[0.07] bg-white/[0.03] hover:border-white/[0.12] hover:bg-white/[0.05] transition-all p-3 sm:p-4"
+                    >
+                      {/* Mobile & Desktop: single unified layout */}
+                      <div className="flex items-start gap-3">
+
+                        {/* Icon */}
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
+                          isDeposit ? "bg-emerald-500/10" : "bg-blue-500/10"
+                        }`}>
+                          {isDeposit
+                            ? <ArrowDownCircle size={16} className="text-emerald-400" />
+                            : <ArrowUpCircle   size={16} className="text-blue-400" />}
+                        </div>
+
+                        {/* Middle: type + date */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-sm font-bold text-white leading-none">{t.type}</p>
+                            {/* Status badge — always visible */}
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold border ${statusStyle}`}>
+                              {getStatusIcon(t.status)}
+                              {t.status}
+                            </span>
+                          </div>
+                          <p className="text-xs text-white/30 mt-1">{formatDate(txDate)}</p>
+                        </div>
+
+                        {/* Amount — right aligned */}
+                        <p className={`font-bold text-sm tabular-nums shrink-0 ${
+                          isDeposit ? "text-emerald-400" : "text-blue-400"
+                        }`}>
+                          {isDeposit ? "+" : "−"}₦{formatAmount(t)}
+                        </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <p className={`font-bold text-sm tabular-nums ${
-                        t.type === "Deposit" ? "text-emerald-400" : "text-blue-400"
-                      }`}>
-                        {t.type === "Deposit" ? "+" : "-"}₦
-                        {(Number(t.amount_kobo ?? t.amount) / (t.amount_kobo ? 100 : 1))
-                          .toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </p>
-                      <span className={`px-2 py-1 rounded-lg text-xs font-bold border flex items-center gap-1 ${getStatusStyle(t.status)}`}>
-                        {getStatusIcon(t.status)}
-                        <span className="hidden sm:inline">{t.status}</span>
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

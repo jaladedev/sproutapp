@@ -96,8 +96,8 @@ function useDashboardData(enabled) {
         pending_withdrawals:  null,
       });
 
-      const txList = txRes.data?.data?.data ?? txRes.data?.data ?? [];
-      setTransactions(txList);
+      const txList = txRes.data?.data ?? [];
+      setTransactions(Array.isArray(txList) ? txList : []);
     } catch (err) {
       if (err.response?.status !== 401) toast.error("Failed to load dashboard data.");
     } finally {
@@ -487,17 +487,17 @@ function TransactionsSection({ transactions, loading }) {
               const { sign, color, isCredit } = amountMeta(tx?.type);
               const { cls, dot }              = statusCfg(tx?.status);
               const amountNaira = Number(tx?.amount ?? 0);
-              const landName    = tx?.land?.title ?? null;
+              const landName    = tx?.land ?? null;
               const txDate      = tx?.date ?? tx?.created_at;
 
               return (
-                <tr key={tx?.id ?? idx}
+                <tr key={idx}
                   className="border-b border-white/[0.035] hover:bg-white/[0.022] transition-colors group">
 
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
                       <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-[1.04] ${
-                        isCredit === true   ? "bg-emerald-500/10"
+                        isCredit === true    ? "bg-emerald-500/10"
                         : isCredit === false ? "bg-red-500/10"
                         : "bg-white/5"
                       }`}>
@@ -509,10 +509,13 @@ function TransactionsSection({ transactions, loading }) {
                       </div>
                       <div className="min-w-0">
                         <p className="font-semibold capitalize text-white/75 text-sm leading-none truncate">
-                          {tx?.type?.replace(/_/g, " ") || "Transaction"}
+                          {tx?.type || "Transaction"}
                         </p>
                         <p className="text-[11px] text-white/22 mt-1 truncate">
                           {landName || "Wallet"}
+                          {tx?.units != null && (
+                            <span className="ml-1.5 text-white/20">· {tx.units} unit{tx.units !== 1 ? "s" : ""}</span>
+                          )}
                         </p>
                       </div>
                     </div>
@@ -548,14 +551,14 @@ function TransactionsSection({ transactions, loading }) {
           const { sign, color, isCredit } = amountMeta(tx?.type);
           const { cls, dot }              = statusCfg(tx?.status);
           const amountNaira = Number(tx?.amount ?? 0);
-          const landName    = tx?.land?.title ?? null;
+          const landName    = tx?.land ?? null;
           const txDate      = tx?.date ?? tx?.created_at;
 
           return (
-            <div key={tx?.id ?? idx}
+            <div key={idx}
               className="px-4 py-3.5 flex items-center gap-3 hover:bg-white/2 transition-colors">
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                isCredit === true   ? "bg-emerald-500/10"
+                isCredit === true    ? "bg-emerald-500/10"
                 : isCredit === false ? "bg-red-500/10"
                 : "bg-white/5"
               }`}>
@@ -567,10 +570,14 @@ function TransactionsSection({ transactions, loading }) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-sm capitalize text-white/75 truncate leading-none">
-                  {tx?.type?.replace(/_/g, " ") || "Transaction"}
+                  {tx?.type || "Transaction"}
                 </p>
                 <p className="text-[11px] text-white/22 mt-1 truncate">
-                  {landName || "Wallet"} · {formatDate(txDate)}
+                  {landName || "Wallet"}
+                  {tx?.units != null && (
+                    <span className="ml-1.5 text-white/20">· {tx.units} unit{tx.units !== 1 ? "s" : ""}</span>
+                  )}
+                  {" · "}{formatDate(txDate)}
                 </p>
               </div>
               <div className="flex flex-col items-end gap-1.5 shrink-0">
