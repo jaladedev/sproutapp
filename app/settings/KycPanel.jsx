@@ -29,20 +29,28 @@ const NIGERIAN_STATES = [
 ];
 
 const LIVENESS_PROMPTS = [
-  { text: "Blink slowly twice",   icon: "eye",   duration: 5 },
-  { text: "Smile naturally",      icon: "smile", duration: 5 },
-  { text: "Turn your head left",  icon: "left",  duration: 5 },
-  { text: "Turn your head right", icon: "right", duration: 5 },
-  { text: "Nod your head gently", icon: "nod",   duration: 5 },
+  { text: "Blink slowly twice",   icon: "eye",   duration: 8 },
+  { text: "Smile naturally",      icon: "smile", duration: 8 },
+  { text: "Turn your head left",  icon: "left",  duration: 8 },
+  { text: "Turn your head right", icon: "right", duration: 8 },
+  { text: "Nod your head gently", icon: "nod",   duration: 8 },
 ];
 
-const MOTION_THRESHOLDS   = { eye: 0.022, smile: 0.018, left: 0.040, right: 0.040, nod: 0.034 };
-const SAMPLE_W            = 80;
-const SAMPLE_H            = 60;
-const EMA_ALPHA           = 0.25;
-const BLIND_FRAMES        = 40;
-const STILLNESS_THRESHOLD = 0.004;
-const STILL_CONFIRM_FRAMES = 20;
+// Motion thresholds — lower = easier to trigger.
+// Desktop webcams compress/smooth more aggressively so need lower values.
+// We calibrate at runtime based on a baseline noise measurement.
+const MOTION_THRESHOLDS      = { eye: 0.014, smile: 0.012, left: 0.026, right: 0.026, nod: 0.020 };
+const SAMPLE_W               = 80;
+const SAMPLE_H               = 60;
+const EMA_ALPHA              = 0.30;
+// Require motion to stay above threshold for this many consecutive frames
+// before accepting — prevents single-frame phone bumps on mobile from firing.
+const CONFIRM_FRAMES         = 5;
+const BLIND_FRAMES           = 30;
+const STILLNESS_THRESHOLD    = 0.006;
+const STILL_CONFIRM_FRAMES   = 18;
+const MAX_RETRIES_PER_PROMPT = 2;
+const COUNTDOWN_SECS         = 10;
 
 const inputCls =
   "w-full bg-white/5 border border-white/10 hover:border-white/20 text-white placeholder-white/20 " +
@@ -70,7 +78,6 @@ function PromptIcon({ icon, size = 18 }) {
 }
 
 /* ── Date of Birth ── */
-/* ── Desktop-friendly DOB Input ── */
 function DobInput({ value, onChange }) {
   const currentYear = new Date().getFullYear();
   const years  = Array.from({ length: 100 }, (_, i) => currentYear - 18 - i);
@@ -96,63 +103,37 @@ function DobInput({ value, onChange }) {
     String(i + 1).padStart(2, "0")
   );
 
-  // Clamp day if month/year changes and day is now out of range
   useEffect(() => {
     if (day && Number(day) > daysInMonth) {
-      const clamped = String(daysInMonth).padStart(2, "0");
-      setDay(clamped);
+      setDay(String(daysInMonth).padStart(2, "0"));
     }
   }, [daysInMonth, day]);
 
   useEffect(() => {
-    if (year && month && day) {
-      onChange(`${year}-${month}-${day}`);
-    } else {
-      onChange("");
-    }
+    if (year && month && day) onChange(`${year}-${month}-${day}`);
+    else onChange("");
   }, [year, month, day]);
 
   const sel = selectCls + " text-sm";
 
   return (
     <div className="grid grid-cols-3 gap-2">
-      {/* Day */}
       <div className="relative">
-        <select
-          value={day}
-          onChange={e => setDay(e.target.value)}
-          className={sel}
-        >
+        <select value={day} onChange={e => setDay(e.target.value)} className={sel}>
           <option value="" className="bg-[#0D1F1A]">Day</option>
-          {days.map(d => (
-            <option key={d} value={d} className="bg-[#0D1F1A]">{Number(d)}</option>
-          ))}
+          {days.map(d => <option key={d} value={d} className="bg-[#0D1F1A]">{Number(d)}</option>)}
         </select>
       </div>
-      {/* Month */}
       <div className="relative">
-        <select
-          value={month}
-          onChange={e => setMonth(e.target.value)}
-          className={sel}
-        >
+        <select value={month} onChange={e => setMonth(e.target.value)} className={sel}>
           <option value="" className="bg-[#0D1F1A]">Month</option>
-          {months.map(m => (
-            <option key={m.value} value={m.value} className="bg-[#0D1F1A]">{m.label}</option>
-          ))}
+          {months.map(m => <option key={m.value} value={m.value} className="bg-[#0D1F1A]">{m.label}</option>)}
         </select>
       </div>
-      {/* Year */}
       <div className="relative">
-        <select
-          value={year}
-          onChange={e => setYear(e.target.value)}
-          className={sel}
-        >
+        <select value={year} onChange={e => setYear(e.target.value)} className={sel}>
           <option value="" className="bg-[#0D1F1A]">Year</option>
-          {years.map(y => (
-            <option key={y} value={String(y)} className="bg-[#0D1F1A]">{y}</option>
-          ))}
+          {years.map(y => <option key={y} value={String(y)} className="bg-[#0D1F1A]">{y}</option>)}
         </select>
       </div>
     </div>
@@ -231,15 +212,16 @@ function FileDropZone({ label, sublabel, name, required = false, value, onChange
 
 /* ── Liveness Check ── */
 function LivenessCheck({ onCapture, captured, onRetake, fullHeight = false }) {
-  const videoRef        = useRef(null);
-  const canvasRef       = useRef(null);
-  const sampleRef       = useRef(null);
-  const streamRef       = useRef(null);
-  const rafRef          = useRef(null);
-  const prevDataRef     = useRef(null);
-  const emaRef          = useRef(0);
-  const detectionOnRef  = useRef(false);
-  const tabHiddenRef    = useRef(false);
+  const videoRef       = useRef(null);
+  const canvasRef      = useRef(null);
+  const sampleRef      = useRef(null);
+  const streamRef      = useRef(null);
+  const rafRef         = useRef(null);
+  const prevDataRef    = useRef(null);
+  const emaRef         = useRef(0);
+  const detectionOnRef = useRef(false);
+  const tabHiddenRef   = useRef(false);
+  const timerRef       = useRef(null);
 
   const [phase, setPhase]             = useState("idle");
   const [prompts, setPrompts]         = useState([]);
@@ -248,30 +230,63 @@ function LivenessCheck({ onCapture, captured, onRetake, fullHeight = false }) {
   const [completedIdxs, setCompleted] = useState([]);
   const [errorMsg, setErrorMsg]       = useState("");
   const [timeLeft, setTimeLeft]       = useState(0);
+  const [retryCount, setRetryCount]   = useState(0);
+  const [retryMsg, setRetryMsg]       = useState("");
 
-  const timeLeftRef  = useRef(0);
-  const timerRef     = useRef(null);
-  const promptsRef   = useRef([]);
-  const promptIdxRef = useRef(0);
+  const promptsRef    = useRef([]);
+  const promptIdxRef  = useRef(0);
+  const retryCountRef = useRef(0);
+  const timeLeftRef   = useRef(0);
 
-  useEffect(() => { promptsRef.current  = prompts;   }, [prompts]);
-  useEffect(() => { promptIdxRef.current = promptIdx; }, [promptIdx]);
+  useEffect(() => { promptsRef.current    = prompts;    }, [prompts]);
+  useEffect(() => { promptIdxRef.current  = promptIdx;  }, [promptIdx]);
+  useEffect(() => { retryCountRef.current = retryCount; }, [retryCount]);
+
+  const advancePromptRef           = useRef(null);
+  const startDetectionCountdownRef = useRef(null);
+  const handleTimeoutRef           = useRef(null);
+
+  // ── Full reset helper (used by stopStream + retake) ──────────────────────
+  const resetState = useCallback(() => {
+    setPhase("idle");
+    setCompleted([]);
+    setRetryCount(0);
+    retryCountRef.current = 0;
+    setRetryMsg("");
+    setMotionPct(0);
+    setPrompts([]);
+    setPromptIdx(0);
+    promptIdxRef.current = 0;
+    setErrorMsg("");
+  }, []);
 
   const stopStream = useCallback(() => {
     cancelAnimationFrame(rafRef.current);
     clearInterval(timerRef.current);
     streamRef.current?.getTracks().forEach(t => t.stop());
-    streamRef.current    = null;
+    streamRef.current      = null;
     detectionOnRef.current = false;
-    prevDataRef.current  = null;
-    emaRef.current       = 0;
+    prevDataRef.current    = null;
+    emaRef.current         = 0;
   }, []);
 
   useEffect(() => () => stopStream(), [stopStream]);
 
-  /* ── Tab visibility guard: abort if user switches away ── */
+  // ── FIX: When parent clears `captured` (Retake), hard-reset to idle ──────
+  // Without this, detectionOnRef / phase are stale from the prior session and
+  // the stillness loop fires immediately on the next render.
+  const prevCapturedRef = useRef(captured);
   useEffect(() => {
-    const onVisChange = () => {
+    if (prevCapturedRef.current && !captured) {
+      stopStream();
+      resetState();
+    }
+    prevCapturedRef.current = captured;
+  }, [captured, stopStream, resetState]);
+
+  /* ── Tab visibility guard ── */
+  useEffect(() => {
+    const onVis = () => {
       if (document.hidden && streamRef.current) {
         tabHiddenRef.current = true;
         stopStream();
@@ -279,11 +294,11 @@ function LivenessCheck({ onCapture, captured, onRetake, fullHeight = false }) {
         setPhase("error");
       }
     };
-    document.addEventListener("visibilitychange", onVisChange);
-    return () => document.removeEventListener("visibilitychange", onVisChange);
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
   }, [stopStream]);
 
-  /* ── Screenshot / PrintScreen prevention ── */
+  /* ── Screenshot prevention ── */
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === "PrintScreen" || (e.metaKey && e.shiftKey && ["3","4","5"].includes(e.key))) {
@@ -299,6 +314,7 @@ function LivenessCheck({ onCapture, captured, onRetake, fullHeight = false }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [stopStream]);
 
+  // ── Pixel-diff motion measurement ────────────────────────────────────────
   const measureMotion = useCallback(() => {
     const video  = videoRef.current;
     const canvas = sampleRef.current;
@@ -318,7 +334,7 @@ function LivenessCheck({ onCapture, captured, onRetake, fullHeight = false }) {
     return diff / (grey.length * 255);
   }, []);
 
-  /* ── Replay / static video detection via frame variance ── */
+  // ── Frame entropy check (static / replay camera) ─────────────────────────
   const checkFrameEntropy = useCallback(() => {
     const canvas = sampleRef.current;
     const video  = videoRef.current;
@@ -333,9 +349,8 @@ function LivenessCheck({ onCapture, captured, onRetake, fullHeight = false }) {
       const g = (data[p] * 77 + data[p + 1] * 150 + data[p + 2] * 29) >> 8;
       sum += g; sumSq += g * g;
     }
-    const mean     = sum / n;
-    const variance = sumSq / n - mean * mean;
-    return variance > 60;
+    const mean = sum / n;
+    return sumSq / n - mean * mean > 60;
   }, []);
 
   const captureSelfie = useCallback(() => {
@@ -354,91 +369,6 @@ function LivenessCheck({ onCapture, captured, onRetake, fullHeight = false }) {
       onCapture(new File([blob], "liveness_selfie.jpg", { type: "image/jpeg" }));
     }, "image/jpeg", 0.92);
   }, [stopStream, onCapture]);
-
-  const advancePromptRef           = useRef(null);
-  const startDetectionCountdownRef = useRef(null);
-
-  const startDetectionLoop = useCallback((promptIndex, threshold) => {
-    detectionOnRef.current = true;
-    prevDataRef.current    = null;
-    emaRef.current         = 0;
-    let detectedThisRound  = false;
-    let motionFrames       = 0;
-    let frameCount         = 0;
-    let stillFrames        = 0;   // replay / static detection counter
-    let entropyOkFrames    = 0;
-
-    const loop = () => {
-      if (!detectionOnRef.current) return;
-
-      /* ── Virtual / replay camera: check frame entropy every 30 frames ── */
-      if (frameCount % 30 === 0) {
-        if (checkFrameEntropy()) {
-          entropyOkFrames++;
-        } else if (entropyOkFrames === 0 && frameCount > 60) {
-          setErrorMsg("Static or virtual camera detected. Please use your real device camera.");
-          setPhase("error");
-          stopStream();
-          return;
-        }
-      }
-
-      const raw = measureMotion();
-
-      /* ── Low motion over many frames → possible replay ── */
-      if (raw < 0.0002) {
-        stillFrames++;
-        if (stillFrames > 100) {
-          setErrorMsg("No live movement detected. Please ensure you are in front of your camera.");
-          setPhase("error");
-          stopStream();
-          return;
-        }
-      } else {
-        stillFrames = 0;
-      }
-
-      emaRef.current = EMA_ALPHA * raw + (1 - EMA_ALPHA) * emaRef.current;
-      frameCount++;
-
-      if (frameCount > BLIND_FRAMES) {
-        const pct = Math.min(100, Math.round((emaRef.current / 0.055) * 100));
-        setMotionPct(pct);
-
-        if (emaRef.current >= threshold) motionFrames++;
-        else motionFrames = 0;
-
-        if (!detectedThisRound && motionFrames > 6) {
-          detectedThisRound      = true;
-          detectionOnRef.current = false;
-          clearInterval(timerRef.current);
-          setTimeout(() => advancePromptRef.current?.(promptIndex), 200);
-          return;
-        }
-      }
-      rafRef.current = requestAnimationFrame(loop);
-    };
-    rafRef.current = requestAnimationFrame(loop);
-  }, [measureMotion, checkFrameEntropy, stopStream]);
-
-  const startDetectionCountdown = useCallback((thresh, idx) => {
-    const MAX_SECS = 8;
-    timeLeftRef.current = MAX_SECS;
-    setTimeLeft(MAX_SECS);
-    timerRef.current = setInterval(() => {
-      timeLeftRef.current -= 1;
-      setTimeLeft(timeLeftRef.current);
-      if (timeLeftRef.current <= 0) {
-        clearInterval(timerRef.current);
-        detectionOnRef.current = false;
-        cancelAnimationFrame(rafRef.current);
-        setTimeout(() => advancePromptRef.current?.(idx), 100);
-      }
-    }, 1000);
-    startDetectionLoop(idx, thresh);
-  }, [startDetectionLoop]);
-
-  startDetectionCountdownRef.current = startDetectionCountdown;
 
   const startStillnessCapture = useCallback(() => {
     setPhase("stillness");
@@ -463,10 +393,56 @@ function LivenessCheck({ onCapture, captured, onRetake, fullHeight = false }) {
     rafRef.current = requestAnimationFrame(loop);
   }, [measureMotion, captureSelfie]);
 
+  // ── Timeout → retry same prompt, or hard-fail after MAX_RETRIES ──────────
+  const handleTimeout = useCallback((promptIndex) => {
+    detectionOnRef.current = false;
+    cancelAnimationFrame(rafRef.current);
+
+    const currentRetries = retryCountRef.current;
+    if (currentRetries < MAX_RETRIES_PER_PROMPT) {
+      const attemptsLeft = MAX_RETRIES_PER_PROMPT - currentRetries;
+      const newRetry = currentRetries + 1;
+      setRetryCount(newRetry);
+      retryCountRef.current = newRetry;
+
+      const prompt = promptsRef.current[promptIndex];
+      setRetryMsg(
+        `We didn't detect the action. Please try again — ${attemptsLeft} attempt${attemptsLeft !== 1 ? "s" : ""} remaining.`
+      );
+      setPhase("retry_warning");
+
+      setTimeout(() => {
+        if (!streamRef.current) return;
+        setRetryMsg("");
+        setPhase("warmup");
+        setTimeout(() => {
+          if (!streamRef.current) return;
+          const thresh = MOTION_THRESHOLDS[prompt?.icon] ?? 0.020;
+          setPhase("detecting");
+          startDetectionCountdownRef.current?.(thresh, promptIndex);
+        }, 1500);
+      }, 2200);
+    } else {
+      stopStream();
+      setErrorMsg(
+        `We couldn't verify the action "${promptsRef.current[promptIndex]?.text}". ` +
+        "Please ensure you're in a well-lit area and facing the camera, then try again."
+      );
+      setPhase("error");
+    }
+  }, [stopStream]);
+
+  handleTimeoutRef.current = handleTimeout;
+
+  // ── Advance to next prompt — ONLY called on confirmed detection ───────────
   const advancePrompt = useCallback((doneIdx) => {
     setCompleted(prev => [...prev, doneIdx]);
+    setRetryCount(0);
+    retryCountRef.current = 0;
+    setRetryMsg("");
     setMotionPct(0);
     setPhase("success_flash");
+
     setTimeout(() => {
       const currentPrompts = promptsRef.current;
       if (doneIdx < currentPrompts.length - 1) {
@@ -475,9 +451,9 @@ function LivenessCheck({ onCapture, captured, onRetake, fullHeight = false }) {
         setPhase("warmup");
         setTimeout(() => {
           if (!streamRef.current) return;
-          const nextThresh = MOTION_THRESHOLDS[currentPrompts[nextIdx]?.icon] ?? 0.034;
+          const thresh = MOTION_THRESHOLDS[currentPrompts[nextIdx]?.icon] ?? 0.020;
           setPhase("detecting");
-          startDetectionCountdownRef.current?.(nextThresh, nextIdx);
+          startDetectionCountdownRef.current?.(thresh, nextIdx);
         }, 1200);
       } else {
         startStillnessCapture();
@@ -487,14 +463,129 @@ function LivenessCheck({ onCapture, captured, onRetake, fullHeight = false }) {
 
   advancePromptRef.current = advancePrompt;
 
+  // ── Detection loop ────────────────────────────────────────────────────────
+  // FIX (mobile false positives): require CONFIRM_FRAMES *consecutive* frames
+  // above threshold before accepting. A single phone bump or jerk produces
+  // 1–2 hot frames then drops; a real deliberate action sustains for longer.
+  // FIX (desktop not triggering): thresholds are now lower + calibrated at
+  // runtime against the idle noise floor below.
+  const startDetectionLoop = useCallback((promptIndex, threshold) => {
+    detectionOnRef.current = true;
+    prevDataRef.current    = null;
+    emaRef.current         = 0;
+    let detectedThisRound  = false;
+    let motionFrames       = 0;   // consecutive frames above threshold
+    let frameCount         = 0;
+    let noMotionFrames     = 0;   // for "no live movement" guard
+    let entropyOkFrames    = 0;
+
+    // Runtime noise-floor calibration: sample first BLIND_FRAMES to compute
+    // mean idle motion, then apply a multiplier so the threshold is relative
+    // to this device's camera noise, not a hardcoded absolute.
+    let calibSamples = [];
+    let calibDone    = false;
+    let effectiveThresh = threshold;
+
+    const loop = () => {
+      if (!detectionOnRef.current) return;
+
+      // Entropy / static camera check every 30 frames
+      if (frameCount % 30 === 0) {
+        if (checkFrameEntropy()) { entropyOkFrames++; }
+        else if (entropyOkFrames === 0 && frameCount > 60) {
+          setErrorMsg("Static or virtual camera detected. Please use your real device camera.");
+          setPhase("error");
+          stopStream();
+          return;
+        }
+      }
+
+      const raw = measureMotion();
+
+      // No-live-movement guard
+      if (raw < 0.0003) {
+        noMotionFrames++;
+        if (noMotionFrames > 120) {
+          setErrorMsg("No live movement detected. Please ensure you are in front of your camera.");
+          setPhase("error");
+          stopStream();
+          return;
+        }
+      } else { noMotionFrames = 0; }
+
+      emaRef.current = EMA_ALPHA * raw + (1 - EMA_ALPHA) * emaRef.current;
+      frameCount++;
+
+      // Calibration phase: collect idle samples before accepting detection
+      if (!calibDone && frameCount <= BLIND_FRAMES) {
+        calibSamples.push(raw);
+        if (frameCount === BLIND_FRAMES) {
+          const avg = calibSamples.reduce((a, b) => a + b, 0) / calibSamples.length;
+          // Effective threshold = max(base threshold, 3× idle noise floor)
+          // This auto-compensates for noisy mobile cameras without raising
+          // the bar too high for quiet desktop webcams.
+          effectiveThresh = Math.max(threshold, avg * 3.5);
+          calibDone = true;
+        }
+        rafRef.current = requestAnimationFrame(loop);
+        return;
+      }
+
+      if (calibDone) {
+        const pct = Math.min(100, Math.round((emaRef.current / (effectiveThresh * 3)) * 100));
+        setMotionPct(pct);
+
+        if (emaRef.current >= effectiveThresh) {
+          motionFrames++;
+        } else {
+          motionFrames = 0; // reset — must be *consecutive*
+        }
+
+        // SUCCESS: sustained motion confirmed
+        if (!detectedThisRound && motionFrames >= CONFIRM_FRAMES) {
+          detectedThisRound      = true;
+          detectionOnRef.current = false;
+          clearInterval(timerRef.current);
+          setTimeout(() => advancePromptRef.current?.(promptIndex), 200);
+          return;
+        }
+      }
+
+      rafRef.current = requestAnimationFrame(loop);
+    };
+    rafRef.current = requestAnimationFrame(loop);
+  }, [measureMotion, checkFrameEntropy, stopStream]);
+
+  // ── Countdown — expiry → handleTimeout (never advancePrompt) ─────────────
+  const startDetectionCountdown = useCallback((thresh, idx) => {
+    timeLeftRef.current = COUNTDOWN_SECS;
+    setTimeLeft(COUNTDOWN_SECS);
+
+    timerRef.current = setInterval(() => {
+      timeLeftRef.current -= 1;
+      setTimeLeft(timeLeftRef.current);
+      if (timeLeftRef.current <= 0) {
+        clearInterval(timerRef.current);
+        setTimeout(() => handleTimeoutRef.current?.(idx), 100);
+      }
+    }, 1000);
+
+    startDetectionLoop(idx, thresh);
+  }, [startDetectionLoop]);
+
+  startDetectionCountdownRef.current = startDetectionCountdown;
+
   const lastUsedIconsRef = useRef(new Set());
 
   const startCamera = useCallback(async () => {
     tabHiddenRef.current = false;
     setPhase("requesting");
     setErrorMsg("");
+    setRetryMsg("");
     setCompleted([]);
     setMotionPct(0);
+    setRetryCount(0);
+    retryCountRef.current = 0;
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -507,9 +598,7 @@ function LivenessCheck({ onCapture, captured, onRetake, fullHeight = false }) {
         audio: false,
       });
 
-      /* ── Virtual camera detection: check track label for known virtual cams ── */
-      const track = stream.getVideoTracks()[0];
-      const label = (track?.label || "").toLowerCase();
+      const label = (stream.getVideoTracks()[0]?.label || "").toLowerCase();
       const virtualKeywords = ["obs", "virtual", "snap camera", "manycam", "droidcam", "iriun", "xsplit", "mmhmm", "camo"];
       if (virtualKeywords.some(k => label.includes(k))) {
         stream.getTracks().forEach(t => t.stop());
@@ -524,7 +613,6 @@ function LivenessCheck({ onCapture, captured, onRetake, fullHeight = false }) {
         await videoRef.current.play();
       }
 
-      /* ── Choose 2 random prompts, avoiding recently used icons ── */
       const excluded  = lastUsedIconsRef.current;
       const preferred = shuffle(LIVENESS_PROMPTS.filter(p => !excluded.has(p.icon)));
       const fallback  = shuffle(LIVENESS_PROMPTS.filter(p =>  excluded.has(p.icon)));
@@ -540,7 +628,7 @@ function LivenessCheck({ onCapture, captured, onRetake, fullHeight = false }) {
       setTimeout(() => {
         if (!streamRef.current) return;
         setPhase("detecting");
-        startDetectionCountdownRef.current?.(MOTION_THRESHOLDS[chosen[0]?.icon] ?? 0.034, 0);
+        startDetectionCountdownRef.current?.(MOTION_THRESHOLDS[chosen[0]?.icon] ?? 0.020, 0);
       }, 2500);
 
     } catch (err) {
@@ -553,15 +641,29 @@ function LivenessCheck({ onCapture, captured, onRetake, fullHeight = false }) {
     }
   }, []);
 
+  // ── Derived ───────────────────────────────────────────────────────────────
   const currentPrompt = prompts[promptIdx];
-  const threshold     = currentPrompt ? MOTION_THRESHOLDS[currentPrompt.icon] ?? 0.034 : 0.034;
-  const thresholdPct  = Math.min(100, (threshold / 0.055) * 100);
+  const thresholdPct  = 65; // fixed visual marker at 65% so bar feels responsive
 
-  /* ── Stable URL for captured selfie ── */
   const capturedUrl = useMemo(() => captured ? URL.createObjectURL(captured) : null, [captured]);
   useEffect(() => () => { if (capturedUrl) URL.revokeObjectURL(capturedUrl); }, [capturedUrl]);
 
-  if (captured) {
+  // ── Render ─────────────────────────────────────────────────────────────────
+  const isLive      = ["warmup", "detecting", "success_flash", "stillness", "retry_warning"].includes(phase);
+  const isDetecting = phase === "detecting";
+  const isStillness = phase === "stillness";
+  const isRetry     = phase === "retry_warning";
+
+  const ovalStroke = phase === "success_flash" ? "#10b981"
+    : isStillness  ? "#818cf8"
+    : isRetry      ? "#f97316"
+    : isDetecting  ? "#f59e0b"
+    : "rgba(255,255,255,0.4)";
+
+  const viewportH = fullHeight ? "clamp(300px, 65vw, 480px)" : "clamp(220px, 48vw, 340px)";
+
+  // Captured state — shown after successful liveness
+  if (captured && capturedUrl) {
     return (
       <div className="space-y-3">
         <div className="relative rounded-2xl overflow-hidden border-2 border-emerald-500/40">
@@ -582,15 +684,6 @@ function LivenessCheck({ onCapture, captured, onRetake, fullHeight = false }) {
       </div>
     );
   }
-
-  const isLive      = ["warmup", "detecting", "success_flash", "stillness"].includes(phase);
-  const isDetecting = phase === "detecting";
-  const isStillness = phase === "stillness";
-  const ovalStroke  = phase === "success_flash" ? "#10b981"
-    : isStillness  ? "#818cf8"
-    : isDetecting  ? "#f59e0b"
-    : "rgba(255,255,255,0.4)";
-  const viewportH = fullHeight ? "clamp(300px, 65vw, 480px)" : "clamp(220px, 48vw, 340px)";
 
   return (
     <div className="space-y-3">
@@ -639,14 +732,23 @@ function LivenessCheck({ onCapture, captured, onRetake, fullHeight = false }) {
           </div>
         )}
 
-        {/* Countdown timer ring */}
+        {/* Retry badge */}
+        {isDetecting && retryCount > 0 && (
+          <div className="absolute top-3 right-14 flex items-center gap-1 bg-orange-500/80 text-white text-xs font-bold px-2.5 py-1 rounded-full">
+            Retry {retryCount}/{MAX_RETRIES_PER_PROMPT}
+          </div>
+        )}
+
+        {/* Countdown ring */}
         {isDetecting && (
           <div className="absolute top-3 right-3 w-11 h-11 flex items-center justify-center">
             <svg className="absolute inset-0 -rotate-90" viewBox="0 0 44 44">
               <circle cx="22" cy="22" r="18" fill="rgba(0,0,0,0.6)" stroke="rgba(255,255,255,0.1)" strokeWidth="2" />
-              <motion.circle cx="22" cy="22" r="18" fill="none" stroke="#f59e0b" strokeWidth="2.5" strokeLinecap="round"
+              <motion.circle cx="22" cy="22" r="18" fill="none"
+                stroke={retryCount > 0 ? "#f97316" : "#f59e0b"}
+                strokeWidth="2.5" strokeLinecap="round"
                 strokeDasharray={`${2 * Math.PI * 18}`}
-                animate={{ strokeDashoffset: 2 * Math.PI * 18 * (1 - timeLeft / 8) }}
+                animate={{ strokeDashoffset: 2 * Math.PI * 18 * (1 - timeLeft / COUNTDOWN_SECS) }}
                 transition={{ duration: 0.9, ease: "linear" }} />
             </svg>
             <span className="text-white font-bold text-sm z-10 relative tabular-nums">{timeLeft}</span>
@@ -674,6 +776,20 @@ function LivenessCheck({ onCapture, captured, onRetake, fullHeight = false }) {
                 transition={{ duration: 0.08 }} />
             </div>
           </div>
+        )}
+
+        {/* Retry warning overlay */}
+        {isRetry && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center bg-black/70"
+          >
+            <div className="w-14 h-14 rounded-full bg-orange-500/20 border border-orange-500/40 flex items-center justify-center">
+              <AlertCircle size={24} className="text-orange-400" />
+            </div>
+            <p className="text-orange-300 font-bold text-sm leading-relaxed">{retryMsg}</p>
+            <p className="text-white/40 text-xs">Please perform the action clearly and slowly.</p>
+          </motion.div>
         )}
 
         {/* Stillness / capture overlay */}
@@ -737,16 +853,26 @@ function LivenessCheck({ onCapture, captured, onRetake, fullHeight = false }) {
 
       {/* Current prompt card */}
       <AnimatePresence mode="wait">
-        {(isDetecting || phase === "warmup") && !isStillness && currentPrompt && (
-          <motion.div key={`prompt-${promptIdx}`}
+        {(isDetecting || phase === "warmup") && !isStillness && !isRetry && currentPrompt && (
+          <motion.div key={`prompt-${promptIdx}-${retryCount}`}
             initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-            className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-4 flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full bg-white/5 border border-amber-500/20 flex items-center justify-center shrink-0">
+            className={`rounded-xl border px-4 py-4 flex items-center gap-4 ${
+              retryCount > 0
+                ? "border-orange-500/20 bg-orange-500/5"
+                : "border-amber-500/20 bg-amber-500/5"
+            }`}>
+            <div className={`w-10 h-10 rounded-full bg-white/5 border flex items-center justify-center shrink-0 ${
+              retryCount > 0 ? "border-orange-500/20" : "border-amber-500/20"
+            }`}>
               <PromptIcon icon={currentPrompt.icon} size={16} />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs text-amber-500/70 font-bold uppercase tracking-wider mb-0.5">
-                Task {promptIdx + 1} of {prompts.length}
+              <p className={`text-xs font-bold uppercase tracking-wider mb-0.5 ${
+                retryCount > 0 ? "text-orange-500/70" : "text-amber-500/70"
+              }`}>
+                {retryCount > 0
+                  ? `Retry · Task ${promptIdx + 1} of ${prompts.length}`
+                  : `Task ${promptIdx + 1} of ${prompts.length}`}
               </p>
               <p className="text-white font-semibold text-sm leading-snug">{currentPrompt.text}</p>
             </div>
@@ -962,8 +1088,8 @@ export default function KycPanel({ kycStatus: kycStatusProp, setKycStatus: setKy
 
   const setField = (k, v) => setForm(p => ({ ...p, [k]: v }));
   const setFile  = (k, f) => setForm(p => ({ ...p, [k]: f }));
-  const handleIdTypeChange    = (val) => setForm(p => ({ ...p, id_type: val, id_number: "" }));
-  const handleIdNumberChange  = (e) => {
+  const handleIdTypeChange   = (val) => setForm(p => ({ ...p, id_type: val, id_number: "" }));
+  const handleIdNumberChange = (e) => {
     const meta = ID_TYPES.find(t => t.value === form.id_type);
     let val = e.target.value;
     if (meta?.numericOnly) val = val.replace(/\D/g, "");
@@ -984,8 +1110,8 @@ export default function KycPanel({ kycStatus: kycStatusProp, setKycStatus: setKy
         if (age < 18)  e.date_of_birth = "You must be at least 18 years old";
         if (age > 120) e.date_of_birth = "Please enter a valid date of birth";
       }
-      if (!form.phone_number.trim())            e.phone_number = "Phone number is required";
-      else if (form.phone_number.length < 7)    e.phone_number = "Please enter a valid phone number";
+      if (!form.phone_number.trim())         e.phone_number = "Phone number is required";
+      else if (form.phone_number.length < 7) e.phone_number = "Please enter a valid phone number";
     }
     if (step === 1) {
       if (!form.address.trim()) e.address = "Address is required";
