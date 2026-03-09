@@ -8,12 +8,19 @@ import {
   RotateCcw, Video, VideoOff,
 } from "lucide-react";
 import {
-  LIVENESS_PROMPTS, MOTION_THRESHOLDS,
-  SAMPLE_W, SAMPLE_H, EMA_ALPHA, CONFIRM_FRAMES, BLIND_FRAMES,
-  STILLNESS_THRESHOLD, STILL_CONFIRM_FRAMES,
+  LIVENESS_PROMPTS,
+  SAMPLE_W, SAMPLE_H, STILL_CONFIRM_FRAMES,
   MAX_RETRIES_PER_PROMPT, COUNTDOWN_SECS,
   shuffle,
 } from "./constants";
+
+// ─── Adaptive detection constants ────────────────────────────────────────────
+const BASELINE_FRAMES   = 40;   // frames sampled at warmup to learn idle noise
+const EMA_ALPHA         = 0.30;
+const CONFIRM_FRAMES    = 3;    // consecutive frames above threshold to confirm
+const ACTION_MULTIPLIER = { eye: 2.8, smile: 2.5, left: 3.5, right: 3.5, nod: 3.0, _default: 3.0 };
+
+const STILL_RATIO       = 1.2;
 
 // ── Prompt icon ───────────────────────────────────────────────────────────────
 function PromptIcon({ icon, size = 18 }) {
@@ -37,7 +44,9 @@ export default function LivenessCheck({ onCapture, captured, onRetake, fullHeigh
   const emaRef         = useRef(0);
   const detectionOnRef = useRef(false);
   const tabHiddenRef   = useRef(false);
-  const timerRef       = useRef(null);
+  const timerRef        = useRef(null);
+  // Learned noise floor — measured once during first warmup, reused for all prompts
+  const idleBaselineRef = useRef(null);
 
   const [phase, setPhase]             = useState("idle");
   const [prompts, setPrompts]         = useState([]);
@@ -72,6 +81,7 @@ export default function LivenessCheck({ onCapture, captured, onRetake, fullHeigh
     setPrompts([]);
     setPromptIdx(0);   promptIdxRef.current  = 0;
     setErrorMsg("");
+    idleBaselineRef.current = null;
   }, []);
 
   const stopStream = useCallback(() => {
@@ -126,13 +136,20 @@ export default function LivenessCheck({ onCapture, captured, onRetake, fullHeigh
     return () => window.removeEventListener("keydown", onKey);
   }, [stopStream]);
 
-  // ── Motion measurement ──────────────────────────────────────────────────────
+  // ── Motion measurement ────────────────────────────────────────────────────
+  // Crops to the centre 60% of the frame (face region) to reduce background
+  // lighting flicker that pollutes full-frame diffs.
   const measureMotion = useCallback(() => {
     const video  = videoRef.current;
     const canvas = sampleRef.current;
     if (!video || !canvas || video.readyState < 2) return 0;
     const ctx = canvas.getContext("2d", { willReadFrequently: true });
-    ctx.drawImage(video, 0, 0, SAMPLE_W, SAMPLE_H);
+
+    // Source crop: horizontal 20–80%, vertical 10–90% — keeps the face in frame
+    const sw = video.videoWidth  || 640;
+    const sh = video.videoHeight || 480;
+    ctx.drawImage(video, sw * 0.2, sh * 0.1, sw * 0.6, sh * 0.8, 0, 0, SAMPLE_W, SAMPLE_H);
+
     const { data } = ctx.getImageData(0, 0, SAMPLE_W, SAMPLE_H);
     const grey = new Uint8Array(SAMPLE_W * SAMPLE_H);
     for (let i = 0; i < grey.length; i++) {
@@ -144,25 +161,6 @@ export default function LivenessCheck({ onCapture, captured, onRetake, fullHeigh
     for (let i = 0; i < grey.length; i++) diff += Math.abs(grey[i] - prevDataRef.current[i]);
     prevDataRef.current = grey;
     return diff / (grey.length * 255);
-  }, []);
-
-  // ── Frame entropy (replay / static camera) ──────────────────────────────────
-  const checkFrameEntropy = useCallback(() => {
-    const canvas = sampleRef.current;
-    const video  = videoRef.current;
-    if (!canvas || !video || video.readyState < 2) return true;
-    const ctx = canvas.getContext("2d", { willReadFrequently: true });
-    ctx.drawImage(video, 0, 0, SAMPLE_W, SAMPLE_H);
-    const { data } = ctx.getImageData(0, 0, SAMPLE_W, SAMPLE_H);
-    let sum = 0, sumSq = 0;
-    const n = SAMPLE_W * SAMPLE_H;
-    for (let i = 0; i < n; i++) {
-      const p = i * 4;
-      const g = (data[p] * 77 + data[p + 1] * 150 + data[p + 2] * 29) >> 8;
-      sum += g; sumSq += g * g;
-    }
-    const mean = sum / n;
-    return sumSq / n - mean * mean > 60;
   }, []);
 
   // ── Selfie capture ──────────────────────────────────────────────────────────
@@ -183,18 +181,20 @@ export default function LivenessCheck({ onCapture, captured, onRetake, fullHeigh
     }, "image/jpeg", 0.92);
   }, [stopStream, onCapture]);
 
-  // ── Stillness → capture ─────────────────────────────────────────────────────
+  // ── Stillness → capture ───────────────────────────────────────────────────
   const startStillnessCapture = useCallback(() => {
     setPhase("stillness");
     prevDataRef.current    = null;
     emaRef.current         = 0;
     detectionOnRef.current = true;
     let stillFrames = 0;
+    // Use learned baseline; fall back to a small safe value
+    const stillThresh = (idleBaselineRef.current ?? 0.002) * STILL_RATIO;
     const loop = () => {
       if (!detectionOnRef.current) return;
       const raw = measureMotion();
       emaRef.current = EMA_ALPHA * raw + (1 - EMA_ALPHA) * emaRef.current;
-      if (emaRef.current < STILLNESS_THRESHOLD) {
+      if (emaRef.current < stillThresh) {
         stillFrames++;
         if (stillFrames >= STILL_CONFIRM_FRAMES) {
           detectionOnRef.current = false;
@@ -231,9 +231,8 @@ export default function LivenessCheck({ onCapture, captured, onRetake, fullHeigh
         setPhase("warmup");
         setTimeout(() => {
           if (!streamRef.current) return;
-          const thresh = MOTION_THRESHOLDS[prompt?.icon] ?? 0.020;
           setPhase("detecting");
-          startDetectionCountdownRef.current?.(thresh, promptIndex);
+          startDetectionCountdownRef.current?.(prompt?.icon, promptIndex);
         }, 1500);
       }, 2200);
     } else {
@@ -264,11 +263,9 @@ export default function LivenessCheck({ onCapture, captured, onRetake, fullHeigh
         setPhase("warmup");
         setTimeout(() => {
           if (!streamRef.current) return;
-          const thresh = MOTION_THRESHOLDS[currentPrompts[nextIdx]?.icon] ?? 0.020;
           setPhase("detecting");
-          startDetectionCountdownRef.current?.(thresh, nextIdx);
-        }, 1200);
-      } else {
+          startDetectionCountdownRef.current?.(currentPrompts[nextIdx]?.icon, nextIdx);
+        }, 1200);      } else {
         startStillnessCapture();
       }
     }, 900);
@@ -276,68 +273,75 @@ export default function LivenessCheck({ onCapture, captured, onRetake, fullHeigh
 
   advancePromptRef.current = advancePrompt;
 
-  // ── Detection loop ──────────────────────────────────────────────────────────
-  const startDetectionLoop = useCallback((promptIndex, threshold) => {
+  // ── Detection loop (adaptive baseline) ───────────────────────────────────
+  const startDetectionLoop = useCallback((promptIcon, promptIndex) => {
     detectionOnRef.current = true;
     prevDataRef.current    = null;
     emaRef.current         = 0;
+
     let detectedThisRound = false;
     let motionFrames      = 0;
-    let frameCount        = 0;
-    let noMotionFrames    = 0;
-    let entropyOkFrames   = 0;
+    let baselineSamples   = [];
+
+    // Reuse previously learned baseline if available (e.g. 2nd prompt, retries)
+    let baselineDone      = !!idleBaselineRef.current;
+    let multiplier        = ACTION_MULTIPLIER[promptIcon] ?? ACTION_MULTIPLIER._default;
+    let effectiveThresh   = idleBaselineRef.current
+      ? idleBaselineRef.current * multiplier
+      : null;
 
     const loop = () => {
       if (!detectionOnRef.current) return;
 
-      if (frameCount % 30 === 0) {
-        if (checkFrameEntropy()) { entropyOkFrames++; }
-        else if (entropyOkFrames === 0 && frameCount > 60) {
-          setErrorMsg("Static or virtual camera detected. Please use your real device camera.");
-          setPhase("error");
-          stopStream();
-          return;
+      const raw = measureMotion();
+      emaRef.current = EMA_ALPHA * raw + (1 - EMA_ALPHA) * emaRef.current;
+
+      // ── Phase 1: learn idle baseline ──────────────────────────────────────
+      if (!baselineDone) {
+        baselineSamples.push(raw);
+        if (baselineSamples.length >= BASELINE_FRAMES) {
+          // Median of middle 60% — excludes any accidental fidgets
+          const sorted  = [...baselineSamples].sort((a, b) => a - b);
+          const lo      = Math.floor(sorted.length * 0.2);
+          const hi      = Math.ceil(sorted.length * 0.8);
+          const slice   = sorted.slice(lo, hi);
+          const median  = slice.reduce((a, b) => a + b, 0) / slice.length;
+          // Clamp: never below a hardware minimum (frozen/dark feed)
+          const learned = Math.max(median, 0.0006);
+          idleBaselineRef.current = learned;
+          effectiveThresh  = learned * multiplier;
+          baselineDone     = true;
         }
+        rafRef.current = requestAnimationFrame(loop);
+        return;
       }
 
-      const raw = measureMotion();
+      // ── Phase 2: detect action ────────────────────────────────────────────
+      // Bar shows progress toward threshold (100% = threshold crossed)
+      const pct = Math.min(100, Math.round((emaRef.current / effectiveThresh) * 80));
+      setMotionPct(pct);
 
-      if (raw < 0.0003) {
-        noMotionFrames++;
-        if (noMotionFrames > 120) {
-          setErrorMsg("No live movement detected. Please ensure you are in front of your camera.");
-          setPhase("error");
-          stopStream();
-          return;
-        }
-      } else { noMotionFrames = 0; }
+      if (emaRef.current >= effectiveThresh) {
+        motionFrames++;
+      } else {
+        motionFrames = 0; // must be consecutive — prevents noise spikes
+      }
 
-      emaRef.current = EMA_ALPHA * raw + (1 - EMA_ALPHA) * emaRef.current;
-      frameCount++;
-
-      if (frameCount > BLIND_FRAMES) {
-        const pct = Math.min(100, Math.round((emaRef.current / (threshold * 3)) * 100));
-        setMotionPct(pct);
-
-        if (emaRef.current >= threshold) motionFrames++;
-        else motionFrames = 0; // must be consecutive
-
-        if (!detectedThisRound && motionFrames >= CONFIRM_FRAMES) {
-          detectedThisRound      = true;
-          detectionOnRef.current = false;
-          clearInterval(timerRef.current);
-          setTimeout(() => advancePromptRef.current?.(promptIndex), 200);
-          return;
-        }
+      if (!detectedThisRound && motionFrames >= CONFIRM_FRAMES) {
+        detectedThisRound      = true;
+        detectionOnRef.current = false;
+        clearInterval(timerRef.current);
+        setTimeout(() => advancePromptRef.current?.(promptIndex), 200);
+        return;
       }
 
       rafRef.current = requestAnimationFrame(loop);
     };
     rafRef.current = requestAnimationFrame(loop);
-  }, [measureMotion, checkFrameEntropy, stopStream]);
+  }, [measureMotion]);
 
-  // ── Countdown — expiry → handleTimeout, never advancePrompt ────────────────
-  const startDetectionCountdown = useCallback((thresh, idx) => {
+  // ── Countdown ─────────────────────────────────────────────────────────────
+  const startDetectionCountdown = useCallback((promptIcon, idx) => {
     timeLeftRef.current = COUNTDOWN_SECS;
     setTimeLeft(COUNTDOWN_SECS);
 
@@ -350,7 +354,7 @@ export default function LivenessCheck({ onCapture, captured, onRetake, fullHeigh
       }
     }, 1000);
 
-    startDetectionLoop(idx, thresh);
+    startDetectionLoop(promptIcon, idx);
   }, [startDetectionLoop]);
 
   startDetectionCountdownRef.current = startDetectionCountdown;
@@ -366,6 +370,7 @@ export default function LivenessCheck({ onCapture, captured, onRetake, fullHeigh
     setCompleted([]);
     setMotionPct(0);
     setRetryCount(0);  retryCountRef.current = 0;
+    idleBaselineRef.current = null;
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -402,7 +407,7 @@ export default function LivenessCheck({ onCapture, captured, onRetake, fullHeigh
       setTimeout(() => {
         if (!streamRef.current) return;
         setPhase("detecting");
-        startDetectionCountdownRef.current?.(MOTION_THRESHOLDS[chosen[0]?.icon] ?? 0.020, 0);
+        startDetectionCountdownRef.current?.(chosen[0]?.icon, 0);
       }, 2500);
 
     } catch (err) {
