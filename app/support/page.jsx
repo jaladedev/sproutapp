@@ -8,6 +8,7 @@ import {
   Clock, XCircle, AlertCircle, Bot, Search, RefreshCw,
   User, MailOpen, Sparkles, ChevronRight, FileText,
   Shield, CreditCard, Landmark, TrendingUp, MoreHorizontal,
+  Download, Image as ImageIcon, Film, X,
 } from "lucide-react";
 import {
   fetchTickets, fetchTicket, createTicket, createGuestTicket,
@@ -15,6 +16,7 @@ import {
 } from "../../services/supportService";
 import toast from "react-hot-toast";
 import { useAuth } from "../../context/AuthContext";
+import api from "../../utils/api";
 
 /* ── Design tokens ─────────────────────────────────────────────────────────── */
 const BG        = "#0A1A13";
@@ -25,8 +27,6 @@ const AMBER     = "#C8873A";
 const AMBER2    = "#E8A850";
 const MUTED     = "rgba(255,255,255,0.35)";
 const DIMMED    = "rgba(255,255,255,0.18)";
-// Solid dark background for native <select> dropdowns —
-// rgba/opacity values don't work on <option> elements in any browser
 const SELECT_BG = "#0f2318";
 
 const grad = `linear-gradient(135deg, ${AMBER} 0%, ${AMBER2} 100%)`;
@@ -69,6 +69,28 @@ const priorityCfg = (p = "") => ({
 const fmtDate = (d) =>
   d ? new Date(d).toLocaleString("en-NG", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
 
+/* ── File helpers ──────────────────────────────────────────────────────────── */
+function getFileType(path) {
+  if (!path) return null;
+  const ext = path.split(".").pop().toLowerCase();
+  if (["jpg","jpeg","png","gif","webp"].includes(ext)) return "image";
+  if (["mp4","webm"].includes(ext)) return "video";
+  if (ext === "pdf") return "pdf";
+  return "file";
+}
+
+function getFileName(path) {
+  if (!path) return "attachment";
+  return path.split("/").pop();
+}
+
+function downloadBlob(url, name) {
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  a.click();
+}
+
 /* ── Pill button ───────────────────────────────────────────────────────────── */
 function Pill({ active, onClick, children, "data-tab": dataTab }) {
   return (
@@ -82,6 +104,120 @@ function Pill({ active, onClick, children, "data-tab": dataTab }) {
     >
       {children}
     </button>
+  );
+}
+
+/* ── Attachment component (user-facing) ────────────────────────────────────── */
+function AttachmentLink({ ticketId, message }) {
+  const [blobUrl, setBlobUrl]   = useState(null);
+  const [loading, setLoading]   = useState(false);
+  const [lightbox, setLightbox] = useState(false);
+  const fileType = getFileType(message.attachment_path);
+  const fileName = getFileName(message.attachment_path);
+
+  const fetchBlob = async () => {
+    if (blobUrl) return blobUrl;
+    setLoading(true);
+    try {
+      const res = await api.get(
+        `/support/tickets/${ticketId}/messages/${message.id}/attachment`,
+        { responseType: "blob" }
+      );
+      const url = URL.createObjectURL(res.data);
+      setBlobUrl(url);
+      return url;
+    } catch {
+      toast.error("Could not load attachment.");
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleView = async () => {
+    const url = await fetchBlob();
+    if (!url) return;
+    if (fileType === "image") {
+      setLightbox(true);
+    } else {
+      window.open(url, "_blank");
+    }
+  };
+
+  const handleDownload = async () => {
+    const url = await fetchBlob();
+    if (url) downloadBlob(url, fileName);
+  };
+
+  const FileIcon = fileType === "image" ? ImageIcon
+                 : fileType === "video" ? Film
+                 : FileText;
+
+  return (
+    <>
+      {/* Inline image preview once loaded */}
+      {fileType === "image" && blobUrl && (
+        <div
+          className="mt-2 rounded-xl overflow-hidden cursor-zoom-in border border-white/10 max-w-[200px]"
+          onClick={() => setLightbox(true)}
+        >
+          <img src={blobUrl} alt="attachment" className="w-full h-auto object-cover" />
+        </div>
+      )}
+
+      {/* Attachment chip */}
+      <div className="mt-2 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs bg-white/5 border-white/10 text-white/50">
+        <FileIcon size={11} className="shrink-0" />
+        <span className="max-w-[140px] truncate">{fileName}</span>
+        {loading ? (
+          <Loader2 size={11} className="animate-spin shrink-0" />
+        ) : (
+          <div className="flex items-center gap-1.5 ml-0.5">
+            <button
+              onClick={handleView}
+              title="View"
+              className="hover:text-white transition-colors"
+            >
+              <FileText size={11} />
+            </button>
+            <button
+              onClick={handleDownload}
+              title="Download"
+              className="hover:text-white transition-colors"
+            >
+              <Download size={11} />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Lightbox */}
+      {lightbox && blobUrl && (
+        <div
+          className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
+          onClick={() => setLightbox(false)}
+        >
+          <button
+            className="absolute top-4 right-4 w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all"
+            onClick={() => setLightbox(false)}
+          >
+            <X size={16} />
+          </button>
+          <img
+            src={blobUrl}
+            alt="attachment"
+            className="max-w-full max-h-[90vh] rounded-2xl object-contain shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          />
+          <button
+            onClick={e => { e.stopPropagation(); handleDownload(); }}
+            className="absolute bottom-4 right-4 flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-all"
+          >
+            <Download size={13} /> Download
+          </button>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -401,7 +537,6 @@ function NewTicketForm({ onSuccess }) {
             <div>
               <label className={lbl}>Category *</label>
               <div className="relative">
-                {/* backgroundColor must be solid — rgba/opacity breaks native <option> rendering */}
                 <select name="category" value={form.category} onChange={handleChange} required
                   className={sel} style={{ backgroundColor: SELECT_BG }}>
                   <option value="" disabled>Select category</option>
@@ -498,6 +633,7 @@ function TicketDetail({ id, onBack }) {
     try {
       await replyToTicket(id, { message: reply, attachment: file });
       setReply(""); setFile(null);
+      if (fileRef.current) fileRef.current.value = "";
       toast.success("Reply sent.");
       load();
     } catch { toast.error("Failed to send reply."); }
@@ -590,10 +726,7 @@ function TicketDetail({ id, onBack }) {
                   >
                     {m.body}
                     {m.attachment_path && (
-                      <a href={`/storage/${m.attachment_path}`} target="_blank" rel="noreferrer"
-                        className="mt-2.5 flex items-center gap-1.5 text-xs font-semibold underline opacity-70 hover:opacity-100 transition-opacity">
-                        <Paperclip size={11} /> View attachment
-                      </a>
+                      <AttachmentLink ticketId={ticket.id} message={m} />
                     )}
                   </div>
                   <p className="text-[10px] px-1" style={{ color: "rgba(255,255,255,0.18)" }}>
@@ -612,6 +745,25 @@ function TicketDetail({ id, onBack }) {
               <textarea value={reply} onChange={e => setReply(e.target.value)}
                 placeholder="Type your reply…" rows={3}
                 className={inp + " resize-none"} />
+
+              {/* File preview strip */}
+              {file && (
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white/50">
+                    <Paperclip size={11} />
+                    <span className="max-w-[200px] truncate">{file.name}</span>
+                    <span style={{ color: DIMMED }}>({(file.size / 1024).toFixed(0)} KB)</span>
+                    <button
+                      type="button"
+                      onClick={() => { setFile(null); if (fileRef.current) fileRef.current.value = ""; }}
+                      className="text-white/20 hover:text-red-400 transition-colors ml-1"
+                    >
+                      <X size={11} />
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center justify-between gap-3">
                 <button type="button" onClick={() => fileRef.current?.click()}
                   className="flex items-center gap-1.5 text-xs font-semibold transition-colors"
@@ -619,7 +771,7 @@ function TicketDetail({ id, onBack }) {
                   onMouseEnter={e => e.currentTarget.style.color = AMBER}
                   onMouseLeave={e => e.currentTarget.style.color = file ? "rgba(255,255,255,0.55)" : DIMMED}>
                   <Paperclip size={13} />
-                  {file ? <span className="truncate max-w-35">{file.name}</span> : "Attach file"}
+                  {file ? "Change file" : "Attach file"}
                 </button>
                 <input ref={fileRef} type="file" className="hidden" accept="image/*,.pdf"
                   onChange={e => setFile(e.target.files?.[0] || null)} />
@@ -887,7 +1039,6 @@ function GuestContactForm() {
             <div>
               <label className={lbl}>Topic *</label>
               <div className="relative">
-                {/* solid backgroundColor required for native <option> elements to be visible */}
                 <select name="category" value={form.category} onChange={handleChange} required
                   className={sel} style={{ backgroundColor: SELECT_BG }}>
                   <option value="" disabled>Select topic</option>
@@ -961,12 +1112,11 @@ function AiChatView() {
       content: `Hi ${user?.name?.split(" ")[0] || "there"}! I'm your Sproutvest assistant. Ask me anything about your account, investments, deposits, KYC, or anything else.`,
     },
   ]);
-  const [input, setInput]         = useState("");
-  const [loading, setLoading]     = useState(false);
+  const [input, setInput]               = useState("");
+  const [loading, setLoading]           = useState(false);
   const [chipsVisible, setChipsVisible] = useState(true);
-  const bottomRef                 = useRef(null);
-  const textareaRef               = useRef(null);
-  const messagesRef               = useRef(null);
+  const bottomRef                       = useRef(null);
+  const textareaRef                     = useRef(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -976,7 +1126,7 @@ function AiChatView() {
     const content = (text || input).trim();
     if (!content || loading) return;
     setInput("");
-    setChipsVisible(false); // hide chips once conversation starts
+    setChipsVisible(false);
 
     const next = [...messages, { role: "user", content }];
     setMessages(next);
@@ -1023,7 +1173,7 @@ function AiChatView() {
         </div>
       </div>
 
-      {/* ── Quick reply chips — single horizontal scroll row ── */}
+      {/* ── Quick reply chips ── */}
       {chipsVisible && (
         <div className="flex gap-2 mb-3 overflow-x-auto shrink-0 pb-1"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
@@ -1040,14 +1190,12 @@ function AiChatView() {
       )}
 
       {/* ── Messages ── */}
-      <div ref={messagesRef}
-        className="flex-1 overflow-y-auto rounded-2xl px-3 py-4 sm:px-5 sm:py-5 space-y-4"
+      <div className="flex-1 overflow-y-auto rounded-2xl px-3 py-4 sm:px-5 sm:py-5 space-y-4"
         style={{ background: "rgba(5,15,10,0.7)", border: `1px solid ${BORDER}` }}>
         {messages.map((m, i) => {
           const isUser = m.role === "user";
           return (
             <div key={i} className={`flex gap-2.5 ${isUser ? "flex-row-reverse" : ""}`}>
-              {/* Avatar — hidden on mobile for assistant to save space */}
               <div
                 className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-xs font-black self-end ${isUser ? "" : "hidden sm:flex"}`}
                 style={isUser
@@ -1057,14 +1205,9 @@ function AiChatView() {
               >
                 {isUser ? (user?.name?.[0]?.toUpperCase() || "U") : <Bot size={12} />}
               </div>
-
-              {/* Bubble */}
               <div className={`flex flex-col gap-1 ${isUser ? "items-end max-w-[82%]" : "items-start max-w-[92%] sm:max-w-[80%]"}`}>
-                {/* AI label on mobile (replaces hidden avatar) */}
                 {!isUser && (
-                  <p className="text-[10px] px-1 sm:hidden" style={{ color: AMBER }}>
-                    AI Assistant
-                  </p>
+                  <p className="text-[10px] px-1 sm:hidden" style={{ color: AMBER }}>AI Assistant</p>
                 )}
                 <div
                   className={`px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${
@@ -1089,7 +1232,6 @@ function AiChatView() {
           );
         })}
 
-        {/* Typing indicator */}
         {loading && (
           <div className="flex gap-2.5">
             <div className="w-7 h-7 rounded-lg hidden sm:flex items-center justify-center shrink-0"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, Suspense } from "react";
+import { useEffect, useState, useCallback, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import api from "../../../utils/api";
@@ -8,6 +8,7 @@ import toast from "react-hot-toast";
 import {
   MessageSquare, Clock, CheckCircle, AlertCircle,
   Send, Trash2, User, Search, X, Eye, ArrowLeft,
+  Paperclip, Download, Image as ImageIcon, FileText, Film,
 } from "lucide-react";
 
 const STATUS_CONFIG = {
@@ -23,6 +24,151 @@ const PRIORITY_CONFIG = {
 };
 
 const CATEGORIES = ["account","payment","kyc","investment","withdrawal","other"];
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function getFileType(path) {
+  if (!path) return null;
+  const ext = path.split(".").pop().toLowerCase();
+  if (["jpg","jpeg","png","gif","webp"].includes(ext)) return "image";
+  if (["mp4","webm"].includes(ext)) return "video";
+  if (ext === "pdf") return "pdf";
+  return "file";
+}
+
+function getFileName(path) {
+  if (!path) return "attachment";
+  return path.split("/").pop();
+}
+
+// ─── Attachment component ─────────────────────────────────────────────────────
+
+function Attachment({ messageId, path, isAdmin }) {
+  const [blobUrl, setBlobUrl]   = useState(null);
+  const [loading, setLoading]   = useState(false);
+  const [lightbox, setLightbox] = useState(false);
+  const fileType = getFileType(path);
+  const fileName = getFileName(path);
+
+  const load = useCallback(async () => {
+    if (blobUrl) return blobUrl;
+    setLoading(true);
+    try {
+      const res = await api.get(
+        `/admin/support/tickets/${messageId}/attachment`,
+        { responseType: "blob" }
+      );
+      const url = URL.createObjectURL(res.data);
+      setBlobUrl(url);
+      return url;
+    } catch {
+      toast.error("Failed to load attachment");
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, [messageId, blobUrl]);
+
+  const handleView = async () => {
+    if (fileType === "image") {
+      await load();
+      setLightbox(true);
+    } else {
+      const url = await load();
+      if (url) window.open(url, "_blank");
+    }
+  };
+
+  const handleDownload = async () => {
+    const url = await load();
+    if (!url) return;
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    a.click();
+  };
+
+  const FileIcon = fileType === "image" ? ImageIcon
+                 : fileType === "video" ? Film
+                 : FileText;
+
+  const accent = isAdmin ? "cyan" : "white";
+
+  return (
+    <>
+      {/* Inline image preview */}
+      {fileType === "image" && blobUrl && (
+        <div
+          className="mt-2 rounded-xl overflow-hidden cursor-zoom-in border border-white/10 max-w-[220px]"
+          onClick={() => setLightbox(true)}
+        >
+          <img src={blobUrl} alt="attachment" className="w-full h-auto object-cover"/>
+        </div>
+      )}
+
+      {/* Attachment chip */}
+      <div className={`mt-2 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs
+        ${isAdmin
+          ? "bg-cyan-500/10 border-cyan-500/20 text-cyan-300"
+          : "bg-white/5 border-white/10 text-white/50"
+        }`}
+      >
+        <FileIcon size={12} className="shrink-0"/>
+        <span className="max-w-[120px] truncate">{fileName}</span>
+
+        {loading ? (
+          <div className={`w-3 h-3 border border-current border-t-transparent rounded-full animate-spin`}/>
+        ) : (
+          <div className="flex items-center gap-1 ml-1">
+            <button
+              onClick={handleView}
+              title="View"
+              className="hover:text-white transition-colors"
+            >
+              <Eye size={12}/>
+            </button>
+            <button
+              onClick={handleDownload}
+              title="Download"
+              className="hover:text-white transition-colors"
+            >
+              <Download size={12}/>
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Lightbox */}
+      {lightbox && blobUrl && (
+        <div
+          className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
+          onClick={() => setLightbox(false)}
+        >
+          <button
+            className="absolute top-4 right-4 w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all"
+            onClick={() => setLightbox(false)}
+          >
+            <X size={16}/>
+          </button>
+          <img
+            src={blobUrl}
+            alt="attachment"
+            className="max-w-full max-h-[90vh] rounded-2xl object-contain shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          />
+          <button
+            onClick={e => { e.stopPropagation(); handleDownload(); }}
+            className="absolute bottom-4 right-4 flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-all"
+          >
+            <Download size={13}/> Download
+          </button>
+        </div>
+      )}
+    </>
+  );
+}
+
+// ─── Shared UI ────────────────────────────────────────────────────────────────
 
 function StatusBadge({ status }) {
   const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.open;
@@ -54,21 +200,41 @@ function DarkSelect({ children, className="", ...props }) {
   );
 }
 
+// ─── Ticket Modal ─────────────────────────────────────────────────────────────
+
 function TicketModal({ ticket, onClose, onUpdate }) {
-  const [reply, setReply] = useState("");
-  const [sending, setSending] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [localTicket, setLocalTicket] = useState(ticket);
+  const [reply, setReply]                 = useState("");
+  const [attachment, setAttachment]       = useState(null);
+  const [sending, setSending]             = useState(false);
+  const [deleting, setDeleting]           = useState(false);
+  const [localTicket, setLocalTicket]     = useState(ticket);
   const [statusUpdating, setStatusUpdating] = useState(false);
+  const fileInputRef = useRef(null);
 
   const handleReply = async () => {
     if (!reply.trim()) { toast.error("Reply cannot be empty"); return; }
     try {
       setSending(true);
-      const res = await api.post(`/admin/support/tickets/${localTicket.id}/reply`, { message: reply });
-      const newMsg = res.data.data;
-      setLocalTicket(prev => ({ ...prev, status:"waiting", messages:[...(prev.messages||[]), newMsg] }));
+      const form = new FormData();
+      form.append("message", reply);
+      if (attachment) form.append("attachment", attachment);
+
+      const res = await api.post(
+        `/admin/support/tickets/${localTicket.id}/reply`,
+        form,
+        { headers: { "Content-Type": "multipart/form-data" } }
+      );
+
+      // The reply endpoint returns the updated ticket with messages
+      const updated = res.data.data;
+      setLocalTicket(prev => ({
+        ...prev,
+        status: "waiting",
+        messages: updated.messages ?? [...(prev.messages || []), res.data.data],
+      }));
       setReply("");
+      setAttachment(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
       toast.success("Reply sent");
       onUpdate();
     } catch(err) {
@@ -195,6 +361,13 @@ function TicketModal({ ticket, onClose, onUpdate }) {
                     {authorName(msg)}
                   </p>
                   <p className="text-sm text-white/80 whitespace-pre-wrap leading-relaxed">{msg.body}</p>
+                  {msg.attachment_path && (
+                    <Attachment
+                      messageId={msg.id}
+                      path={msg.attachment_path}
+                      isAdmin={isAdmin}
+                    />
+                  )}
                   <p className="text-[10px] text-white/20 mt-1.5">{new Date(msg.created_at).toLocaleString()}</p>
                 </div>
               </div>
@@ -205,15 +378,56 @@ function TicketModal({ ticket, onClose, onUpdate }) {
         {/* Reply / closed footer */}
         {localTicket.status !== "closed" ? (
           <div className="p-4 border-t border-white/10 bg-[#0f2820] shrink-0">
+            {/* Attachment preview strip */}
+            {attachment && (
+              <div className="flex items-center gap-2 mb-2 px-1">
+                <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white/60">
+                  <Paperclip size={11}/>
+                  <span className="max-w-[200px] truncate">{attachment.name}</span>
+                  <span className="text-white/30">({(attachment.size / 1024).toFixed(0)} KB)</span>
+                  <button
+                    onClick={() => { setAttachment(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+                    className="text-white/30 hover:text-red-400 transition-colors ml-1"
+                  >
+                    <X size={11}/>
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="flex gap-3">
-              <textarea
-                value={reply}
-                onChange={e => setReply(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleReply(); }}
-                placeholder="Write a reply… (Cmd+Enter to send)"
-                rows={3}
-                className="flex-1 bg-white/5 border border-white/10 focus:border-cyan-500/40 focus:ring-2 focus:ring-cyan-500/20 text-white placeholder-white/20 rounded-xl px-4 py-3 text-sm outline-none transition-all resize-none"
-              />
+              <div className="flex-1 flex flex-col gap-2">
+                <textarea
+                  value={reply}
+                  onChange={e => setReply(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleReply(); }}
+                  placeholder="Write a reply… (Cmd+Enter to send)"
+                  rows={3}
+                  className="w-full bg-white/5 border border-white/10 focus:border-cyan-500/40 focus:ring-2 focus:ring-cyan-500/20 text-white placeholder-white/20 rounded-xl px-4 py-3 text-sm outline-none transition-all resize-none"
+                />
+                <div className="flex items-center gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpg,image/jpeg,image/png,application/pdf,video/mp4,video/webm"
+                    className="hidden"
+                    onChange={e => setAttachment(e.target.files?.[0] || null)}
+                  />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-all ${
+                      attachment
+                        ? "border-cyan-500/40 text-cyan-400 bg-cyan-500/10"
+                        : "border-white/10 text-white/30 hover:border-white/20 hover:text-white/60"
+                    }`}
+                  >
+                    <Paperclip size={12}/>
+                    {attachment ? "Change file" : "Attach file"}
+                  </button>
+                  <span className="text-[10px] text-white/20">jpg, png, pdf, mp4, webm · max 10 MB</span>
+                </div>
+              </div>
+
               <button
                 onClick={handleReply}
                 disabled={sending || !reply.trim()}
@@ -258,10 +472,10 @@ function TicketModal({ ticket, onClose, onUpdate }) {
 
 function AdminSupportTicketsInner() {
   const searchParams = useSearchParams();
-  const [tickets, setTickets]             = useState([]);
-  const [loading, setLoading]             = useState(true);
+  const [tickets, setTickets]               = useState([]);
+  const [loading, setLoading]               = useState(true);
   const [selectedTicket, setSelectedTicket] = useState(null);
-  const [filters, setFilters]             = useState({
+  const [filters, setFilters]               = useState({
     status:   searchParams.get("status") || "",
     priority: "",
     category: "",
@@ -434,6 +648,11 @@ function AdminSupportTicketsInner() {
                   <p className="text-sm font-semibold text-white truncate">{ticket.subject}</p>
                   <p className="text-xs text-white/30 mt-0.5 flex items-center gap-1">
                     <User size={10}/>{ticket.user?.name || ticket.guest_name || "Guest"}
+                    {ticket.latest_message?.attachment_path && (
+                      <span className="ml-1 text-white/20 flex items-center gap-0.5">
+                        <Paperclip size={9}/> attachment
+                      </span>
+                    )}
                   </p>
                 </div>
                 <span className="text-xs text-white/50 capitalize">{ticket.category}</span>
@@ -476,8 +695,6 @@ function AdminSupportTicketsInner() {
     </div>
   );
 }
-
-// ─── Export — wraps inner component in Suspense to satisfy Next.js App Router ─
 
 export default function AdminSupportTickets() {
   return (
