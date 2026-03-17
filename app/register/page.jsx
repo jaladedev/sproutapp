@@ -5,10 +5,31 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
-import { Eye, EyeOff, Mail, Lock, User, ArrowRight, Gift, CheckCircle, AlertCircle } from "lucide-react";
+import {
+  Eye, EyeOff, Mail, Lock, User, ArrowRight,
+  Gift, CheckCircle, AlertCircle,
+} from "lucide-react";
 import api from "../../utils/api";
 
 const appname = process.env.NEXT_PUBLIC_APP_NAME || "Sproutvest";
+
+// ── Referral localStorage helpers ────────────────────────────────────────────
+
+function getSavedReferralCode() {
+  try {
+    const raw = localStorage.getItem("referral_code");
+    if (!raw) return null;
+    const { code, expires } = JSON.parse(raw);
+    if (Date.now() > expires) { localStorage.removeItem("referral_code"); return null; }
+    return code ?? null;
+  } catch { return null; }
+}
+
+function clearSavedReferralCode() {
+  try { localStorage.removeItem("referral_code"); } catch {}
+}
+
+// ── Root export ───────────────────────────────────────────────────────────────
 
 export default function Register() {
   return (
@@ -18,83 +39,111 @@ export default function Register() {
   );
 }
 
+// ── Form ──────────────────────────────────────────────────────────────────────
+
 function RegisterForm() {
   const [form, setForm] = useState({
-    name: "",
-    email: "",
-    password: "",
+    first_name:            "",
+    last_name:             "",
+    email:                 "",
+    password:              "",
     password_confirmation: "",
-    referral_code: "",
+    referral_code:         "",
   });
-  const [loading, setLoading]         = useState(false);
-  const [error, setError]             = useState("");
+
+  const [loading, setLoading]           = useState(false);
+  const [error, setError]               = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [focused, setFocused]         = useState(false);
+  const [pwFocused, setPwFocused]       = useState(false);
   const [showReferral, setShowReferral] = useState(false);
+  const [referralLocked, setReferralLocked] = useState(false);
 
   const router       = useRouter();
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    const refCode = searchParams.get("ref");
-    if (refCode) {
-      setForm((prev) => ({ ...prev, referral_code: refCode }));
+    const urlRef = searchParams.get("ref");
+    const saved  = getSavedReferralCode();
+    const code   = urlRef ?? saved;
+
+    if (code) {
+      setForm((prev) => ({ ...prev, referral_code: code }));
       setShowReferral(true);
+      setReferralLocked(true);
     }
   }, [searchParams]);
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+  const set = (field) => (e) => {
+    setForm((prev) => ({ ...prev, [field]: e.target.value }));
     if (error) setError("");
   };
 
+  // ── Password strength ──────────────────────────────────────────────────────
+
   const passwordChecks = [
-    { test: /.{8,}/,      label: "At least 8 characters"  },
-    { test: /[A-Z]/,      label: "One uppercase letter"   },
-    { test: /[a-z]/,      label: "One lowercase letter"   },
-    { test: /\d/,         label: "One number"             },
-    { test: /[@$!%*?&#]/, label: "One special character"  },
+    { test: /.{8,}/,      label: "At least 8 characters" },
+    { test: /[A-Z]/,      label: "One uppercase letter"  },
+    { test: /[a-z]/,      label: "One lowercase letter"  },
+    { test: /\d/,         label: "One number"            },
+    { test: /[@$!%*?&#]/, label: "One special character" },
   ];
 
-  const passedChecks    = passwordChecks.filter((c) => c.test.test(form.password)).length;
-  const strengthColors  = ["#ef4444", "#f97316", "#eab308", "#22c55e", "#16a34a"];
-  const strengthText    = ["Too weak", "Weak", "Fair", "Good", "Strong"];
+  const passedChecks   = passwordChecks.filter((c) => c.test.test(form.password)).length;
+  const strengthColors = ["#ef4444", "#f97316", "#eab308", "#22c55e", "#16a34a"];
+  const strengthText   = ["Too weak", "Weak", "Fair", "Good", "Strong"];
 
   const passwordsMatch     = form.password && form.password_confirmation && form.password === form.password_confirmation;
   const passwordsDontMatch = form.password_confirmation && !passwordsMatch;
-  const isFormValid        = passedChecks === passwordChecks.length && passwordsMatch;
+
+  const isFormValid =
+    form.first_name.trim() &&
+    form.last_name.trim()  &&
+    form.email.trim()      &&
+    passedChecks === passwordChecks.length &&
+    passwordsMatch;
+
+  // ── Submit ─────────────────────────────────────────────────────────────────
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
-    const payload = { ...form };
-    if (!payload.referral_code?.trim()) delete payload.referral_code;
+    const payload = {
+      name:                  `${form.first_name.trim()} ${form.last_name.trim()}`,
+      email:                 form.email,
+      password:              form.password,
+      password_confirmation: form.password_confirmation,
+    };
+
+    const code = form.referral_code.trim();
+    if (code) payload.referral_code = code;
 
     try {
       await api.post("/register", payload);
+      clearSavedReferralCode();
       toast.success("Account created! Please verify your email.");
       localStorage.setItem("pending_email", form.email);
       router.push("/verify-email");
     } catch (err) {
       if (err.response?.status === 422) {
         const errors = err.response.data?.errors;
-        if (errors) {
-          // Collect all validation messages into the inline banner
-          const messages = Object.values(errors).flat();
-          setError(messages.join(" · "));
-        } else {
-          setError("Validation failed. Please check your input.");
-        }
+        setError(errors ? Object.values(errors).flat().join(" · ") : "Validation failed. Please check your input.");
       } else {
-        const msg = err.response?.data?.message || err.response?.data?.error || "Registration failed.";
-        setError(msg);
+        setError(err.response?.data?.message || err.response?.data?.error || "Registration failed.");
       }
     } finally {
       setLoading(false);
     }
   };
+
+  // ── Shared input class ─────────────────────────────────────────────────────
+
+  const inputCls = (extra = "") =>
+    `w-full bg-white/5 border border-white/10 hover:border-white/20 text-white placeholder-white/20
+     py-3.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all ${extra}`;
+
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <div
@@ -142,63 +191,86 @@ function RegisterForm() {
           </h2>
           <p className="text-white/40 text-sm mb-8">Join thousands of smart Nigerian investors</p>
 
-          {/* Inline error banner */}
-          {error && (
-            <div className="mb-6 p-3.5 rounded-xl border border-red-500/30 bg-red-500/10 text-red-400 text-sm flex items-start gap-2.5">
-              <AlertCircle size={15} className="mt-0.5 shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
+          {/* Error banner */}
+          <AnimatePresence>
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                className="mb-6 p-3.5 rounded-xl border border-red-500/30 bg-red-500/10 text-red-400 text-sm flex items-start gap-2.5"
+              >
+                <AlertCircle size={15} className="mt-0.5 shrink-0" />
+                <span>{error}</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <form onSubmit={handleSubmit} className="space-y-5">
 
-            {/* Full Name */}
-            <div>
-              <label htmlFor="name" className="block text-xs font-semibold text-white/50 uppercase tracking-widest mb-2">
-                Full Name
-              </label>
-              <div className="relative">
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={16} />
-                <input
-                  id="name" name="name" value={form.name} onChange={handleChange}
-                  placeholder="John Doe" autoComplete="name"
-                  className="w-full bg-white/5 border border-white/10 hover:border-white/20 text-white placeholder-white/20 pl-11 pr-4 py-3.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all"
-                  required
-                />
+            {/* ── First & Last name (side by side) ── */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-white/50 uppercase tracking-widest mb-2">
+                  First Name
+                </label>
+                <div className="relative">
+                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" size={15} />
+                  <input
+                    name="first_name" value={form.first_name} onChange={set("first_name")}
+                    placeholder="John" autoComplete="given-name"
+                    className={inputCls("pl-10 pr-3")}
+                    required
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-white/50 uppercase tracking-widest mb-2">
+                  Last Name
+                </label>
+                <div className="relative">
+                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" size={15} />
+                  <input
+                    name="last_name" value={form.last_name} onChange={set("last_name")}
+                    placeholder="Doe" autoComplete="family-name"
+                    className={inputCls("pl-10 pr-3")}
+                    required
+                  />
+                </div>
               </div>
             </div>
 
-            {/* Email */}
+            {/* ── Email ── */}
             <div>
-              <label htmlFor="email" className="block text-xs font-semibold text-white/50 uppercase tracking-widest mb-2">
+              <label className="block text-xs font-semibold text-white/50 uppercase tracking-widest mb-2">
                 Email Address
               </label>
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={16} />
                 <input
-                  id="email" name="email" value={form.email} onChange={handleChange}
+                  name="email" value={form.email} onChange={set("email")}
                   placeholder="you@example.com" type="email" autoComplete="email"
-                  className="w-full bg-white/5 border border-white/10 hover:border-white/20 text-white placeholder-white/20 pl-11 pr-4 py-3.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all"
+                  className={inputCls("pl-11 pr-4")}
                   required
                 />
               </div>
             </div>
 
-            {/* Password */}
+            {/* ── Password ── */}
             <div>
-              <label htmlFor="password" className="block text-xs font-semibold text-white/50 uppercase tracking-widest mb-2">
+              <label className="block text-xs font-semibold text-white/50 uppercase tracking-widest mb-2">
                 Password
               </label>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={16} />
                 <input
-                  id="password" name="password" value={form.password} onChange={handleChange}
+                  name="password" value={form.password} onChange={set("password")}
                   placeholder="••••••••"
                   type={showPassword ? "text" : "password"}
                   autoComplete="new-password"
-                  onFocus={() => setFocused(true)}
-                  onBlur={() => setFocused(false)}
-                  className="w-full bg-white/5 border border-white/10 hover:border-white/20 text-white placeholder-white/20 pl-11 pr-12 py-3.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all"
+                  onFocus={() => setPwFocused(true)}
+                  onBlur={() => setPwFocused(false)}
+                  className={inputCls("pl-11 pr-12")}
                   required
                 />
                 <button
@@ -226,9 +298,9 @@ function RegisterForm() {
                 </div>
               )}
 
-              {/* Rules checklist */}
+              {/* Rules checklist — shows while focused */}
               <AnimatePresence>
-                {form.password && focused && (
+                {form.password && pwFocused && (
                   <motion.ul
                     className="mt-3 space-y-1.5 bg-white/5 border border-white/10 rounded-xl p-3"
                     initial={{ opacity: 0, height: 0 }}
@@ -240,7 +312,7 @@ function RegisterForm() {
                       const passed = check.test.test(form.password);
                       return (
                         <li key={i} className={`flex items-center gap-2 text-xs transition-colors ${passed ? "text-emerald-400" : "text-white/30"}`}>
-                          <span>{passed ? "✓" : "○"}</span>
+                          <span className="w-3 text-center">{passed ? "✓" : "○"}</span>
                           <span>{check.label}</span>
                         </li>
                       );
@@ -250,22 +322,21 @@ function RegisterForm() {
               </AnimatePresence>
             </div>
 
-            {/* Confirm Password */}
+            {/* ── Confirm Password ── */}
             <div>
-              <label htmlFor="password_confirmation" className="block text-xs font-semibold text-white/50 uppercase tracking-widest mb-2">
+              <label className="block text-xs font-semibold text-white/50 uppercase tracking-widest mb-2">
                 Confirm Password
               </label>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={16} />
                 <input
-                  id="password_confirmation" name="password_confirmation"
-                  value={form.password_confirmation} onChange={handleChange}
+                  name="password_confirmation"
+                  value={form.password_confirmation}
+                  onChange={set("password_confirmation")}
                   placeholder="••••••••"
                   type={showPassword ? "text" : "password"}
                   autoComplete="new-password"
-                  className={`w-full bg-white/5 border text-white placeholder-white/20 pl-11 pr-12 py-3.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all ${
-                    passwordsDontMatch ? "border-red-500/50" : "border-white/10 hover:border-white/20"
-                  }`}
+                  className={inputCls(`pl-11 pr-12 ${passwordsDontMatch ? "border-red-500/50!" : ""}`)}
                   required
                 />
                 {passwordsMatch && (
@@ -277,7 +348,7 @@ function RegisterForm() {
               )}
             </div>
 
-            {/* Referral Code */}
+            {/* ── Referral Code ── */}
             <div>
               {!showReferral ? (
                 <button
@@ -289,33 +360,64 @@ function RegisterForm() {
                   Have a referral code?
                 </button>
               ) : (
-                <AnimatePresence>
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <label htmlFor="referral_code" className="block text-xs font-semibold text-white/50 uppercase tracking-widest mb-2">
-                      Referral Code <span className="normal-case font-normal text-white/25">(optional)</span>
-                    </label>
-                    <div className="relative">
-                      <Gift className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={16} />
-                      <input
-                        id="referral_code" name="referral_code"
-                        value={form.referral_code} onChange={handleChange}
-                        placeholder="e.g. ABC12345" autoComplete="off"
-                        className="w-full bg-white/5 border border-white/10 hover:border-white/20 text-white placeholder-white/20 pl-11 pr-4 py-3.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all uppercase tracking-widest"
-                        maxLength={8}
-                      />
-                    </div>
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <label className="block text-xs font-semibold text-white/50 uppercase tracking-widest mb-2">
+                    Referral Code{" "}
+                    <span className="normal-case font-normal text-white/25">(optional)</span>
+                  </label>
+                  <div className="relative">
+                    <Gift className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={16} />
+                    <input
+                      name="referral_code"
+                      value={form.referral_code}
+                      onChange={set("referral_code")}
+                      placeholder="e.g. ABC12345"
+                      autoComplete="off"
+                      readOnly={referralLocked}
+                      className={inputCls(
+                        `pl-11 pr-28 uppercase tracking-widest
+                         ${referralLocked ? "border-emerald-500/40! text-emerald-300 cursor-default" : ""}`
+                      )}
+                      maxLength={12}
+                    />
+                    {/* Applied badge OR clear button */}
+                    {referralLocked ? (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+                        <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                          Applied ✓
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            clearSavedReferralCode();
+                            setForm((prev) => ({ ...prev, referral_code: "" }));
+                            setReferralLocked(false);
+                          }}
+                          className="text-white/25 hover:text-white/50 text-[10px] transition-colors ml-1"
+                          title="Remove referral code"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                  {referralLocked && (
+                    <p className="text-[11px] text-emerald-500/60 mt-1.5">
+                      You were referred by a friend — enjoy your welcome bonus!
+                    </p>
+                  )}
+                  {!referralLocked && (
                     <p className="text-xs text-white/25 mt-1.5">Get 10% off your first purchase</p>
-                  </motion.div>
-                </AnimatePresence>
+                  )}
+                </motion.div>
               )}
             </div>
 
-            {/* Submit */}
+            {/* ── Submit ── */}
             <button
               type="submit"
               disabled={loading || !isFormValid}

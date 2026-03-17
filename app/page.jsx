@@ -1,6 +1,8 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import FaqSection from "./components/FaqSection";
 import FeaturedProperties from "./components/FeaturedProperties";
+import RefCapture from "./components/RefCapture";
 import {
   ArrowRight, CheckCircle, Shield, Zap, FileCheck,
   Users, Clock, Award, Star,
@@ -70,6 +72,15 @@ export default async function Homepage() {
   return (
     <>
       <JsonLd />
+
+      {/*
+        RefCapture reads ?ref=CODE from the URL and saves it to localStorage.
+        Wrapped in Suspense because useSearchParams() requires it in Next.js app router.
+      */}
+      <Suspense fallback={null}>
+        <RefCapture />
+      </Suspense>
+
       <main className="bg-[#FDFAF5]" style={{ fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif" }}>
 
         {/* ── HERO ── */}
@@ -89,7 +100,6 @@ export default async function Homepage() {
 
           <div className="relative z-10 w-full max-w-4xl mx-auto px-5 sm:px-8 text-center">
 
-            {/* Headline*/}
             <h1
               className="font-bold text-white mb-5 leading-[1.08] tracking-tight"
               style={{
@@ -110,7 +120,6 @@ export default async function Homepage() {
               <strong className="text-white/85">₦5,000</strong>.
             </p>
 
-            {/* CTAs */}
             <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
               <Link
                 href="/register"
@@ -128,7 +137,6 @@ export default async function Homepage() {
               </Link>
             </div>
 
-            {/* Trust badges */}
             <div className="flex flex-wrap justify-center gap-5 mt-8 text-xs text-white/35">
               {[
                 [CheckCircle, "Verified Properties"],
