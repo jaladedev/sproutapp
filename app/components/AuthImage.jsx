@@ -3,7 +3,7 @@ import api from "../../utils/api";
 
 function toRelativePath(url) {
   try {
-    return new URL(url).pathname; 
+    return new URL(url).pathname;
   } catch {
     return url;
   }
@@ -11,21 +11,28 @@ function toRelativePath(url) {
 
 export function AuthImage({ url, alt, className, onBlobReady }) {
   const [src, setSrc] = useState(null);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     if (!url) return;
     let objectUrl;
     let cancelled = false;
 
-    api.get(toRelativePath(url), { responseType: "blob" })  
+    setSrc(null);
+    setError(false);
+
+    api.get(toRelativePath(url), { responseType: "blob" })
       .then((res) => {
         if (cancelled) return;
         objectUrl = URL.createObjectURL(res.data);
         setSrc(objectUrl);
         onBlobReady?.(objectUrl);
       })
-      .catch(() => {
-        if (!cancelled) setSrc(null);
+      .catch((err) => {
+        if (!cancelled) {
+          console.error("AuthImage failed:", err.response?.status, url);
+          setError(true);
+        }
       });
 
     return () => {
@@ -33,6 +40,15 @@ export function AuthImage({ url, alt, className, onBlobReady }) {
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [url]);
+
+  if (error) {
+    return (
+      <div className={`flex flex-col items-center justify-center gap-1 bg-white/5 text-white/30 ${className}`}>
+        <span className="text-lg">⚠</span>
+        <span className="text-[10px]">Failed to load</span>
+      </div>
+    );
+  }
 
   if (!src) {
     return (
