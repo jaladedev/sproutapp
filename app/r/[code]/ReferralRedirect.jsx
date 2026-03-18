@@ -29,22 +29,6 @@ export default function ReferralRedirect({ code }) {
       className="min-h-screen bg-[#0D1F1A] flex flex-col items-center justify-center gap-5"
       style={{ fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif" }}
     >
-      {/* Logo */}
-      <div className="flex items-center gap-2.5">
-        <div
-          className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-base"
-          style={{ background: "linear-gradient(135deg, #C8873A, #E8A850)", color: "#0D1F1A" }}
-        >
-          S
-        </div>
-        <span
-          className="text-2xl font-bold text-white"
-          style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
-        >
-          {APP_NAME}
-        </span>
-      </div>
-
       {/* Spinner */}
       <svg
         className="animate-spin h-6 w-6 text-amber-500"
@@ -56,7 +40,7 @@ export default function ReferralRedirect({ code }) {
         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
       </svg>
 
-      <p className="text-white/40 text-sm">Setting up your referral...</p>
+      <p className="text-white/40 text-sm">Loading...</p>
     </div>
   );
 }
