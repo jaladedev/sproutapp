@@ -16,11 +16,29 @@ export default function KycSteps({
   submitError,
   setField,
   setFile,
+  setErrors,          
   handleIdTypeChange,
   handleIdNumberChange,
   selectedIdMeta,
   idTypeLabel,
 }) {
+  // Called by FileDropZone when a file is rejected or compression fails
+  const handleFileError = (fieldName, message) => {
+    setErrors(prev => ({ ...prev, [fieldName]: message }));
+  };
+
+  // Called by FileDropZone when a valid file is accepted — also clears any prior error
+  const handleFileChange = (fieldName, file) => {
+    setFile(fieldName, file);
+    if (file) {
+      setErrors(prev => {
+        const next = { ...prev };
+        delete next[fieldName];
+        return next;
+      });
+    }
+  };
+
   return (
     <AnimatePresence mode="wait">
 
@@ -160,20 +178,28 @@ export default function KycSteps({
             sublabel="Clear photo of the front of your document"
             name="id_front"
             value={form.id_front}
-            onChange={setFile}
+            onChange={handleFileChange}
+            onError={handleFileError}
           />
           {errors.id_front && (
-            <p className="text-red-400 text-xs flex items-center gap-1">
-              <AlertCircle size={11} />{errors.id_front}
+            <p className="text-red-400 text-xs flex items-center gap-1.5 -mt-2">
+              <AlertCircle size={11} className="shrink-0" />{errors.id_front}
             </p>
           )}
+
           <FileDropZone
             label="ID Back"
             sublabel="Back of your document (if applicable)"
             name="id_back"
             value={form.id_back}
-            onChange={setFile}
+            onChange={handleFileChange}
+            onError={handleFileError}
           />
+          {errors.id_back && (
+            <p className="text-red-400 text-xs flex items-center gap-1.5 -mt-2">
+              <AlertCircle size={11} className="shrink-0" />{errors.id_back}
+            </p>
+          )}
         </motion.div>
       )}
 

@@ -43,7 +43,6 @@ export default function KycPanel({ kycStatus: kycStatusProp, setKycStatus: setKy
     setKycStatusProp?.(val?.status ?? null);
   }, [setKycStatusProp]);
 
-  // ── Load current KYC status ────────────────────────────────────────────────
   useEffect(() => {
     (async () => {
       try {
@@ -60,7 +59,6 @@ export default function KycPanel({ kycStatus: kycStatusProp, setKycStatus: setKy
     })();
   }, []);
 
-  // ── Form helpers ───────────────────────────────────────────────────────────
   const setField = (k, v) => setForm(p => ({ ...p, [k]: v }));
   const setFile  = (k, f) => setForm(p => ({ ...p, [k]: f }));
 
@@ -78,7 +76,6 @@ export default function KycPanel({ kycStatus: kycStatusProp, setKycStatus: setKy
   const selectedIdMeta = ID_TYPES.find(t => t.value === form.id_type);
   const idTypeLabel    = selectedIdMeta?.label || "—";
 
-  // ── Validation ─────────────────────────────────────────────────────────────
   const validateStep = () => {
     const e = {};
 
@@ -116,6 +113,9 @@ export default function KycPanel({ kycStatus: kycStatusProp, setKycStatus: setKy
     if (step === 3 && form.id_type !== "bvn" && !form.id_front)
       e.id_front = "Front of ID is required";
 
+    // Block next if FileDropZone raised a compression/size error
+    if (step === 3 && (errors.id_front || errors.id_back)) return false;
+
     if (step === 4 && !form.selfie)
       e.selfie = "Please complete the liveness check";
 
@@ -125,7 +125,6 @@ export default function KycPanel({ kycStatus: kycStatusProp, setKycStatus: setKy
 
   const nextStep = () => {
     if (!validateStep()) return;
-    // BVN has no document upload step — skip step 3
     if (step === 2 && form.id_type === "bvn") { setStep(4); return; }
     setStep(s => s + 1);
   };
@@ -136,7 +135,6 @@ export default function KycPanel({ kycStatus: kycStatusProp, setKycStatus: setKy
     setErrors({});
   };
 
-  // ── Submit ─────────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
     setSubmitting(true);
     setSubmitError("");
@@ -176,7 +174,6 @@ export default function KycPanel({ kycStatus: kycStatusProp, setKycStatus: setKy
     }
   };
 
-  // ── Loading spinner ────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -191,10 +188,8 @@ export default function KycPanel({ kycStatus: kycStatusProp, setKycStatus: setKy
 
   const meta = STEP_META[step];
 
-  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-0">
-      {/* Status banner (pending / approved / rejected / resubmit) */}
       {kycStatus && kycStatus.status !== "not_submitted" && (
         <StatusBanner
           kyc={kycStatus}
@@ -202,7 +197,6 @@ export default function KycPanel({ kycStatus: kycStatusProp, setKycStatus: setKy
         />
       )}
 
-      {/* Approved — no form needed */}
       {kycStatus?.status === "approved" && !showForm && (
         <motion.div
           initial={{ opacity: 0, scale: 0.96 }}
@@ -219,13 +213,10 @@ export default function KycPanel({ kycStatus: kycStatusProp, setKycStatus: setKy
         </motion.div>
       )}
 
-      {/* Multi-step form */}
       {showForm && (
         <>
-          {/* Desktop progress rail */}
           <ProgressRail current={step} />
 
-          {/* Step header */}
           <div className="flex items-center gap-3 mb-6 pb-5 border-b border-white/10">
             <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 shrink-0">
               {React.cloneElement(meta.icon, { size: 15 })}
@@ -244,7 +235,6 @@ export default function KycPanel({ kycStatus: kycStatusProp, setKycStatus: setKy
             </span>
           </div>
 
-          {/* Mobile progress bar */}
           <div className="sm:hidden h-0.5 bg-white/10 rounded-full mb-5 overflow-hidden">
             <motion.div
               className="h-full rounded-full"
@@ -254,7 +244,6 @@ export default function KycPanel({ kycStatus: kycStatusProp, setKycStatus: setKy
             />
           </div>
 
-          {/* Step content */}
           <KycSteps
             step={step}
             form={form}
@@ -262,13 +251,13 @@ export default function KycPanel({ kycStatus: kycStatusProp, setKycStatus: setKy
             submitError={submitError}
             setField={setField}
             setFile={setFile}
+            setErrors={setErrors}
             handleIdTypeChange={handleIdTypeChange}
             handleIdNumberChange={handleIdNumberChange}
             selectedIdMeta={selectedIdMeta}
             idTypeLabel={idTypeLabel}
           />
 
-          {/* Navigation */}
           <NavButtons
             step={step}
             totalSteps={STEPS.length}
