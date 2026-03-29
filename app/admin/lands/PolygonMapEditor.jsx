@@ -1,17 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import L from "leaflet";
-import "leaflet-draw";
-import "leaflet/dist/leaflet.css";
-import "leaflet-draw/dist/leaflet.draw.css";
 
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-});
+// ── Leaflet is loaded lazily inside useEffect to avoid SSR crashes.
+// Never import leaflet or leaflet-draw at the module top-level.
 
 export default function PolygonMapEditor({ polygon, onChange }) {
   const mapRef = useRef(null);
@@ -23,61 +15,90 @@ export default function PolygonMapEditor({ polygon, onChange }) {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!mapRef.current || mapInstanceRef.current) return;
+    // Dynamically import leaflet only on the client, inside useEffect.
+    // This is the correct pattern for any library that touches `window` at import time.
+    let map;
 
-    const center = polygon ? getCenterFromPolygon(polygon) : [6.5244, 3.3792];
-    const map = L.map(mapRef.current).setView(center, polygon ? 15 : 12);
+    const init = async () => {
+      const L = (await import("leaflet")).default;
+      await import("leaflet-draw");
+      await import("leaflet/dist/leaflet.css");
+      await import("leaflet-draw/dist/leaflet.draw.css");
 
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-      maxZoom: 19,
-    }).addTo(map);
+      // Fix default icon URLs (broken by webpack asset hashing)
+      delete L.Icon.Default.prototype._getIconUrl;
+      L.Icon.Default.mergeOptions({
+        iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+        iconUrl:       "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+        shadowUrl:     "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+      });
 
-    mapInstanceRef.current = map;
+      if (!mapRef.current || mapInstanceRef.current) return;
 
-    const drawnItems = new L.FeatureGroup();
-    map.addLayer(drawnItems);
-    drawnItemsRef.current = drawnItems;
+      const center = polygon ? getCenterFromPolygon(polygon) : [6.5244, 3.3792];
+      map = L.map(mapRef.current).setView(center, polygon ? 15 : 12);
+      mapInstanceRef.current = map;
 
-    const drawControl = new L.Control.Draw({
-      draw: {
-        polygon: {
-          allowIntersection: false,
-          showArea: true,
-          shapeOptions: { color: "#C8873A", fillOpacity: 0.2 },
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        maxZoom: 19,
+      }).addTo(map);
+
+      const drawnItems = new L.FeatureGroup();
+      map.addLayer(drawnItems);
+      drawnItemsRef.current = drawnItems;
+
+      const drawControl = new L.Control.Draw({
+        draw: {
+          polygon: {
+            allowIntersection: false,
+            showArea: true,
+            shapeOptions: { color: "#C8873A", fillOpacity: 0.2 },
+          },
+          polyline: false, rectangle: false,
+          circle: false, marker: false, circlemarker: false,
         },
-        polyline: false, rectangle: false,
-        circle: false, marker: false, circlemarker: false,
-      },
-      edit: { featureGroup: drawnItems },
-    });
-    map.addControl(drawControl);
+        edit: { featureGroup: drawnItems },
+      });
+      map.addControl(drawControl);
 
-    map.on(L.Draw.Event.CREATED, (e) => {
-      drawnItems.clearLayers();
-      drawnItems.addLayer(e.layer);
-      onChange(layerToGeoJSON(e.layer));
-    });
+      map.on(L.Draw.Event.CREATED, (e) => {
+        drawnItems.clearLayers();
+        drawnItems.addLayer(e.layer);
+        onChange(layerToGeoJSON(e.layer));
+      });
 
-    map.on(L.Draw.Event.EDITED, (e) => {
-      e.layers.eachLayer((layer) => onChange(layerToGeoJSON(layer)));
-    });
+      map.on(L.Draw.Event.EDITED, (e) => {
+        e.layers.eachLayer((layer) => onChange(layerToGeoJSON(layer)));
+      });
 
-    map.on(L.Draw.Event.DELETED, () => onChange(null));
+      map.on(L.Draw.Event.DELETED, () => onChange(null));
 
-    if (polygon) loadExistingPolygon(drawnItems, polygon, map);
+      if (polygon) loadExistingPolygon(drawnItems, polygon, map);
+    };
 
-    return () => { map.remove(); mapInstanceRef.current = null; };
-  }, []);
+    init();
 
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Re-draw when polygon prop changes externally (e.g. cleared by parent)
   useEffect(() => {
     if (!drawnItemsRef.current || !mapInstanceRef.current) return;
     drawnItemsRef.current.clearLayers();
     if (polygon) loadExistingPolygon(drawnItemsRef.current, polygon, mapInstanceRef.current);
   }, [polygon]);
 
-  const loadExistingPolygon = (drawnItems, geoJsonPolygon, map) => {
+  // ── Helpers ──────────────────────────────────────────────────────────────
+
+  const loadExistingPolygon = async (drawnItems, geoJsonPolygon, map) => {
     if (!geoJsonPolygon?.coordinates?.[0]) return;
+    const L = (await import("leaflet")).default;
     const latLngs = geoJsonPolygon.coordinates[0].map(([lng, lat]) => [lat, lng]);
     const poly = L.polygon(latLngs, { color: "#C8873A", fillOpacity: 0.2 });
     drawnItems.addLayer(poly);
@@ -99,6 +120,8 @@ export default function PolygonMapEditor({ polygon, onChange }) {
       coords.reduce((s, [lng]) => s + lng, 0) / coords.length,
     ];
   };
+
+  // ── Manual / file input handlers ─────────────────────────────────────────
 
   const handleManualSubmit = () => {
     setError("");
@@ -156,10 +179,12 @@ export default function PolygonMapEditor({ polygon, onChange }) {
   };
 
   const tabs = [
-    { id: "draw", label: "Draw on Map" },
-    { id: "manual", label: "Paste JSON" },
+    { id: "draw",   label: "Draw on Map" },
+    { id: "manual", label: "Paste JSON"  },
     { id: "upload", label: "Upload File" },
   ];
+
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div className="space-y-3 p-4 bg-white/5">
@@ -186,7 +211,7 @@ export default function PolygonMapEditor({ polygon, onChange }) {
         </div>
       )}
 
-      {/* Map */}
+      {/* Map container — always rendered so the ref is available for leaflet */}
       <div ref={mapRef} className="w-full h-80 rounded-xl border border-white/10 z-0 overflow-hidden" />
 
       {/* Draw mode hint */}
@@ -232,7 +257,11 @@ export default function PolygonMapEditor({ polygon, onChange }) {
                   {pointsList.map((point, i) => (
                     <div key={i} className="flex items-center justify-between text-xs py-1 border-b border-white/5 last:border-0">
                       <span className="font-mono text-white/50">{i + 1}. [{point[1].toFixed(4)}, {point[0].toFixed(4)}]</span>
-                      <button type="button" onClick={() => setPointsList(pointsList.filter((_, idx) => idx !== i))} className="text-red-400/60 hover:text-red-400 transition-colors ml-2">✕</button>
+                      <button
+                        type="button"
+                        onClick={() => setPointsList(pointsList.filter((_, idx) => idx !== i))}
+                        className="text-red-400/60 hover:text-red-400 transition-colors ml-2"
+                      >✕</button>
                     </div>
                   ))}
                   <button
