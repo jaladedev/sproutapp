@@ -54,7 +54,6 @@ function capitalize(str) {
 /**
  * Convert land.valuations [{id, year, month, value}] to
  * [[year, value, month], ...] sorted by year asc, month asc.
- * Month is kept as the third element so labels and keys stay unique.
  */
 function valuationsToPoints(valuations = []) {
   return [...valuations]
@@ -161,12 +160,10 @@ function PriceTrendPanel({ valuations = [] }) {
     return () => clearTimeout(t);
   }, []);
 
-  // [[year, value, month], ...]
   const points = valuationsToPoints(valuations);
 
   if (!points.length) return null;
 
-  // SVG dimensions
   const W = 560, H = 200;
   const PAD = { t: 24, r: 16, b: 36, l: 56 };
   const plotW = W - PAD.l - PAD.r;
@@ -332,7 +329,7 @@ function PriceTrendPanel({ valuations = [] }) {
             );
           })}
 
-          {/* X-axis labels — "Jan 2026" format */}
+          {/* X-axis labels */}
           {coords.map(([x], i) => (
             <text key={i} x={x} y={H - 6} textAnchor="middle" fontSize="8"
               fill={tooltip?.idx === i ? "rgba(232,168,80,0.9)" : "rgba(255,255,255,0.22)"}
@@ -372,7 +369,6 @@ function PriceTrendPanel({ valuations = [] }) {
           const isLast = i === points.length - 1;
           const label  = month ? `${MONTH_SHORT[month - 1]} ${year}` : String(year);
           return (
-            // key uses year+month to guarantee uniqueness even with multiple entries per year
             <div key={`${year}-${month ?? i}`}
               className={`px-4 py-3 flex flex-col gap-0.5 ${isLast ? "bg-amber-500/5" : "bg-transparent"}`}>
               <span className="text-[9px] font-black uppercase tracking-[0.18em] text-white/25">{label}</span>
@@ -607,6 +603,7 @@ export default function LandDetails() {
     fetchAccountStatus();
   }, [fetchLand, fetchUserUnits, fetchAccountStatus]);
 
+  // Debounced purchase preview
   useEffect(() => {
     if (modalType !== "purchase") return;
     const units = Number(unitsInput);
@@ -655,14 +652,45 @@ export default function LandDetails() {
     try {
       if (modalType === "purchase") {
         const { data: res } = await api.post(`/lands/${id}/purchase`, {
-          units, use_rewards: useRewards, transaction_pin: transactionPin,
+          units,
+          use_rewards:     useRewards,
+          transaction_pin: transactionPin,
         });
+
         const savings = (res.total_discount_kobo ?? 0) + (res.paid_from_rewards_kobo ?? 0);
-        toast.success(`Purchase successful${savings > 0 ? ` · Saved ₦${(savings / 100).toLocaleString()}` : ""}`);
+        toast.success(
+          `Purchase successful${savings > 0 ? ` · Saved ₦${(savings / 100).toLocaleString()}` : ""}`
+        );
+
+        // ── Certificate issued toast ───────────────────────────────────────
+        if (res.certificate?.cert_number) {
+          const certNum = res.certificate.cert_number;
+          setTimeout(() => {
+            toast(
+              (t) => (
+                <span className="flex items-center gap-2 text-sm">
+                  <span>🏅 Certificate issued!</span>
+                  <a
+                    href={`/portfolio/certificate/${certNum}`}
+                    className="underline font-bold text-amber-500 hover:text-amber-400"
+                    onClick={() => toast.dismiss(t.id)}
+                  >
+                    View →
+                  </a>
+                </span>
+              ),
+              { duration: 8000 }
+            );
+          }, 800);
+        }
       } else {
-        await api.post(`/lands/${id}/sell`, { units, transaction_pin: transactionPin });
+        await api.post(`/lands/${id}/sell`, {
+          units,
+          transaction_pin: transactionPin,
+        });
         toast.success("Transaction Successful");
       }
+
       await fetchLand();
       await fetchUserUnits();
       closeModal();
@@ -675,6 +703,7 @@ export default function LandDetails() {
     }
   };
 
+  // ── Loading / error states ─────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0D1F1A]" style={{ fontFamily: "'DM Sans', sans-serif" }}>
@@ -755,9 +784,10 @@ export default function LandDetails() {
           <StatCard label="Total Units"  value={land.total_units?.toLocaleString() ?? "—"} />
         </div>
 
-        {/* KYC / PIN banners */}
+        {/* KYC banner */}
         {statusLoaded && <KycBanner kycStatus={kycStatus} />}
 
+        {/* PIN banner */}
         {statusLoaded && !pinIsSet && kycStatus === "approved" && (
           <div className="mb-6 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-5 flex items-start gap-4">
             <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center shrink-0 mt-0.5">
@@ -817,29 +847,23 @@ export default function LandDetails() {
         {/* Detail sections */}
         <div className="space-y-4">
 
-          {/* Description */}
           {land.description && (
             <Section title="Description" icon={<Layers size={14} />} accent="amber">
               <p className="text-white/60 leading-relaxed text-sm">{land.description}</p>
             </Section>
           )}
 
-          {/* Value & Unit Information */}
           <Section title="Value & Unit Information" icon={<BarChart3 size={14} />} accent="amber">
-            <DataRow label="Plot Size"
-              value={land.size ? `${land.size} sqm` : "—"} />
+            <DataRow label="Plot Size"         value={land.size ? `${land.size} sqm` : "—"} />
             <DataRow label="Overall Value"
               value={land.overall_value ? `₦${Number(land.overall_value).toLocaleString("en-NG")}` : "—"}
               highlight />
-            <DataRow label="Number of Units"
-              value={land.total_units?.toLocaleString() ?? "—"} />
+            <DataRow label="Number of Units"   value={land.total_units?.toLocaleString() ?? "—"} />
             <DataRow label="Size per Unit"
               value={land.size && land.total_units
                 ? `${(land.size / land.total_units).toFixed(4)} sqm`
                 : "—"} />
-            <DataRow label="Price per Unit"
-              value={priceKobo > 0 ? formatNaira(priceKobo) : "—"}
-              highlight />
+            <DataRow label="Price per Unit"    value={priceKobo > 0 ? formatNaira(priceKobo) : "—"} highlight />
             <DataRow label="Current Land Value"
               value={land.current_land_value
                 ? `₦${Number(land.current_land_value).toLocaleString("en-NG")}`
@@ -855,7 +879,6 @@ export default function LandDetails() {
             )}
           </Section>
 
-          {/* Administrative Information */}
           <Section title="Administrative Information" icon={<Building2 size={14} />} accent="blue">
             <DataRow label="Plot Identifier" value={land.plot_identifier} mono />
             <DataRow label="LGA"             value={land.lga} />
@@ -878,7 +901,6 @@ export default function LandDetails() {
             )}
           </Section>
 
-          {/* Ownership & Legal Records */}
           <Section title="Ownership & Legal Records" icon={<FileText size={14} />} accent="purple">
             <DataRow label="Current Owner" value={land.current_owner} />
             <DataRow label="Taxation"
@@ -903,7 +925,6 @@ export default function LandDetails() {
             )}
           </Section>
 
-          {/* Land Use Information */}
           <Section title="Land Use Information" icon={<MapPin size={14} />} accent="emerald">
             <DataRow label="Pre-existing Land Use">
               <Pill>{capitalize(fmt(land.preexisting_landuse))}</Pill>
@@ -920,10 +941,9 @@ export default function LandDetails() {
               value={nilOrDash(land.dev_control) ? "None" : fmt(land.dev_control)} />
           </Section>
 
-          {/* Geospatial & Physical Data */}
           <Section title="Geospatial & Physical Data" icon={<Activity size={14} />} accent="blue">
-            {land.lat && <DataRow label="Latitude"  value={land.lat}  mono />}
-            {land.lng && <DataRow label="Longitude" value={land.lng}  mono />}
+            {land.lat && <DataRow label="Latitude"  value={land.lat} mono />}
+            {land.lng && <DataRow label="Longitude" value={land.lng} mono />}
             <DataRow label="Slope"
               value={land.slope != null ? `${land.slope}°` : "—"} />
             <DataRow label="Elevation"
@@ -939,7 +959,6 @@ export default function LandDetails() {
             <DataRow label="Vegetation Cover" value={capitalize(fmt(land.vegetation))} />
           </Section>
 
-          {/* Infrastructure & Utilities */}
           <Section title="Infrastructure & Utilities" icon={<Zap size={14} />} accent="amber">
             <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white/20 mb-2 mt-1">Road Access</p>
             <DataRow label="Road Type"      value={capitalize(fmt(land.road_type))} />
@@ -1003,7 +1022,7 @@ export default function LandDetails() {
           plugins={slides.length > 1 ? [Thumbnails] : []} />
       )}
 
-      {/* Transaction modal */}
+      {/* ── Transaction modal ──────────────────────────────────────────────── */}
       {modalType && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="relative w-full max-w-md rounded-2xl border border-white/10 overflow-hidden"
@@ -1025,6 +1044,7 @@ export default function LandDetails() {
             </div>
 
             <div className="p-6 space-y-4">
+
               {/* Units input */}
               <div>
                 <label className="block text-xs font-bold uppercase tracking-widest text-white/30 mb-2">
@@ -1151,7 +1171,7 @@ export default function LandDetails() {
               {/* Cost — sell */}
               {modalType === "sell" && sellTotal > 0 && (
                 <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
-                  <p className="text-xs text-amber-500/70 uppercase tracking-widest mb-1">You'll Receive</p>
+                  <p className="text-xs text-amber-500/70 uppercase tracking-widest mb-1">You&apos;ll Receive</p>
                   <p className="text-2xl font-bold text-amber-400" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
                     {formatNaira(sellTotal)}
                   </p>
@@ -1203,7 +1223,7 @@ export default function LandDetails() {
         </div>
       )}
 
-      {/* PIN not set modal */}
+      {/* ── PIN not set modal ──────────────────────────────────────────────── */}
       {showPinModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="relative w-full max-w-sm rounded-2xl border border-white/10 overflow-hidden"
@@ -1235,7 +1255,7 @@ export default function LandDetails() {
         </div>
       )}
 
-      {/* KYC blocker modal */}
+      {/* ── KYC blocker modal ──────────────────────────────────────────────── */}
       {showKycModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="relative w-full max-w-sm rounded-2xl border border-white/10 overflow-hidden"

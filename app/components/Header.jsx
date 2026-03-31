@@ -18,6 +18,7 @@ const links = [
   { name: "Settings",  path: "/settings"  },
   { name: "Support",   path: "/support"   },
   { name: "Referrals",   path: "/referrals"},
+  { name: "Marketplace",   path: "/marketplace"},
 ];
 
 export default function Header() {

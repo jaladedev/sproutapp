@@ -10,7 +10,7 @@ import {
   TrendingUp, TrendingDown, Layers,
   ChevronLeft, ChevronRight, X, Tag,
   Wallet, ToggleLeft, ToggleRight, AlertCircle,
-  Plus, Minus,
+  Plus, Minus, Award,
 } from "lucide-react";
 
 const ITEMS_PER_PAGE = 10;
@@ -49,7 +49,7 @@ export default function Portfolio() {
     userUnits: 0,
   };
 
-  const [modal, setModal]   = useState(MODAL_DEFAULTS);
+  const [modal, setModal]       = useState(MODAL_DEFAULTS);
   const [preview, setPreview]               = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const previewTimer                        = useRef(null);
@@ -94,6 +94,7 @@ export default function Portfolio() {
             price_per_unit_kobo: l.price_per_unit_kobo,
             current_value:       l.total_portfolio_value_naira,
             available_units:     l.available_units,
+            cert_number:         l.cert_number ?? null,
           }))
       );
 
@@ -188,7 +189,6 @@ export default function Portfolio() {
     });
   };
 
-  // ── FIX: closeModal no longer references stale bare variables ─────────────
   const closeModal = () => {
     setPreview(null);
     setModal(MODAL_DEFAULTS);
@@ -212,7 +212,6 @@ export default function Portfolio() {
     setModal((p) => ({ ...p, units: String(cur + 1) }));
   };
 
-  // Double-click autofill max
   const handleInputDblClick = () => {
     if (maxUnits > 0) setModal((p) => ({ ...p, units: String(maxUnits) }));
   };
@@ -235,7 +234,7 @@ export default function Portfolio() {
 
     try {
       if (modal.type === "buy") {
-        const res     = await api.post(`/lands/${modal.land.land_id}/purchase`, {
+        const res = await api.post(`/lands/${modal.land.land_id}/purchase`, {
           units,
           use_rewards:     modal.useRewards,
           transaction_pin: modal.pin,
@@ -245,6 +244,28 @@ export default function Portfolio() {
         let msg = "Purchase successful";
         if (savings > 0) msg += ` · Saved ₦${(savings / 100).toLocaleString()}`;
         toast.success(msg);
+
+        // Show certificate toast if issued
+        if (d.certificate?.cert_number) {
+          const certNum = d.certificate.cert_number;
+          setTimeout(() => {
+            toast(
+              (t) => (
+                <span className="flex items-center gap-2 text-sm">
+                  <span>🏅 Certificate issued!</span>
+                  <a
+                    href={`/portfolio/certificate/${certNum}`}
+                    className="underline font-bold text-amber-500 hover:text-amber-400"
+                    onClick={() => toast.dismiss(t.id)}
+                  >
+                    View →
+                  </a>
+                </span>
+              ),
+              { duration: 8000 }
+            );
+          }, 800);
+        }
       } else {
         await api.post(`/lands/${modal.land.land_id}/sell`, {
           units,
@@ -359,6 +380,17 @@ export default function Portfolio() {
                     Sell
                   </button>
                 </div>
+
+                {/* Certificate link */}
+                {land.cert_number && (
+                  <Link
+                    href={`/portfolio/certificate/${land.cert_number}`}
+                    className="mt-3 flex items-center justify-center gap-1.5 text-[10px] font-bold tracking-widest uppercase text-amber-500/50 hover:text-amber-400 transition-colors"
+                  >
+                    <Award size={11} />
+                    View Certificate
+                  </Link>
+                )}
               </div>
             ))}
           </div>
@@ -403,7 +435,7 @@ export default function Portfolio() {
                         </div>
                         <div className="text-right">
                           <p className={`font-bold text-sm ${isPurchase ? "text-emerald-400" : "text-red-400"}`}>
-                           ₦{formatNaira(t.amount)}
+                            ₦{formatNaira(t.amount)}
                           </p>
                           <p className="text-xs text-white/30">{t.status}</p>
                         </div>
@@ -473,7 +505,6 @@ export default function Portfolio() {
                   )}
                 </label>
                 <div className="flex items-center gap-2">
-                  {/* − button */}
                   <button
                     type="button"
                     onClick={stepDown}
@@ -484,7 +515,6 @@ export default function Portfolio() {
                     <Minus size={14} />
                   </button>
 
-                  {/* Number input */}
                   <input
                     type="number"
                     min={1}
@@ -492,18 +522,15 @@ export default function Portfolio() {
                     value={modal.units}
                     onChange={(e) => {
                       const raw = e.target.value;
-                      // Allow empty string while typing
                       if (raw === "") {
                         setModal((p) => ({ ...p, units: "" }));
                         return;
                       }
                       const n = Math.floor(Number(raw));
                       if (isNaN(n) || n < 0) return;
-                      // Clamp to max without blocking typing when not yet exceeding
                       setModal((p) => ({ ...p, units: String(Math.min(n, maxUnits || n)) }));
                     }}
                     onBlur={(e) => {
-                      // Clamp on blur
                       const n = Math.floor(Number(e.target.value));
                       if (!isNaN(n) && n > 0) setUnits(n);
                     }}
@@ -512,7 +539,6 @@ export default function Portfolio() {
                     placeholder="0"
                   />
 
-                  {/* + button */}
                   <button
                     type="button"
                     onClick={stepUp}
@@ -524,7 +550,6 @@ export default function Portfolio() {
                   </button>
                 </div>
 
-                {/* Available/owned availability hint */}
                 {maxUnits > 0 && (
                   <p className="text-xs text-white/25 mt-1.5 pl-1">
                     {modal.type === "sell"
