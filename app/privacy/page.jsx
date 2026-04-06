@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Shield, ArrowLeft } from "lucide-react";
 
-const appname      = process.env.NEXT_PUBLIC_APP_NAME || "Sproutvest";
+const appname      = process.env.NEXT_PUBLIC_APP_NAME || "REU.ng";
 const appurl       = process.env.NEXT_PUBLIC_APP_URL  || "https://yourdomain.com";
 const privacyEmail = `privacy@${appname.toLowerCase()}.com`;
 

@@ -14,6 +14,7 @@ const PUBLIC_ROUTES = [
   "/terms",
   "/privacy",
   "/waitlist",
+  "/blog",
 ];
 
 const ADMIN_ROUTES = ["/admin"];
