@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
   ArrowRight, CheckCircle, MapPin, TrendingUp,
   Users, Shield, BadgeCheck, Star, ChevronRight,
-  Sparkles, Lock,
+  Sparkles, Lock, Search, X, TrendingDown,
 } from "lucide-react";
 import { getSavedReferralCode } from "../components/RefCapture";
 
@@ -90,6 +90,233 @@ function AvatarStack() {
   );
 }
 
+// ── Check position panel ──────────────────────────────────────────────────────
+function CheckPositionPanel({ onClose }) {
+  const [email, setEmail]       = useState("");
+  const [loading, setLoading]   = useState(false);
+  const [error, setError]       = useState("");
+  const [result, setResult]     = useState(null);
+  const [copied, setCopied]     = useState(false);
+
+  const handleCheck = async (e) => {
+    e.preventDefault();
+    setError("");
+    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError("Enter a valid email address");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res  = await fetch(`${API_URL}/waitlist/check`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.message || "We couldn't find that email on the waitlist.");
+        return;
+      }
+      setResult(data.data ?? data);
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCopy = () => {
+    if (!result?.referral_code) return;
+    const link = `${window.location.origin}/waitlist?ref=${result.referral_code}`;
+    navigator.clipboard.writeText(link).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  const reset = () => { setResult(null); setEmail(""); setError(""); };
+
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+            style={{ background: "rgba(200,135,58,0.12)", boxShadow: "0 0 0 1px rgba(200,135,58,0.22)" }}>
+            <Search size={13} className="text-amber-500" />
+          </div>
+          <p className="text-sm font-bold text-white">Check your position</p>
+        </div>
+        <button
+          onClick={onClose}
+          className="w-7 h-7 rounded-lg flex items-center justify-center text-white/30 hover:text-white hover:bg-white/10 transition-all"
+        >
+          <X size={14} />
+        </button>
+      </div>
+
+      <div className="p-5">
+        {/* Result view */}
+        {result ? (
+          <div className="space-y-4">
+
+            {/* Invited banner — shown only when admin has sent invite */}
+            {result.invited && (
+              <div className="flex items-start gap-3 p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10">
+                <CheckCircle size={16} className="text-emerald-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-bold text-emerald-400">Your invite is ready!</p>
+                  <p className="text-xs text-emerald-300/60 mt-0.5 leading-relaxed">
+                    We sent your early-access link to your email. Check your inbox (and spam folder).
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Still waiting banner */}
+            {!result.invited && (
+              <div className="flex items-start gap-3 p-4 rounded-xl border border-white/10 bg-white/5">
+                <Sparkles size={15} className="text-amber-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-bold text-white/80">Still on the list</p>
+                  <p className="text-xs text-white/35 mt-0.5 leading-relaxed">
+                    Access opens in batches. Refer friends below to move up and get in sooner.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Position badge */}
+            <div className="text-center py-2">
+              <p className="text-xs font-bold uppercase tracking-widest text-white/30 mb-2">
+                Your position
+              </p>
+              <div
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border mb-2"
+                style={
+                  result.invited
+                    ? { borderColor: "rgba(74,222,128,0.3)", background: "rgba(74,222,128,0.08)" }
+                    : { borderColor: "rgba(200,135,58,0.3)", background: "rgba(200,135,58,0.08)" }
+                }
+              >
+                {result.invited
+                  ? <CheckCircle size={14} className="text-emerald-400" />
+                  : <Sparkles size={14} className="text-amber-400" />}
+                <span
+                  className="text-3xl font-bold"
+                  style={{
+                    fontFamily: "'Playfair Display', Georgia, serif",
+                    color: result.invited ? "#4ade80" : "#E8A850",
+                  }}
+                >
+                  #{result.position?.toLocaleString() ?? "—"}
+                </span>
+              </div>
+              {result.name && (
+                <p className="text-sm text-white/50">
+                  Welcome back,{" "}
+                  <span className="text-white/80 font-semibold">
+                    {result.name.split(" ")[0]}
+                  </span>
+                </p>
+              )}
+            </div>
+
+            {/* Referral progress */}
+            {result.referral_code && (
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold uppercase tracking-widest text-white/30">
+                    Referrals
+                  </p>
+                  <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                    {result.referrals_count ?? 0} joined
+                  </span>
+                </div>
+
+                {/* Progress bar — 3 referrals = priority access */}
+                <div>
+                  <div className="flex justify-between text-[10px] text-white/25 mb-1.5">
+                    <span>Priority access at 3 referrals</span>
+                    <span>{Math.min(result.referrals_count ?? 0, 3)}/3</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-700"
+                      style={{
+                        width: `${Math.min(((result.referrals_count ?? 0) / 3) * 100, 100)}%`,
+                        background: "linear-gradient(90deg, #C8873A, #E8A850)",
+                      }}
+                    />
+                  </div>
+                  {(result.referrals_count ?? 0) >= 3 && (
+                    <p className="text-xs text-emerald-400 mt-1.5 flex items-center gap-1">
+                      <CheckCircle size={10} /> Priority access unlocked!
+                    </p>
+                  )}
+                </div>
+
+                {/* Referral link */}
+                <div className="flex gap-2">
+                  <div className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-[11px] text-white/40 font-mono truncate">
+                    {typeof window !== "undefined"
+                      ? `${window.location.origin}/waitlist?ref=${result.referral_code}`
+                      : `...?ref=${result.referral_code}`}
+                  </div>
+                  <button
+                    onClick={handleCopy}
+                    className="shrink-0 px-3 py-2 rounded-xl text-xs font-bold text-[#0D1F1A] transition-all hover:scale-105 active:scale-95"
+                    style={{ background: "linear-gradient(135deg, #C8873A, #E8A850)" }}
+                  >
+                    {copied ? "✓" : "Copy"}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <button
+              onClick={reset}
+              className="w-full py-2.5 rounded-xl text-xs font-semibold text-white/30 border border-white/10 hover:border-white/20 hover:text-white/60 transition-all"
+            >
+              Check a different email
+            </button>
+          </div>
+        ) : (
+          /* Lookup form */
+          <form onSubmit={handleCheck} className="space-y-3" noValidate>
+            <p className="text-xs text-white/40 leading-relaxed">
+              Enter the email you used to join and we'll show your position and referral link.
+            </p>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => { setEmail(e.target.value); setError(""); }}
+              placeholder="you@example.com"
+              className={`w-full bg-white/5 border text-white placeholder-white/20 px-4 py-3 rounded-xl text-sm outline-none transition-all ${
+                error
+                  ? "border-red-500/50"
+                  : "border-white/10 hover:border-white/20 focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20"
+              }`}
+            />
+            {error && <p className="text-red-400 text-xs">{error}</p>}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-[#0D1F1A] text-sm transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60"
+              style={{ background: "linear-gradient(135deg, #C8873A 0%, #E8A850 100%)" }}
+            >
+              {loading
+                ? <div className="w-4 h-4 border-2 border-[#0D1F1A]/30 border-t-[#0D1F1A] rounded-full animate-spin" />
+                : <><Search size={14} /> Check my position</>}
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function WaitlistPage() {
   const [form, setForm]       = useState({ name: "", email: "", budget: "", city: "" });
@@ -100,6 +327,7 @@ export default function WaitlistPage() {
   const [position, setPosition] = useState(null);
   const [userRefCode, setUserRefCode] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [showCheck, setShowCheck] = useState(false);
 
   // Read saved referral code on mount
   useEffect(() => {
@@ -371,6 +599,24 @@ export default function WaitlistPage() {
               </p>
             </div>
 
+            {/* Already joined? toggle */}
+            {!showCheck && (
+              <button
+                onClick={() => setShowCheck(true)}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-semibold border border-white/10 bg-white/5 text-white/40 hover:border-amber-500/30 hover:text-amber-400 hover:bg-amber-500/8 transition-all mb-5"
+              >
+                <Search size={12} />
+                Already joined? Check your position
+              </button>
+            )}
+
+            {/* Check position panel — shown inline */}
+            {showCheck && (
+              <div className="mb-5">
+                <CheckPositionPanel onClose={() => setShowCheck(false)} />
+              </div>
+            )}
+
             {errors.global && (
               <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
                 {errors.global}
@@ -515,7 +761,7 @@ export default function WaitlistPage() {
               </span>
             ))}
           </div>
-          </div>
+        </div>
       </div>
     </main>
   );
