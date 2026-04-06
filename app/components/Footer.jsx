@@ -14,11 +14,20 @@ const footerLinks = [
       { label: "Support",  href: "/support"                  },
     ],
   },
+
+  {
+      heading: "Resources",
+      links: [
+        { label: "Blog",     href: "/blog"     },
+        { label: "Verify Certificate",    href: "/verify"  },
+      ],
+  },
+  
   {
     heading: "Legal",
     links: [
-      { label: "Privacy Policy",   href: "/privacy" },
-      { label: "Terms of Service", href: "/terms"   },
+      { label: "Privacy Policy",        href: "/privacy" },
+      { label: "Terms of Service",      href: "/terms"   },
     ],
   },
 ];
@@ -98,7 +107,7 @@ function BrandBlock({ user, appname }) {
           className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm shrink-0 transition-transform group-hover:scale-105"
           style={{ background: "linear-gradient(135deg, #C8873A, #E8A850)", color: "#0D1F1A" }}
         >
-          S
+          R
         </div>
         <span
           className="text-xl font-bold"
@@ -108,8 +117,8 @@ function BrandBlock({ user, appname }) {
         </span>
       </Link>
 
-      <p className="text-sm leading-relaxed mb-5 max-w-xs" style={{ color: "rgba(255,255,255,0.7" }}>
-        Nigeria's trusted platform for fractional land investment. Grow your wealth one plot at a time.
+      <p className="text-sm leading-relaxed mb-5 max-w-xs" style={{ color: "rgba(255,255,255,0.7)" }}>
+        Nigeria&apos;s trusted platform for fractional land investment. Grow your wealth one plot at a time.
       </p>
 
       <div className="space-y-2.5">
@@ -118,7 +127,7 @@ function BrandBlock({ user, appname }) {
           { icon: <Mail size={12} />,   text: `hello@${appname.toLowerCase()}.com` },
           { icon: <Phone size={12} />,  text: "+234 808 132 5657"                   },
         ].map((item) => (
-          <div key={item.text} className="flex items-center gap-2 text-xs" style={{ color: "rgba(255,255,255,0.7" }}>
+          <div key={item.text} className="flex items-center gap-2 text-xs" style={{ color: "rgba(255,255,255,0.7)" }}>
             <span className="shrink-0" style={{ color: "#C8873A" }}>{item.icon}</span>
             <span className="truncate">{item.text}</span>
           </div>
@@ -148,8 +157,8 @@ function LinkColumns({ user }) {
                     href={link.href}
                     className="text-sm transition-colors"
                     style={{ color: "rgba(255,255,255,0.60)" }}
-                    onMouseEnter={e => e.currentTarget.style.color = "#ffffff"}
-                    onMouseLeave={e => e.currentTarget.style.color = "rgba(255,255,255,0.60)"}
+                    onMouseEnter={(e) => (e.currentTarget.style.color = "#ffffff")}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.60)")}
                   >
                     {link.label}
                   </Link>

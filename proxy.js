@@ -13,6 +13,7 @@ const PUBLIC_ROUTES = [
   "/support",
   "/terms",
   "/privacy",
+  "/waitlist",
 ];
 
 const ADMIN_ROUTES = ["/admin"];
@@ -32,6 +33,10 @@ export function proxy(request) {
   const isAdminRoute = ADMIN_ROUTES.some((route) =>
     pathname.startsWith(route)
   );
+
+  if (!token && pathname === "/register") {
+    return NextResponse.redirect(new URL("/waitlist", request.url));
+  }
 
   // Logged-in user hitting "/" or auth pages → dashboard
   if (token && (pathname === "/" || pathname === "/login" || pathname === "/register")) {
