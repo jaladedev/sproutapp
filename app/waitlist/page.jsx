@@ -58,50 +58,6 @@ function useCountUp(target, duration = 1800) {
   return count;
 }
 
-// ── Social proof ticker ───────────────────────────────────────────────────────
-const TESTIMONIALS = [
-  { name: "Tunde A.",   city: "Lagos",  text: "Finally, verified land I can actually afford."          },
-  { name: "Fatima B.",  city: "Abuja",  text: "The fractional model is a game changer for my income."  },
-  { name: "Chidi O.",   city: "Ibadan", text: "I started with ₦20k. Dashboard makes it easy to track."},
-];
-
-function TestimonialTicker() {
-  const [idx, setIdx] = useState(0);
-  const [visible, setVisible] = useState(true);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setVisible(false);
-      setTimeout(() => {
-        setIdx((i) => (i + 1) % TESTIMONIALS.length);
-        setVisible(true);
-      }, 400);
-    }, 4000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const t = TESTIMONIALS[idx];
-  return (
-    <div
-      className="flex items-start gap-3 p-4 rounded-2xl border border-white/10 bg-white/5 transition-opacity duration-400"
-      style={{ opacity: visible ? 1 : 0 }}
-    >
-      <div
-        className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 font-bold text-sm text-[#0D1F1A]"
-        style={{ background: "linear-gradient(135deg, #C8873A, #E8A850)" }}
-      >
-        {t.name[0]}
-      </div>
-      <div>
-        <p className="text-sm text-white/80 italic leading-relaxed">"{t.text}"</p>
-        <p className="text-xs text-white/30 mt-1">
-          {t.name} · {t.city}
-        </p>
-      </div>
-    </div>
-  );
-}
-
 // ── Waitlist count display ────────────────────────────────────────────────────
 // function WaitlistCount({ count }) {
 //   const displayed = useCountUp(count);
@@ -392,8 +348,6 @@ export default function WaitlistPage() {
               ))}
             </div>
 
-            {/* Testimonial ticker */}
-            <TestimonialTicker />
           </div>
 
           {/* ── Right column — form ───────────────────────────────────────── */}

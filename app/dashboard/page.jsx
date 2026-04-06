@@ -9,7 +9,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import {
   TrendingUp, Wallet, MapPin, Activity,
   ArrowUpRight, LayoutGrid, ChevronRight,
-  ArrowDownLeft, Sparkles, RefreshCw,
+  ArrowDownLeft, Sparkles, RefreshCw, Star,
 } from "lucide-react";
 
 /* ── Helpers ──────────────────────────────────────────────────────────────── */
@@ -67,6 +67,10 @@ function useCountUp(target, duration = 1100, enabled = true) {
 
   return value;
 }
+    // ── Founding member helper ─────────────────────────────────────────────────
+  const isFoundingMember = (user) => {
+    return user?.id && Number(user.id) <= 1000;
+  };
 
 /* ── Data hook ────────────────────────────────────────────────────────────── */
 function useDashboardData(enabled) {
@@ -219,8 +223,9 @@ export default function Dashboard() {
                   })}
                 </span>
               </div>
-              <h1
-                className="text-3xl sm:text-4xl font-bold leading-tight"
+            <div className="flex items-center gap-3 flex-wrap">
+             <h1
+                className="text-2xl sm:text-4xl font-bold leading-tight"
                 style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
               >
                 <span className="text-white">{greeting()}, </span>
@@ -236,6 +241,21 @@ export default function Dashboard() {
                   {user?.name?.split(" ")[0] || "Investor"}
                 </span>
               </h1>
+              {isFoundingMember(user) && (
+                <span
+                  className="inline-flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[9px] sm:text-[10px] font-bold border align-middle ml-1.5 sm:ml-2"
+                  style={{
+                    background: "linear-gradient(135deg, rgba(200,135,58,0.15), rgba(232,168,80,0.08))",
+                    borderColor: "rgba(200,135,58,0.35)",
+                    color: "#E8A850",
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                >
+                  <Star size={8} className="fill-amber-400 text-amber-400 sm:w-[10px] sm:h-[10px]" />
+                  Founding Investor
+                </span>
+              )}
+            </div>
               <p className="text-sm text-white/30 mt-1.5">
                 Here's how your investments are performing today.
               </p>
