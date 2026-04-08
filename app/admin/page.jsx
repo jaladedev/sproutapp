@@ -8,6 +8,7 @@ import {
   MapPin, ShieldCheck, Gift, Wallet, FileText,
   ArrowRight, TrendingUp, Clock, CheckCircle,
   XCircle, Plus, Eye, MessageSquare, AlertCircle, Users,
+  LucideWalletCards
 } from "lucide-react";
 
 export default function AdminDashboard() {
@@ -17,6 +18,7 @@ export default function AdminDashboard() {
     referrals: { total: 0, completed: 0, pending: 0, totalRewards: 0 },
     support:   { total: 0, open: 0, waiting: 0 },
     users:     { total: 0, suspended: 0, admins: 0 },
+    withdrawals: { pending: 0, processing: 0, totalKobo: 0 },
   });
   const [loading, setLoading] = useState(true);
 
@@ -31,6 +33,7 @@ export default function AdminDashboard() {
         supportAllRes, supportOpenRes, supportWaitingRes,
         usersAllRes, usersSuspendedRes, usersAdminRes,
         blogAllRes, blogPublishedRes, blogDraftRes,
+        withdrawalsPendingRes,  withdrawalsProcessingRes,
       ] = await Promise.all([
         api.get("/admin/lands"),
         api.get("/admin/kyc?per_page=1"),
@@ -46,6 +49,8 @@ export default function AdminDashboard() {
         api.get("/admin/blog?per_page=1"),
         api.get("/admin/blog?per_page=1&status=published"),
         api.get("/admin/blog?per_page=1&status=draft"),
+        api.get("/admin/withdrawals?status=pending&per_page=1"),
+        api.get("/admin/withdrawals?status=processing&per_page=1"),
       ]);
 
       const landsData  = landsRes.data?.data?.data ?? landsRes.data?.data ?? [];
@@ -68,6 +73,9 @@ export default function AdminDashboard() {
       const blogTotal     = blogAllRes.data?.data?.total ?? 0;
       const blogPublished = blogPublishedRes.data?.data?.total ?? 0;
       const blogDraft     = blogDraftRes.data?.data?.total ?? 0;
+
+      const wPending    = withdrawalsPendingRes.data?.data?.total ?? 0;
+      const wProcessing = withdrawalsProcessingRes.data?.data?.total ?? 0;
 
       setStats({
         lands: {
@@ -101,6 +109,10 @@ export default function AdminDashboard() {
           total: blogTotal,
           published: blogPublished,
           draft: blogDraft,
+        },
+         withdrawals: {
+          pending:    wPending,
+          processing: wProcessing,
         },
       });
     } catch {
@@ -170,6 +182,17 @@ export default function AdminDashboard() {
       ],
     },
     {
+      label: "Referrals",
+      value: stats.referrals.total,
+      icon: <Gift size={22} />,
+      accent: "#10B981",
+      href: "/admin/referrals",
+      sub: [
+        { label: "Completed", value: stats.referrals.completed, color: "text-emerald-400" },
+        { label: "Pending",   value: stats.referrals.pending,   color: "text-amber-400" },
+      ],
+    },
+    {
       label: "Blog Posts",
       value: stats.blog.total,
       icon: <FileText size={22} />,
@@ -178,6 +201,17 @@ export default function AdminDashboard() {
       sub: [
         { label: "Published", value: stats.blog.published, color: "text-emerald-400" },
         { label: "Drafts",    value: stats.blog.draft,     color: "text-amber-400" },
+      ],
+    },
+    {
+      label: "Withdrawals",
+      value: stats.withdrawals.pending,
+      icon: <LucideWalletCards size={22} />,
+      accent: "#2D7A55",
+      href: "/admin/withdrawals",
+      sub: [
+        { label: "Pending",    value: stats.withdrawals.pending,    color: "text-amber-400" },
+        { label: "Processing", value: stats.withdrawals.processing, color: "text-blue-400" },
       ],
     },
   ];
@@ -409,6 +443,42 @@ export default function AdminDashboard() {
               />
             </div>
           </div>
+          
+           <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
+            <div className="flex items-center justify-between px-5 sm:px-6 py-5 border-b border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/15 flex items-center justify-center">
+                  <Wallet size={18} className="text-emerald-400" />
+                </div>
+                <h2 className="font-bold text-white text-base sm:text-lg"
+                    style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+                  Withdrawals
+                </h2>
+              </div>
+              {stats.withdrawals.pending > 0 && (
+                <span className="text-xs text-amber-400 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">
+                  {stats.withdrawals.pending} pending
+                </span>
+              )}
+            </div>
+            <div className="p-4 space-y-2">
+              <ManagementRow
+                href="/admin/withdrawals?status=pending"
+                icon={<Clock size={15} />}
+                title="Pending Withdrawals"
+                subtitle={`${stats.withdrawals.pending} awaiting approval`}
+                accent="#F59E0B"
+                highlight={stats.withdrawals.pending > 0}
+              />
+              <ManagementRow
+                href="/admin/withdrawals"
+                icon={<Wallet size={15} />}
+                title="All Withdrawals"
+                subtitle="Full withdrawal history"
+                accent="white"
+              />
+            </div>
+          </div>
         </div>
         {/* Quick Actions */}
         <div className="rounded-2xl p-5 sm:p-6 relative overflow-hidden"
@@ -427,6 +497,7 @@ export default function AdminDashboard() {
                 { href: "/admin/kyc?status=pending",  icon: <ShieldCheck size={20} />,   label: "Review KYC",   accent: "#8B5CF6" },
                 { href: "/admin/users",               icon: <Users size={20} />,          label: "Manage Users", accent: "#06B6D4" },
                 { href: "/admin/support?status=open", icon: <MessageSquare size={20} />, label: "Open Tickets", accent: "#10B981" },
+                { href: "/admin/withdrawals?status=pending", icon: <Wallet size={20} />, label: "Withdrawals", accent: "#2D7A55" },
               ].map((action) => (
                 <Link key={action.label} href={action.href}
                   className="flex flex-col items-center gap-2.5 p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 hover:-translate-y-1 transition-all text-center group">
