@@ -69,7 +69,7 @@ function useCountUp(target, duration = 1100, enabled = true) {
 }
     // ── Founding member helper ─────────────────────────────────────────────────
   const isFoundingMember = (user) => {
-    return user?.id && Number(user.id) <= 1000;
+    return user?.id && Number(user.id) <= 50;
   };
 
 /* ── Data hook ────────────────────────────────────────────────────────────── */
@@ -223,11 +223,8 @@ export default function Dashboard() {
                   })}
                 </span>
               </div>
-            <div className="flex items-center gap-3 flex-wrap">
-             <h1
-                className="text-2xl sm:text-4xl font-bold leading-tight"
-                style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
-              >
+            <div className="flex items-center gap-2 min-w-0">
+             <h1 className="text-2xl sm:text-4xl font-bold leading-tight whitespace-nowrap" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
                 <span className="text-white">{greeting()}, </span>
                 <span
                   style={{
