@@ -64,22 +64,21 @@ function useEcho() {
       window.Pusher = Pusher;
 
       echoRef.current = new Echo({
-        broadcaster:       "reverb",
-        key:               process.env.NEXT_PUBLIC_PUSHER_KEY,
-        wsHost:            process.env.NEXT_PUBLIC_REVERB_HOST,
-        wsPort:            Number(process.env.NEXT_PUBLIC_REVERB_PORT || 80),
-        wssPort:           Number(process.env.NEXT_PUBLIC_REVERB_PORT || 443),
-        forceTLS:          process.env.NEXT_PUBLIC_REVERB_SCHEME === "https",
-        enabledTransports: ["ws", "wss"],
-        disableStats:      true,
-        authEndpoint:      `${process.env.NEXT_PUBLIC_API_URL}/broadcasting/auth`,
-        auth: {
-          headers: {
-            Authorization: `Bearer ${getToken()}`,
-          },
+      broadcaster:       "reverb",
+      key:               process.env.NEXT_PUBLIC_PUSHER_KEY,
+      wsHost:            (process.env.NEXT_PUBLIC_REVERB_HOST ?? "").replace(/^https?:\/\//, "").replace(/\/$/, ""),
+      wsPort:            Number(process.env.NEXT_PUBLIC_REVERB_PORT || 80),
+      wssPort:           Number(process.env.NEXT_PUBLIC_REVERB_PORT || 443),
+      forceTLS:          process.env.NEXT_PUBLIC_REVERB_SCHEME === "https",
+      enabledTransports: ["ws", "wss"],
+      disableStats:      true,
+      authEndpoint:      `${process.env.NEXT_PUBLIC_API_URL}/broadcasting/auth`,
+      auth: {
+        headers: {
+          Authorization: `Bearer ${getToken()}`,
         },
-      });
-
+      },
+    });
       readyRef.current = true;
       resolveReady.current(echoRef.current); // ← unblocks any awaiting subscribers
     });

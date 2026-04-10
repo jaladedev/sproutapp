@@ -39,14 +39,17 @@ let pusherInstance = null;
 
 function getPusher() {
   if (!pusherInstance) {
+    // Strip any protocol prefix so it works whether env var has it or not
+    const rawHost = process.env.NEXT_PUBLIC_REVERB_HOST ?? "";
+    const wsHost  = rawHost.replace(/^https?:\/\//, "").replace(/\/$/, "");
+
     pusherInstance = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY, {
-      wsHost:            process.env.NEXT_PUBLIC_REVERB_HOST,
+      wsHost,
       wsPort:            Number(process.env.NEXT_PUBLIC_REVERB_PORT ?? 80),
       wssPort:           Number(process.env.NEXT_PUBLIC_REVERB_PORT ?? 443),
       forceTLS:          process.env.NEXT_PUBLIC_REVERB_SCHEME === "https",
       enabledTransports: ["ws", "wss"],
       disableStats:      true,
-      cluster:           process.env.NEXT_PUBLIC_REVERB_CLUSTER,
       authEndpoint:      `${process.env.NEXT_PUBLIC_API_URL}/broadcasting/auth`,
       auth: {
         headers: {
