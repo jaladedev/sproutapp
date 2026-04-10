@@ -64,15 +64,14 @@ function useEcho() {
       window.Pusher = Pusher;
 
       echoRef.current = new Echo({
-        broadcaster:       "pusher",
+        broadcaster:       "reverb",
         key:               process.env.NEXT_PUBLIC_PUSHER_KEY,
-        cluster:           process.env.NEXT_PUBLIC_PUSHER_CLUSTER || "mt1",
-        wsHost:            process.env.NEXT_PUBLIC_PUSHER_HOST    || undefined,
-        wsPort:            Number(process.env.NEXT_PUBLIC_PUSHER_PORT || 443),
+        wsHost:            process.env.NEXT_PUBLIC_PUSHER_HOST,
+        wsPort:            Number(process.env.NEXT_PUBLIC_PUSHER_PORT || 80),
         wssPort:           Number(process.env.NEXT_PUBLIC_PUSHER_PORT || 443),
-        forceTLS:          true,
-        encrypted:         true,
+        forceTLS:          process.env.NEXT_PUBLIC_PUSHER_SCHEME === "https",
         enabledTransports: ["ws", "wss"],
+        disableStats:      true,
         authEndpoint:      `${process.env.NEXT_PUBLIC_API_URL}/broadcasting/auth`,
         auth: {
           headers: {
@@ -393,47 +392,102 @@ export default function AgentChatPage() {
 
   const pendingCount = queue.filter((t) => !t.agent_id).length;
 
+  // Mobile: toggle between 'queue' and 'chat' panels
+  const [mobilePanel, setMobilePanel] = useState("queue");
+
+  // Auto-switch to chat on mobile when a ticket is claimed
+  const handleClaimWithMobileSwitch = async (ticket) => {
+    await handleClaim(ticket);
+    setMobilePanel("chat");
+  };
+
+  const handleSelectQueueMobile = (ticket) => {
+    if (activeTicket?.id === ticket.id) {
+      setMobilePanel("chat");
+      return;
+    }
+    handleClaimWithMobileSwitch(ticket);
+  };
+
   return (
-    <div className="h-screen bg-[#0A1A12] flex flex-col overflow-hidden"
+    <div className="h-[100dvh] bg-[#0A1A12] flex flex-col overflow-hidden"
       style={{ fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif" }}>
 
       {/* ── Top bar ── */}
-      <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.06] bg-[#0D1F1A] shrink-0">
+      <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-white/[0.06] bg-[#0D1F1A] shrink-0">
         <div className="flex items-center gap-3">
-          <Link href="/admin"
-            className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-white transition-all">
-            <ArrowLeft size={14} />
-          </Link>
+          {/* Mobile: back to queue when in chat panel */}
+          {mobilePanel === "chat" && activeTicket ? (
+            <button
+              onClick={() => setMobilePanel("queue")}
+              className="sm:hidden w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/40">
+              <ArrowLeft size={14} />
+            </button>
+          ) : (
+            <Link href="/admin"
+              className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-white transition-all">
+              <ArrowLeft size={14} />
+            </Link>
+          )}
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.28em] text-amber-500/60">
               Agent Dashboard
             </p>
             <p className="text-sm font-bold text-white"
               style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
-              Live Support
+              {mobilePanel === "chat" && activeTicket
+                ? <span className="sm:hidden">{activeTicket.user?.name}</span>
+                : null}
+              <span className={mobilePanel === "chat" && activeTicket ? "hidden sm:inline" : ""}>
+                Live Support
+              </span>
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-bold ${
+          {/* Mobile: show queue count as tappable badge when in chat */}
+          {activeTicket && (
+            <button
+              onClick={() => setMobilePanel("queue")}
+              className={`sm:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-bold ${
+                pendingCount > 0
+                  ? "border-amber-500/30 bg-amber-500/10 text-amber-400"
+                  : "border-white/10 bg-white/5 text-white/30"
+              }`}>
+              <Inbox size={11} /> {pendingCount}
+            </button>
+          )}
+          <div className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-bold ${
             pendingCount > 0
               ? "border-amber-500/30 bg-amber-500/10 text-amber-400"
               : "border-white/10 bg-white/5 text-white/30"
           }`}>
             <Inbox size={11} /> {pendingCount} in queue
           </div>
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/8">
+          <div className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/8">
             <Circle size={7} className="text-emerald-400 fill-emerald-400" />
-            <span className="text-[10px] font-bold text-emerald-400">Online</span>
+            <span className="text-[10px] font-bold text-emerald-400 hidden sm:inline">Online</span>
           </div>
+          {/* Mobile: end chat button in header */}
+          {mobilePanel === "chat" && activeTicket && (
+            <button onClick={handleEnd} disabled={ending}
+              className="sm:hidden flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-red-500/20 text-red-400/70 text-xs font-bold">
+              {ending ? <Loader2 size={11} className="animate-spin" /> : <X size={11} />}
+              End
+            </button>
+          )}
         </div>
       </div>
 
       {/* ── Main layout ── */}
       <div className="flex flex-1 overflow-hidden">
 
-        {/* ── Queue sidebar ── */}
-        <div className="w-72 shrink-0 border-r border-white/[0.06] flex flex-col bg-[#0D1F1A] overflow-hidden">
+        {/* ── Queue sidebar — full screen on mobile, fixed sidebar on desktop ── */}
+        <div className={`
+          ${mobilePanel === "queue" ? "flex" : "hidden"}
+          sm:flex
+          w-full sm:w-72 shrink-0 border-r border-white/[0.06] flex-col bg-[#0D1F1A] overflow-hidden
+        `}>
           <div className="px-4 py-3.5 border-b border-white/[0.05]">
             <p className="text-[10px] font-black uppercase tracking-[0.22em] text-white/25 flex items-center gap-2">
               <MessageSquare size={10} /> Queue
@@ -461,21 +515,35 @@ export default function AgentChatPage() {
                   key={ticket.id}
                   ticket={ticket}
                   isActive={activeTicket?.id === ticket.id}
-                  onClick={() => handleSelectQueue(ticket)}
+                  onClick={() => handleSelectQueueMobile(ticket)}
                 />
               ))
             )}
           </div>
+          {/* Mobile: if there's an active chat, show a return-to-chat button at bottom */}
+          {activeTicket && (
+            <button
+              onClick={() => setMobilePanel("chat")}
+              className="sm:hidden mx-4 mb-4 mt-2 flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-bold text-[#0A1A13]"
+              style={{ background: "linear-gradient(135deg, #C8873A, #E8A850)" }}>
+              <MessageSquare size={14} />
+              Back to chat · {activeTicket.user?.name}
+            </button>
+          )}
         </div>
 
-        {/* ── Chat area ── */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        {/* ── Chat area — full screen on mobile, flex-1 on desktop ── */}
+        <div className={`
+          ${mobilePanel === "chat" ? "flex" : "hidden"}
+          sm:flex
+          flex-1 flex-col overflow-hidden
+        `}>
           {!activeTicket ? (
             <EmptyState />
           ) : (
             <>
-              {/* Chat header */}
-              <div className="px-6 py-4 border-b border-white/[0.06] bg-[#0D1F1A] flex items-center justify-between shrink-0">
+              {/* Chat header — desktop only (mobile header is top bar) */}
+              <div className="hidden sm:flex px-6 py-4 border-b border-white/[0.06] bg-[#0D1F1A] items-center justify-between shrink-0">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-sm font-bold text-white/60 shrink-0">
                     {activeTicket.user?.name?.[0] || "U"}
@@ -512,8 +580,21 @@ export default function AgentChatPage() {
                 </div>
               </div>
 
+              {/* Mobile chat subheader — shows subject + category */}
+              <div className="sm:hidden px-4 py-2.5 border-b border-white/[0.05] bg-[#0D1F1A] flex items-center gap-2">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md shrink-0"
+                  style={{
+                    background: `${CATEGORY_COLORS[activeTicket.category] || "#6B7280"}20`,
+                    color:      CATEGORY_COLORS[activeTicket.category] || "#6B7280",
+                  }}>
+                  {activeTicket.category}
+                </span>
+                <p className="text-xs text-white/40 truncate">{activeTicket.subject}</p>
+                <p className="text-[10px] font-mono text-white/20 shrink-0 ml-auto">{activeTicket.reference}</p>
+              </div>
+
               {/* Messages */}
-              <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+              <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-5 space-y-4">
                 {messages.length > 0 && (
                   <div className="flex items-center gap-3">
                     <div className="flex-1 h-px bg-white/[0.05]" />
@@ -531,26 +612,26 @@ export default function AgentChatPage() {
               </div>
 
               {/* Input */}
-              <div className="px-5 py-4 border-t border-white/[0.06] bg-[#0D1F1A] shrink-0">
-                <div className="flex items-end gap-3 bg-white/[0.04] border border-white/[0.08] hover:border-white/[0.14] focus-within:border-amber-500/30 focus-within:ring-2 focus-within:ring-amber-500/10 rounded-2xl px-4 py-3 transition-all">
+              <div className="px-3 sm:px-5 py-3 sm:py-4 border-t border-white/[0.06] bg-[#0D1F1A] shrink-0">
+                <div className="flex items-end gap-2 sm:gap-3 bg-white/[0.04] border border-white/[0.08] hover:border-white/[0.14] focus-within:border-amber-500/30 focus-within:ring-2 focus-within:ring-amber-500/10 rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 transition-all">
                   <textarea
                     value={draft}
                     onChange={(e) => handleDraftChange(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder="Type a message… (Enter to send, Shift+Enter for new line)"
+                    placeholder="Type a message…"
                     rows={1}
-                    className="flex-1 bg-transparent text-white placeholder-white/20 text-sm outline-none resize-none leading-relaxed max-h-32"
+                    className="flex-1 bg-transparent text-white placeholder-white/20 text-sm outline-none resize-none leading-relaxed max-h-28"
                     style={{ scrollbarWidth: "none" }}
                   />
                   <button onClick={handleSend} disabled={!draft.trim() || sending}
-                    className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-all hover:scale-105 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100"
+                    className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
                     style={{ background: draft.trim() ? "linear-gradient(135deg, #C8873A, #E8A850)" : "rgba(255,255,255,0.05)" }}>
                     {sending
                       ? <Loader2 size={15} className={draft.trim() ? "text-[#0D1F1A] animate-spin" : "text-white/30 animate-spin"} />
                       : <Send size={15} className={draft.trim() ? "text-[#0D1F1A]" : "text-white/30"} />}
                   </button>
                 </div>
-                <p className="text-[10px] text-white/15 mt-2 text-center">
+                <p className="text-[10px] text-white/15 mt-1.5 text-center hidden sm:block">
                   Messages are end-to-end delivered · Ticket {activeTicket.reference}
                 </p>
               </div>

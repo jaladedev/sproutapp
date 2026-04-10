@@ -41,21 +41,21 @@ function getPusher() {
   if (!pusherInstance) {
     pusherInstance = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY, {
       wsHost:            process.env.NEXT_PUBLIC_REVERB_HOST,
-      wsPort:            Number(process.env.NEXT_PUBLIC_REVERB_PORT ?? 8081),
-      wssPort:           Number(process.env.NEXT_PUBLIC_REVERB_PORT ?? 8081),
+      wsPort:            Number(process.env.NEXT_PUBLIC_REVERB_PORT ?? 80),
+      wssPort:           Number(process.env.NEXT_PUBLIC_REVERB_PORT ?? 443),
       forceTLS:          process.env.NEXT_PUBLIC_REVERB_SCHEME === "https",
       enabledTransports: ["ws", "wss"],
-      authEndpoint: `${process.env.NEXT_PUBLIC_API_URL}/broadcasting/auth`,
+      disableStats:      true,
+      authEndpoint:      `${process.env.NEXT_PUBLIC_API_URL}/broadcasting/auth`,
       auth: {
         headers: {
-          Authorization: `Bearer ${getToken()}`, 
+          Authorization: `Bearer ${getToken()}`,
         },
       },
     });
   }
   return pusherInstance;
 }
-
 /* ══════════════════════════════════════════════════════════════════════════════
    LIVE CHAT VIEW
    Drop-in replacement for AiChatView when the user requests a human agent.
