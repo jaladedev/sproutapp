@@ -187,9 +187,9 @@ function RegisterForm() {
           style={{ backgroundImage: "radial-gradient(circle at 30% 40%, rgba(200,135,58,0.12) 0%, transparent 60%), radial-gradient(circle at 80% 80%, rgba(45,122,85,0.18) 0%, transparent 55%)" }} />
         <div className="absolute inset-0 opacity-[0.03]"
           style={{ backgroundImage: "linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)", backgroundSize: "48px 48px" }} />
-        <div className="absolute -bottom-24 -left-24 w-[480px] h-[480px] rounded-full opacity-20"
+        <div className="absolute -bottom-24 -left-24 w-120 h-120 rounded-full opacity-20"
           style={{ background: "radial-gradient(circle, #2D7A55 0%, transparent 65%)" }} />
-        <div className="absolute -top-16 right-0 w-[320px] h-[320px] rounded-full opacity-15"
+        <div className="absolute -top-16 right-0 w-[320px] h-80 rounded-full opacity-15"
           style={{ background: "radial-gradient(circle, #C8873A 0%, transparent 65%)" }} />
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-6">
@@ -216,7 +216,7 @@ function RegisterForm() {
             style={{ background: "radial-gradient(circle, #2D7A55 0%, transparent 70%)" }} />
         </div>
 
-        <div className="relative z-10 w-full max-w-[440px]">
+        <div className="relative z-10 w-full max-w-110">
 
           {/* Mobile logo */}
           <div className="flex lg:hidden items-center justify-center gap-2.5 mb-4">
