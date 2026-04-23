@@ -213,7 +213,7 @@ function TrustBar() {
       {[
         [BadgeCheck, "Verified Titles"],
         [ShieldCheck, "Legally Backed"],
-        [TrendingUp,  "10–30% Projected ROI"],
+        [TrendingUp,  "15–30% Projected ROI"],
       ].map(([Icon, label]) => (
         <span key={label} className="flex items-center gap-1.5 text-xs text-white/35">
           <Icon size={12} className="text-emerald-400" />
