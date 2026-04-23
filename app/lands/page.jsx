@@ -1,5 +1,14 @@
 "use client";
 
+/**
+ * /app/lands/page.jsx  — or wherever your lands listing lives
+ *
+ * PUBLIC browsing, auth-gated investing.
+ * Separate metadata export (SEO) is at the bottom of this file
+ * — move it to a sibling `page.jsx` wrapper if you use the
+ * App Router pattern of a Server Component shell + Client Component.
+ */
+
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
@@ -11,6 +20,8 @@ import {
   MapPin, Maximize2, Flame, X, Lock, ShieldCheck,
   TrendingUp, BadgeCheck, ArrowRight, Search, SlidersHorizontal,
 } from "lucide-react";
+import { getToken } from "../../utils/tokenStore";
+
 
 // ─── Dynamic map (no SSR) ─────────────────────────────────────────────────────
 const MapWithNoSSR = dynamic(
@@ -51,7 +62,7 @@ function getPriceTag(priceKobo) {
 function AuthPromptModal({ onClose }) {
   return (
     <div
-      className="fixed inset-0 z-[99999] flex items-center justify-center px-5"
+      className="fixed inset-0 z-99999 flex items-center justify-center px-5"
       style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(10px)" }}
       onClick={onClose}
     >
@@ -211,7 +222,7 @@ function TrustBar() {
       {[
         [BadgeCheck, "Verified Titles"],
         [ShieldCheck, "Legally Backed"],
-        [TrendingUp,  "15–30% Projected ROI"],
+        [TrendingUp,  "10–30% Projected ROI"],
       ].map(([Icon, label]) => (
         <span key={label} className="flex items-center gap-1.5 text-xs text-white/35">
           <Icon size={12} className="text-emerald-400" />
@@ -283,6 +294,14 @@ export default function LandList() {
 
   // ── Fetch auth + account status ────────────────────────────────────────────
   useEffect(() => {
+    const token = getToken();
+
+    if (!token) {
+      setUser(null);
+      setAuthLoaded(true);
+      return;
+    }
+
     api.get("/me")
       .then((res) => {
         const u = res.data?.data ?? null;
@@ -420,9 +439,9 @@ export default function LandList() {
 
         {/* ── Fullscreen map overlay ────────────────────────────────────────── */}
         {isFullScreen && (
-          <div className="fixed inset-0 z-[99999] bg-[#0D1F1A]">
+          <div className="fixed inset-0 z-99999 bg-[#0D1F1A]">
             <div
-              className="absolute top-4 left-1/2 -translate-x-1/2 z-[100000] flex items-center gap-2 px-3 py-2 rounded-2xl"
+              className="absolute top-4 left-1/2 -translate-x-1/2 z-100000 flex items-center gap-2 px-3 py-2 rounded-2xl"
               style={{ background: "rgba(8,20,15,0.92)", border: "1px solid rgba(255,255,255,0.12)", backdropFilter: "blur(12px)", boxShadow: "0 8px 32px rgba(0,0,0,0.6)" }}
             >
               <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg" style={{ background: "rgba(255,255,255,0.05)" }}>
@@ -485,7 +504,7 @@ export default function LandList() {
               ref={mapSectionRef}
               className="relative rounded-2xl overflow-hidden border border-white/10 mb-10 shadow-2xl shadow-black/50"
             >
-              <div className="absolute top-3 right-3 z-[2000] flex gap-2">
+              <div className="absolute top-3 right-3 z-2000 flex gap-2">
                 <button
                   onClick={() => setShowHeatmap((v) => !v)}
                   className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${showHeatmap ? "text-white" : "bg-black/60 backdrop-blur text-white/70 hover:bg-black/80 border border-white/10"}`}
@@ -500,7 +519,7 @@ export default function LandList() {
                   <Maximize2 size={13} /> Fullscreen
                 </button>
               </div>
-              <div className="h-[38rem] w-full">
+              <div className="h-152 w-full">
                 <MapWithNoSSR {...mapProps} />
               </div>
             </div>

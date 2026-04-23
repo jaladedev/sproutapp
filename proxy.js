@@ -4,7 +4,7 @@ const PUBLIC_ROUTES = [
   "/",
   "/r",
   "/login",
-  "lands",
+  "/lands",
   "/register",
   "/verify-email",
   "/email-verified",
@@ -27,16 +27,19 @@ export function proxy(request) {
   const token    = request.cookies.get("auth_token")?.value;
   const userRole = request.cookies.get("user_role")?.value;
 
+  const normalizedPath = pathname.replace(/\/+$/, "") || "/";
+
   const isPublicRoute = PUBLIC_ROUTES.some((route) =>
     route === "/"
-      ? pathname === "/"
-      : pathname === route || pathname.startsWith(route + "/")
+      ? normalizedPath === "/"
+      : normalizedPath === route || normalizedPath.startsWith(route + "/")
   );
 
   const isAdminRoute = ADMIN_ROUTES.some((route) =>
-    pathname.startsWith(route)
+    normalizedPath.startsWith(route)
   );
-
+  
+  //waitlist redirect
   if (!token && pathname === "/register") {
     return NextResponse.redirect(new URL("/waitlist", request.url));
   }
