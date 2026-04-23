@@ -4,6 +4,7 @@ const PUBLIC_ROUTES = [
   "/",
   "/r",
   "/login",
+  "lands",
   "/register",
   "/verify-email",
   "/email-verified",
