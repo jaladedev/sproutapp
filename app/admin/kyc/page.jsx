@@ -130,7 +130,7 @@ export default function AdminKycManagement() {
   return (
     <div
       className="min-h-screen bg-[#0D1F1A] relative"
-      style={{ fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif" }}
+      style={{ fontFamily: "var(--font-dm-sans), 'Helvetica Neue', sans-serif" }}
     >
       {/* Background decorations */}
       <div
@@ -156,7 +156,7 @@ export default function AdminKycManagement() {
           <p className="text-xs font-bold tracking-[0.2em] uppercase text-purple-400 mb-2">Admin Panel</p>
           <h1
             className="text-3xl sm:text-4xl font-bold text-white"
-            style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+            style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}
           >
             KYC Verification
           </h1>
@@ -269,7 +269,7 @@ export default function AdminKycManagement() {
               <div className="min-w-0 flex-1 pr-3">
                 <h2
                   className="text-lg sm:text-xl font-bold text-white"
-                  style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+                  style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}
                 >
                   KYC Details
                 </h2>

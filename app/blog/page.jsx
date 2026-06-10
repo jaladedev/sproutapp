@@ -37,7 +37,7 @@ function PostCard({ post }) {
           <div className="h-44 flex items-center justify-center"
             style={{ background: "linear-gradient(135deg, rgba(200,135,58,0.08), rgba(45,122,85,0.08))" }}>
             <span className="text-amber-500/20 text-4xl font-bold"
-              style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+              style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
               {post.title[0]}
             </span>
           </div>
@@ -53,7 +53,7 @@ function PostCard({ post }) {
 
           {/* Title */}
           <h2 className="font-bold text-white/90 text-base leading-snug mb-2 group-hover:text-amber-400/90 transition-colors"
-            style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+            style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
             {post.title}
           </h2>
 
@@ -153,7 +153,7 @@ export default function BlogPage() {
 
   return (
     <div className="min-h-screen bg-[#0D1F1A] relative"
-      style={{ fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif" }}>
+      style={{ fontFamily: "var(--font-dm-sans), 'Helvetica Neue', sans-serif" }}>
 
       {/* Background */}
       <div className="absolute inset-0 pointer-events-none opacity-[0.03]"
@@ -169,7 +169,7 @@ export default function BlogPage() {
             {appname} Blog
           </p>
           <h1 className="text-4xl sm:text-5xl font-bold text-white mb-4"
-            style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+            style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
             Insights & Updates
           </h1>
           <p className="text-white/60 max-w-xl mx-auto text-sm leading-relaxed">

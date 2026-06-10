@@ -53,7 +53,7 @@ export default function AdminReferralManagement() {
   return (
     <div
       className="min-h-screen bg-[#0D1F1A] relative"
-      style={{ fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif" }}
+      style={{ fontFamily: "var(--font-dm-sans), 'Helvetica Neue', sans-serif" }}
     >
       {/* Background */}
       <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
@@ -70,7 +70,7 @@ export default function AdminReferralManagement() {
         {/* Header */}
         <div className="mb-10">
           <p className="text-xs font-bold tracking-[0.2em] uppercase text-emerald-500 mb-2">Admin Panel</p>
-          <h1 className="text-4xl font-bold text-white" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+          <h1 className="text-4xl font-bold text-white" style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
             Referral System
           </h1>
           <p className="text-white/60 mt-1 text-sm">Track referrals, rewards, and top performers</p>
@@ -108,7 +108,7 @@ export default function AdminReferralManagement() {
                       {card.icon}
                     </div>
                     <p className="text-xs font-bold uppercase tracking-widest text-white/55 mb-1">{card.label}</p>
-                    <p className="text-3xl font-bold text-white" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+                    <p className="text-3xl font-bold text-white" style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
                       {card.value}
                     </p>
                     {card.sub && <p className="text-xs text-white/25 mt-1">{card.sub}</p>}
@@ -124,7 +124,7 @@ export default function AdminReferralManagement() {
                   <div className="w-9 h-9 rounded-xl bg-amber-500/15 flex items-center justify-center">
                     <Trophy size={18} className="text-amber-500" />
                   </div>
-                  <h2 className="font-bold text-white text-lg" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+                  <h2 className="font-bold text-white text-lg" style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
                     Top Referrers
                   </h2>
                 </div>
@@ -167,7 +167,7 @@ export default function AdminReferralManagement() {
                   <div className="w-9 h-9 rounded-xl bg-emerald-500/15 flex items-center justify-center">
                     <Gift size={18} className="text-emerald-400" />
                   </div>
-                  <h2 className="font-bold text-white text-lg" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+                  <h2 className="font-bold text-white text-lg" style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
                     All Referrals
                   </h2>
                 </div>

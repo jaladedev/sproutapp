@@ -27,7 +27,7 @@ export default function ReferralRedirect({ code }) {
   return (
     <div
       className="min-h-screen bg-[#0D1F1A] flex flex-col items-center justify-center gap-5"
-      style={{ fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif" }}
+      style={{ fontFamily: "var(--font-dm-sans), 'Helvetica Neue', sans-serif" }}
     >
       {/* Spinner */}
       <svg

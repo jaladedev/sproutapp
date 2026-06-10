@@ -291,7 +291,7 @@ export default function SupportPage() {
                 Help Center
               </p>
               <h1 className="text-3xl font-bold text-white leading-none"
-                style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+                style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
                 Support
               </h1>
               <p className="text-sm mt-1.5" style={{ color: DIMMED }}>
@@ -518,7 +518,7 @@ function NewTicketForm({ onSuccess }) {
           <FileText size={18} style={{ color: AMBER }} />
         </div>
         <div>
-          <h2 className="font-bold text-white" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+          <h2 className="font-bold text-white" style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
             Open a Support Ticket
           </h2>
           <p className="text-xs mt-0.5" style={{ color: DIMMED }}>
@@ -975,7 +975,7 @@ function GuestContactForm() {
           <CheckCircle size={36} className="text-emerald-400" />
         </div>
         <div>
-          <h2 className="font-bold text-white text-xl" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+          <h2 className="font-bold text-white text-xl" style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
             Message received!
           </h2>
           <p className="text-sm mt-2" style={{ color: MUTED }}>
@@ -1009,7 +1009,7 @@ function GuestContactForm() {
             <MailOpen size={18} style={{ color: AMBER }} />
           </div>
           <div>
-            <h2 className="font-bold text-white" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+            <h2 className="font-bold text-white" style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
               Contact Support
             </h2>
             <p className="text-xs mt-0.5" style={{ color: DIMMED }}>No account needed · We reply within 24 hours</p>

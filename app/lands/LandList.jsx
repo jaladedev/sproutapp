@@ -422,7 +422,7 @@ export default function LandList() {
 
       <div
         className="min-h-screen bg-[#0D1F1A]"
-        style={{ fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif" }}
+        style={{ fontFamily: "var(--font-dm-sans), 'Helvetica Neue', sans-serif" }}
       >
         {/* Dot-grid texture */}
         <div
@@ -471,7 +471,7 @@ export default function LandList() {
             </p>
             <h1
               className="text-4xl sm:text-5xl font-bold text-white"
-              style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+              style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}
             >
               Available Lands
             </h1>
@@ -581,7 +581,7 @@ export default function LandList() {
                   <div className="p-5">
                     <h2
                       className="font-bold text-white text-lg leading-snug mb-1"
-                      style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+                      style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}
                     >
                       {land.title}
                     </h2>

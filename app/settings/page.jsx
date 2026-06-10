@@ -89,7 +89,7 @@ function PanelHeader({ item }) {
         <div className="w-9 h-9 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
           <Icon size={15} className="text-amber-500" />
         </div>
-        <h2 className="text-xl text-white font-bold" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+        <h2 className="text-xl text-white font-bold" style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
           {item.label}
         </h2>
       </div>
@@ -167,7 +167,7 @@ export default function Settings() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0D1F1A] text-white" style={{ fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif" }}>
+    <div className="min-h-screen bg-[#0D1F1A] text-white" style={{ fontFamily: "var(--font-dm-sans), 'Helvetica Neue', sans-serif" }}>
 
       {/* dot grid */}
       <div className="absolute inset-0 pointer-events-none opacity-[0.03]"
@@ -186,7 +186,7 @@ export default function Settings() {
           className="overflow-hidden sm:opacity-100! sm:h-auto! mb-6 sm:mb-8"
         >
           <p className="text-xs font-bold tracking-[0.2em] uppercase text-amber-600 mb-2">Account</p>
-          <h1 className="text-3xl sm:text-4xl font-bold text-white" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+          <h1 className="text-3xl sm:text-4xl font-bold text-white" style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
             Settings
           </h1>
           <p className="text-white/60 text-sm mt-1">Manage your profile, security, and verification</p>
@@ -236,7 +236,7 @@ export default function Settings() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <h2 className="text-sm font-bold text-white leading-tight truncate"
-                          style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+                          style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
                           {activeNav.label}
                         </h2>
                         <p className="text-white/55 text-xs truncate">{activeNav.desc}</p>

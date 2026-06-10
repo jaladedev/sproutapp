@@ -183,7 +183,7 @@ export default function MarketplacePage() {
         <div className="flex items-start justify-between gap-4 mb-8 flex-wrap">
           <div>
             <p className="text-xs font-bold tracking-[0.2em] uppercase text-amber-600 mb-2">P2P Exchange</p>
-            <h1 className="text-4xl font-bold text-white" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+            <h1 className="text-4xl font-bold text-white" style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
               Land Marketplace
             </h1>
             <p className="text-white/60 mt-1 text-sm">Buy and sell verified land units directly with other investors</p>

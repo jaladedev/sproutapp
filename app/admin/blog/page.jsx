@@ -38,7 +38,7 @@ function StatCard({ icon, label, value, accent }) {
         {icon}
       </div>
       <p className="text-[10px] font-bold uppercase tracking-widest text-white/55 mb-0.5">{label}</p>
-      <p className="text-2xl font-bold text-white" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>{value}</p>
+      <p className="text-2xl font-bold text-white" style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>{value}</p>
     </div>
   );
 }
@@ -112,7 +112,7 @@ function PostModal({ post, categories, tags, onClose, onSaved }) {
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-white/10 sticky top-0 bg-[#0f2820] z-10">
-          <h2 className="text-lg font-bold text-white" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+          <h2 className="text-lg font-bold text-white" style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
             {isEdit ? "Edit Post" : "New Post"}
           </h2>
           <button onClick={onClose}
@@ -397,7 +397,7 @@ export default function AdminBlogPage() {
     : posts;
 
   return (
-    <div className="min-h-screen bg-[#0D1F1A] relative" style={{ fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif" }}>
+    <div className="min-h-screen bg-[#0D1F1A] relative" style={{ fontFamily: "var(--font-dm-sans), 'Helvetica Neue', sans-serif" }}>
       <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
         style={{ backgroundImage: "radial-gradient(circle, #fff 1px, transparent 1px)", backgroundSize: "28px 28px" }} />
       <div className="absolute top-0 left-0 w-[40vw] h-[40vw] rounded-full opacity-10 pointer-events-none"
@@ -413,7 +413,7 @@ export default function AdminBlogPage() {
         <div className="flex flex-wrap items-start justify-between gap-4 mb-8">
           <div>
             <p className="text-xs font-bold tracking-[0.2em] uppercase text-purple-400 mb-2">Admin Panel</p>
-            <h1 className="text-3xl sm:text-4xl font-bold text-white" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+            <h1 className="text-3xl sm:text-4xl font-bold text-white" style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
               Blog
             </h1>
             <p className="text-white/60 mt-1 text-sm">{pagination.total} total posts</p>

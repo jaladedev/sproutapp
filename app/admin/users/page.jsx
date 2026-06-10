@@ -161,7 +161,7 @@ export default function AdminUsersPage() {
   const hasActiveFilters = filters.suspended || filters.is_admin || filters.kyc_status || debouncedSearch;
 
   return (
-    <div className="min-h-screen bg-[#0D1F1A] relative" style={{ fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif" }}>
+    <div className="min-h-screen bg-[#0D1F1A] relative" style={{ fontFamily: "var(--font-dm-sans), 'Helvetica Neue', sans-serif" }}>
       <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
         style={{ backgroundImage: "radial-gradient(circle, #fff 1px, transparent 1px)", backgroundSize: "28px 28px" }} />
       <div className="absolute top-0 right-0 w-[40vw] h-[40vw] rounded-full opacity-10 pointer-events-none"
@@ -176,7 +176,7 @@ export default function AdminUsersPage() {
         <div className="flex flex-wrap items-start justify-between gap-4 mb-6 sm:mb-8">
           <div>
             <p className="text-xs font-bold tracking-[0.2em] uppercase text-cyan-400 mb-2">Admin Panel</p>
-            <h1 className="text-3xl sm:text-4xl font-bold text-white" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+            <h1 className="text-3xl sm:text-4xl font-bold text-white" style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
               User Management
             </h1>
             <p className="text-white/60 mt-1 text-sm">{pagination.total} total users</p>
@@ -350,7 +350,7 @@ export default function AdminUsersPage() {
             <div className="flex items-start justify-between p-4 sm:p-6 border-b border-white/10 sticky top-0 bg-[#0f2820] z-10">
               <div className="min-w-0 flex-1 pr-3">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="text-lg sm:text-xl font-bold text-white" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>{selectedUser.name}</h2>
+                  <h2 className="text-lg sm:text-xl font-bold text-white" style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>{selectedUser.name}</h2>
                   {selectedUser.is_admin    && <Crown size={14} className="text-amber-400" />}
                   {selectedUser.is_suspended && <span className="text-[10px] text-red-400 bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 rounded-full font-bold">Suspended</span>}
                 </div>

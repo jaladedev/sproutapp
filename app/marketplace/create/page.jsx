@@ -116,7 +116,7 @@ export default function CreateListingPage() {
 
         <div className="mb-8">
           <p className="text-xs font-bold tracking-[0.2em] uppercase text-amber-600 mb-2">P2P Exchange</p>
-          <h1 className="text-4xl font-bold text-white" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+          <h1 className="text-4xl font-bold text-white" style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
             List Units for Sale
           </h1>
           <p className="text-white/60 mt-1 text-sm">Set your price and let buyers come to you</p>

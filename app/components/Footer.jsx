@@ -80,7 +80,7 @@ export default function Footer() {
             <span className="text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>crafted by</span>
             <span
               style={{
-                fontFamily: "'Great Vibes', cursive",
+                fontFamily: "var(--font-great-vibes), cursive",
                 fontSize: "1.25rem",
                 background: "linear-gradient(90deg, #C8873A, #E8A850, #C8873A)",
                 backgroundSize: "200% auto",

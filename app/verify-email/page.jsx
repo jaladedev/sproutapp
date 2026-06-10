@@ -97,7 +97,7 @@ export default function VerifyEmail() {
   return (
     <div
       className="min-h-screen bg-[#0D1F1A] flex items-center justify-center px-4 py-10 relative overflow-hidden"
-      style={{ fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif" }}
+      style={{ fontFamily: "var(--font-dm-sans), 'Helvetica Neue', sans-serif" }}
     >
       {/* Background */}
       <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
@@ -113,7 +113,7 @@ export default function VerifyEmail() {
         <div className="text-center mb-6">
           <p className="text-xs font-bold tracking-[0.2em] uppercase text-amber-600 mb-1">Sproutvest</p>
           <h1 className="text-2xl sm:text-3xl font-bold text-white"
-            style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+            style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
             Land Investment
           </h1>
         </div>
@@ -127,7 +127,7 @@ export default function VerifyEmail() {
               <MailCheck className="text-amber-500" size={24} />
             </div>
             <h2 className="text-xl sm:text-2xl font-bold text-white text-center"
-              style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+              style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
               Verify Your Email
             </h2>
             {email && (

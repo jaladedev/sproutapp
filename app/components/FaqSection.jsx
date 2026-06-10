@@ -72,7 +72,7 @@ export default function FaqSection() {
       <div className="mt-8 text-center">
         <Link
           href="https://reu.ng/support"
-          className="inline-flex items-center gap-1.5 text-sm font-bold text-amber-700 hover:text-amber-600 transition-colors">
+          className="inline-flex items-center gap-1.5 text-sm font-bold text-amber-400 hover:text-amber-600 transition-colors">
           View all FAQs <ChevronRight size={14} />
         </Link>
       </div>

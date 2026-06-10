@@ -212,7 +212,7 @@ export default function Dashboard() {
   return (
     <div
       className="min-h-screen bg-[#0D1F1A] relative overflow-x-clip"
-      style={{ fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif" }}
+      style={{ fontFamily: "var(--font-dm-sans), 'Helvetica Neue', sans-serif" }}
     >
       <main className="relative max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-5">
 
@@ -235,7 +235,7 @@ export default function Dashboard() {
               <div className="flex items-center gap-2 flex-wrap">
                 <h1
                   className="text-2xl sm:text-4xl font-bold leading-tight"
-                  style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+                  style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}
                 >
                   <span className="text-white">{greetingText}, </span>
                   {/* Solid color — eliminates gradient-text layer promotion */}
@@ -519,7 +519,7 @@ function TransactionsSection({ transactions, loading, error, onRetry }) {
           </div>
           <p
             className="font-bold text-[#7aab97] text-sm mb-1"
-            style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+            style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}
           >
             No transactions yet
           </p>
@@ -630,7 +630,7 @@ function TransactionsSection({ transactions, loading, error, onRetry }) {
                   <td className="px-5 py-4 text-right">
                     <span
                       className={`font-bold tabular-nums text-[0.9rem] ${color}`}
-                      style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+                      style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}
                     >
                       {sign}₦{amountNaira.toLocaleString("en-NG")}
                     </span>

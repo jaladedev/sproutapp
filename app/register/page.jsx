@@ -179,7 +179,7 @@ function RegisterForm() {
   return (
     <div
       className="min-h-screen bg-[#071410] flex items-stretch relative overflow-hidden"
-      style={{ fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif" }}
+      style={{ fontFamily: "var(--font-dm-sans), 'Helvetica Neue', sans-serif" }}
     >
       {/* Left decorative panel */}
       <div className="hidden lg:flex lg:w-[44%] xl:w-[42%] relative flex-col justify-center p-12 overflow-hidden">
@@ -197,7 +197,7 @@ function RegisterForm() {
           <img src="/reu_ng_logo.svg" alt={APP_NAME} className="h-20 w-auto" />
           </div>
           <h2 className="text-4xl xl:text-5xl font-bold text-white leading-[1.1] mb-6"
-            style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+            style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
             Build real<br />
             <span style={{ color: "#C8873A" }}>wealth</span> in<br />
             Nigerian land.
@@ -225,7 +225,7 @@ function RegisterForm() {
           </div>
 
           <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="mb-8">
-            <h1 className="text-3xl font-bold text-white mb-1.5" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+            <h1 className="text-3xl font-bold text-white mb-1.5" style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
               Create account
             </h1>
             <p className="hover:border-white/[0.35] text-sm">Start your investment journey today</p>

@@ -285,7 +285,7 @@ function PriceTrendPanel({ valuations = [] }) {
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.26em] text-amber-500/60 mb-1">Price Trend</p>
           <div className="flex items-baseline gap-2">
-            <p className="text-3xl font-bold text-white" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+            <p className="text-3xl font-bold text-white" style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
               {fmtVal(lastVal)}
             </p>
             {yoyGrowth !== null && (
@@ -421,7 +421,7 @@ function PriceTrendPanel({ valuations = [] }) {
               className={`px-4 py-3 flex flex-col gap-0.5 ${isLast ? "bg-amber-500/5" : "bg-transparent"}`}>
               <span className="text-[9px] font-black uppercase tracking-[0.18em] text-white/25">{label}</span>
               <span className={`text-sm font-bold tabular-nums ${isLast ? "text-amber-400" : "text-white/70"}`}
-                style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+                style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
                 {fmtVal(value)}
               </span>
               {deltaP !== null && (
@@ -525,7 +525,7 @@ function SlideTile({ slide, index, label, style, className = "", onClick, overla
         onError={(e) => { if (!e.target.dataset.errored) { e.target.dataset.errored = "1"; e.target.src = "/no-image.jpeg"; } }} />
       {overlayCount > 0 ? (
         <div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(13,31,26,0.70)" }}>
-          <span className="text-white text-2xl font-bold" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+          <span className="text-white text-2xl font-bold" style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
             +{overlayCount}
           </span>
         </div>
@@ -787,7 +787,7 @@ export default function LandDetails() {
   const neighbouringTx = land.neighbouring_transactions ?? [];
 
   return (
-    <div className="min-h-screen bg-[#0D1F1A] relative" style={{ fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif" }}>
+    <div className="min-h-screen bg-[#0D1F1A] relative" style={{ fontFamily: "var(--font-dm-sans), 'Helvetica Neue', sans-serif" }}>
       <div className="fixed inset-0 opacity-[0.03] pointer-events-none z-0"
         style={{ backgroundImage: "radial-gradient(circle, #fff 1px, transparent 1px)", backgroundSize: "28px 28px" }} />
 
@@ -814,7 +814,7 @@ export default function LandDetails() {
               </span>
             )}
           </div>
-          <h1 className="text-4xl font-bold text-white mb-3" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+          <h1 className="text-4xl font-bold text-white mb-3" style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
             {land.title}
           </h1>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-white/60 text-sm">
@@ -1113,7 +1113,7 @@ export default function LandDetails() {
                 <p className="text-xs font-bold uppercase tracking-widest text-amber-600 mb-0.5">
                   {modalType === "purchase" ? "Purchase" : "Sell"}
                 </p>
-                <h2 className="text-xl font-bold text-white" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+                <h2 className="text-xl font-bold text-white" style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
                   {land.title}
                 </h2>
               </div>
@@ -1226,7 +1226,7 @@ export default function LandDetails() {
                       <div className="border-t border-white/10 mt-2 pt-2">
                         <div className="flex justify-between items-center">
                           <span className="text-xs font-bold uppercase tracking-wider text-white/50">You pay</span>
-                          <span className="text-xl font-bold text-amber-400" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+                          <span className="text-xl font-bold text-amber-400" style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
                             ₦{preview.total_due_naira.toLocaleString("en-NG", { minimumFractionDigits: 2 })}
                           </span>
                         </div>
@@ -1240,7 +1240,7 @@ export default function LandDetails() {
                   ) : (
                     <>
                       <p className="text-xs text-amber-500/70 uppercase tracking-widest mb-1">Total to Pay</p>
-                      <p className="text-2xl font-bold text-amber-400" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+                      <p className="text-2xl font-bold text-amber-400" style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
                         {formatNaira(Number(unitsInput) * priceKobo)}
                       </p>
                     </>
@@ -1252,7 +1252,7 @@ export default function LandDetails() {
               {modalType === "sell" && sellTotal > 0 && (
                 <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
                   <p className="text-xs text-amber-500/70 uppercase tracking-widest mb-1">You&apos;ll Receive</p>
-                  <p className="text-2xl font-bold text-amber-400" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+                  <p className="text-2xl font-bold text-amber-400" style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
                     {formatNaira(sellTotal)}
                   </p>
                 </div>
@@ -1313,7 +1313,7 @@ export default function LandDetails() {
                 <Lock size={22} className="text-amber-500" />
               </div>
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-amber-600 mb-2">Action Required</p>
-              <h2 className="text-2xl font-bold text-white mb-3" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+              <h2 className="text-2xl font-bold text-white mb-3" style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
                 Set Transaction PIN
               </h2>
               <p className="text-white/60 text-sm mb-6 leading-relaxed">
@@ -1345,7 +1345,7 @@ export default function LandDetails() {
                 <ShieldCheck size={22} className="text-purple-400" />
               </div>
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-purple-500 mb-2">Verification Required</p>
-              <h2 className="text-2xl font-bold text-white mb-3" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+              <h2 className="text-2xl font-bold text-white mb-3" style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
                 Complete KYC First
               </h2>
               <p className="text-white/60 text-sm mb-6 leading-relaxed">

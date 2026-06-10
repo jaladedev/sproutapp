@@ -242,7 +242,7 @@ export default function WalletPage() {
               : <WifiOff    size={28} className="text-white/20" />}
           </div>
           <h2 className="text-xl font-bold text-white mb-2"
-            style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+            style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
             {isServer ? "Server Error" : "Connection Error"}
           </h2>
           <p className="text-white/60 text-sm mb-2 leading-relaxed">
@@ -271,7 +271,7 @@ export default function WalletPage() {
   /* ─── RENDER ────────────────────────────────────────────────────────── */
   return (
     <div className="min-h-screen bg-[#0D1F1A] relative"
-      style={{ fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif" }}>
+      style={{ fontFamily: "var(--font-dm-sans), 'Helvetica Neue', sans-serif" }}>
 
       {/* Dot grid */}
       <div className="absolute inset-0 opacity-[0.03] pointer-events-none z-0"
@@ -283,7 +283,7 @@ export default function WalletPage() {
         <div>
           <p className="text-xs font-bold tracking-[0.2em] uppercase text-amber-600 mb-2">Finance</p>
           <h1 className="text-4xl font-bold text-white"
-            style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+            style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
             My Wallet
           </h1>
           <p className="text-white/60 mt-1 text-sm">Manage your funds securely</p>
@@ -460,7 +460,7 @@ export default function WalletPage() {
                     <div className="border-t border-amber-500/20 pt-2 flex justify-between items-center">
                       <span className="text-xs font-bold uppercase tracking-wider text-amber-500/70">Total</span>
                       <span className="text-xl font-bold text-amber-400"
-                        style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+                        style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
                         ₦{totalPreview.toLocaleString()}
                       </span>
                     </div>

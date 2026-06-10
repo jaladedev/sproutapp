@@ -75,7 +75,7 @@ export default function FeaturedProperties({ lands }) {
 
                 <h3
                   className="text-3xl md:text-4xl font-bold text-white mb-2 leading-tight"
-                  style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+                  style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}
                 >
                   {land.title}
                 </h3>
@@ -89,7 +89,7 @@ export default function FeaturedProperties({ lands }) {
                     <p className="text-white/60 text-xs mb-1">Price per unit</p>
                     <p
                       className="text-3xl font-bold text-amber-400"
-                      style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+                      style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}
                     >
                       ₦{pricePerUnit.toLocaleString()}
                     </p>
@@ -131,19 +131,24 @@ export default function FeaturedProperties({ lands }) {
 
       {/* Dot indicators */}
       {lands.length > 1 && (
-        <div className="flex justify-center gap-2 mt-6">
+        <div className="flex justify-center items-center gap-1 mt-6">
           {lands.map((_, i) => (
             <button
               key={i}
               onClick={() => setCurrent(i)}
-              className="transition-all duration-300 rounded-full"
-              style={{
-                width: i === current ? "28px" : "8px",
-                height: "8px",
-                background: i === current ? "#C8873A" : "rgba(255,255,255,0.3)",
-              }}
+              className="flex items-center justify-center w-6 h-6 rounded-full"
               aria-label={`Go to slide ${i + 1}`}
-            />
+              aria-current={i === current ? "true" : undefined}
+            >
+              <span
+                className="rounded-full transition-all duration-300 block"
+                style={{
+                  width: i === current ? "20px" : "8px",
+                  height: "8px",
+                  background: i === current ? "#C8873A" : "rgba(255,255,255,0.3)",
+                }}
+              />
+            </button>
           ))}
         </div>
       )}

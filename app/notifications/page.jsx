@@ -75,7 +75,7 @@ export default function NotificationsPage() {
 
   return (
     <div className="min-h-screen bg-[#0D1F1A] relative"
-      style={{ fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif" }}>
+      style={{ fontFamily: "var(--font-dm-sans), 'Helvetica Neue', sans-serif" }}>
 
       <div className="absolute inset-0 pointer-events-none"
         style={{ backgroundImage: "radial-gradient(circle, #fff 1px, transparent 1px)", backgroundSize: "28px 28px", opacity: 0.03 }} />
@@ -91,7 +91,7 @@ export default function NotificationsPage() {
             </button>
             <div>
               <p className="text-xs font-bold tracking-[0.2em] uppercase text-amber-600 mb-0.5">Inbox</p>
-              <h1 className="text-2xl font-bold text-white" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+              <h1 className="text-2xl font-bold text-white" style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
                 Notifications
               </h1>
             </div>

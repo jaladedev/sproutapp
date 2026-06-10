@@ -148,7 +148,7 @@ export default function CertificatePage() {
 
   return (
     <div className="min-h-screen bg-[#0D1F1A] relative"
-      style={{ fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif" }}>
+      style={{ fontFamily: "var(--font-dm-sans), 'Helvetica Neue', sans-serif" }}>
 
       {/* Background dot grid */}
       <div className="absolute inset-0 pointer-events-none opacity-[0.03]"
@@ -224,7 +224,7 @@ export default function CertificatePage() {
             </p>
 
             <h1 className="text-2xl font-bold text-white mb-1"
-              style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+              style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
               Certificate of Investment
             </h1>
 
@@ -253,7 +253,7 @@ export default function CertificatePage() {
               <p className="text-xs text-white/55 italic mb-3">This is to certify that</p>
 
               <p className="text-3xl font-bold text-amber-400 mb-3"
-                style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+                style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
                 {cert.owner_name}
               </p>
 
@@ -262,7 +262,7 @@ export default function CertificatePage() {
               </p>
 
               <p className="text-5xl font-bold text-white mb-3"
-                style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+                style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
                 {Number(cert.units).toLocaleString()}
               </p>
               <p className="text-xs font-black tracking-[0.25em] text-white/60">UNITS</p>

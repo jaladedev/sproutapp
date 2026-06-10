@@ -385,7 +385,7 @@ export default function LiveChatView({ onSwitchToAi, initialTicket = null }) {
       </div>
 
       <div>
-        <p className="font-bold text-white text-lg" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+        <p className="font-bold text-white text-lg" style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
           You're in the queue
         </p>
         <p className="text-sm mt-1.5" style={{ color: DIMMED }}>

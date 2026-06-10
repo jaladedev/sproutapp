@@ -47,7 +47,7 @@ function StatCard({ icon, label, value, accent, sub }) {
         {icon}
       </div>
       <p className="text-xs font-bold uppercase tracking-widest text-white/55 mb-1">{label}</p>
-      <p className="text-2xl font-bold text-white" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+      <p className="text-2xl font-bold text-white" style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
         {value}
       </p>
       {sub && <p className="text-xs text-white/25 mt-1">{sub}</p>}
@@ -166,7 +166,7 @@ export default function AdminWaitlistPage() {
   const hasFilters = filterCity || filterBudget || filterInvited || search;
 
   return (
-    <div className="min-h-screen bg-[#0D1F1A] relative" style={{ fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif" }}>
+    <div className="min-h-screen bg-[#0D1F1A] relative" style={{ fontFamily: "var(--font-dm-sans), 'Helvetica Neue', sans-serif" }}>
       {/* Background */}
       <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
         style={{ backgroundImage: "radial-gradient(circle, #fff 1px, transparent 1px)", backgroundSize: "28px 28px" }} />
@@ -183,7 +183,7 @@ export default function AdminWaitlistPage() {
         <div className="flex flex-wrap items-start justify-between gap-4 mb-8">
           <div>
             <p className="text-xs font-bold tracking-[0.2em] uppercase text-amber-600 mb-2">Admin Panel</p>
-            <h1 className="text-3xl sm:text-4xl font-bold text-white" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+            <h1 className="text-3xl sm:text-4xl font-bold text-white" style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
               Waitlist
             </h1>
             <p className="text-white/60 mt-1 text-sm">{pagination.total} people waiting for access</p>

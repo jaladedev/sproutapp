@@ -419,7 +419,7 @@ export default function WaitlistPage() {
     return (
       <main
         className="min-h-screen bg-[#0D1F1A] flex items-center justify-center px-5 py-16"
-        style={{ fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif" }}
+        style={{ fontFamily: "var(--font-dm-sans), 'Helvetica Neue', sans-serif" }}
       >
         <div className="pointer-events-none fixed inset-0 overflow-hidden">
           <div className="absolute top-[-10%] left-[-5%] w-[55vw] h-[55vw] rounded-full opacity-20"
@@ -438,7 +438,7 @@ export default function WaitlistPage() {
 
           <h1
             className="text-4xl font-bold text-white mb-3"
-            style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+            style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}
           >
             You're on the list!
           </h1>
@@ -513,7 +513,7 @@ export default function WaitlistPage() {
   return (
     <main
       className="min-h-screen bg-[#0D1F1A]"
-      style={{ fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif" }}
+      style={{ fontFamily: "var(--font-dm-sans), 'Helvetica Neue', sans-serif" }}
     >
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="absolute top-[-10%] left-[-5%] w-[55vw] h-[55vw] rounded-full opacity-20"
@@ -555,7 +555,7 @@ export default function WaitlistPage() {
                 <div key={s.label} className="text-center p-3 rounded-2xl bg-white/5 border border-white/10">
                   <p
                     className="text-xl font-bold text-amber-400 mb-0.5"
-                    style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+                    style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}
                   >
                     {s.value}
                   </p>
@@ -612,7 +612,7 @@ export default function WaitlistPage() {
               </div>
               <h2
                 className="text-2xl font-bold text-white"
-                style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+                style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}
               >
                 Reserve your spot
               </h2>

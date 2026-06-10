@@ -100,7 +100,7 @@ function LoginForm() {
   return (
     <div
       className="min-h-screen bg-[#0D1F1A] flex items-center justify-center px-4 py-12 relative overflow-hidden"
-      style={{ fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif" }}
+      style={{ fontFamily: "var(--font-dm-sans), 'Helvetica Neue', sans-serif" }}
     >
       {/* Background glows */}
       <div
@@ -134,7 +134,7 @@ function LoginForm() {
         <div className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur-sm p-8 shadow-2xl">
           <h2
             className="text-2xl font-bold text-white mb-1"
-            style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+            style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}
           >
             Sign In
           </h2>

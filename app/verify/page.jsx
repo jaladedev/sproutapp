@@ -100,7 +100,7 @@ function ResultCard({ result, onReset }) {
             <p className="text-xs text-white/55 italic mb-2">Issued to</p>
             <p
               className="text-xl font-bold text-white"
-              style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+              style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}
             >
               {d.owner_name}
             </p>
@@ -222,7 +222,7 @@ function VerifyCertPageInner() {
   return (
     <div
       className="min-h-screen bg-[#0D1F1A] flex flex-col items-center justify-start px-4 py-12"
-      style={{ fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif" }}
+      style={{ fontFamily: "var(--font-dm-sans), 'Helvetica Neue', sans-serif" }}
     >
       {/* Background */}
       <div
@@ -250,7 +250,7 @@ function VerifyCertPageInner() {
           </Link>
           <h1
             className="text-2xl font-bold text-white mt-3 mb-1"
-            style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+            style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}
           >
             Certificate Verification
           </h1>

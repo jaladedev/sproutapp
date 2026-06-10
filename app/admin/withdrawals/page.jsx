@@ -64,7 +64,7 @@ function RejectModal({ withdrawal, onClose, onDone }) {
         <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between">
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.22em] text-red-400/70 mb-0.5">Reject Withdrawal</p>
-            <p className="text-white font-bold" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+            <p className="text-white font-bold" style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
               {fmtNaira(withdrawal.amount_kobo)}
             </p>
           </div>
@@ -136,7 +136,7 @@ function WithdrawalDrawer({ withdrawal, onClose, onApprove, onReject, approving 
         <div className="px-6 py-5 border-b border-white/[0.07] flex items-center justify-between sticky top-0 bg-[#0D1F1A] z-10">
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.22em] text-white/55 mb-0.5">Withdrawal Details</p>
-            <p className="text-xl font-bold text-white" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+            <p className="text-xl font-bold text-white" style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
               {fmtNaira(withdrawal.amount_kobo)}
             </p>
           </div>
@@ -262,7 +262,7 @@ function StatCard({ label, value, sub, accent, icon }) {
         {icon}
       </div>
       <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/25 mb-1">{label}</p>
-      <p className="text-2xl font-bold text-white" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>{value}</p>
+      <p className="text-2xl font-bold text-white" style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>{value}</p>
       {sub && <p className="text-[11px] text-white/25 mt-1">{sub}</p>}
     </div>
   );
@@ -361,7 +361,7 @@ export default function AdminWithdrawalsPage() {
 
   return (
     <div className="min-h-screen bg-[#0D1F1A] relative"
-      style={{ fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif" }}>
+      style={{ fontFamily: "var(--font-dm-sans), 'Helvetica Neue', sans-serif" }}>
 
       {/* Background */}
       <div className="absolute inset-0 pointer-events-none opacity-[0.03]"
@@ -382,7 +382,7 @@ export default function AdminWithdrawalsPage() {
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.26em] text-amber-500/60 mb-2">Admin Panel</p>
             <h1 className="text-3xl sm:text-4xl font-bold text-white"
-              style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+              style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
               Withdrawals
             </h1>
             <p className="hover:border-white/[0.35] text-sm mt-1">{pagination.total} total requests</p>
@@ -485,7 +485,7 @@ export default function AdminWithdrawalsPage() {
 
                   {/* Amount */}
                   <p className="text-sm font-bold text-amber-400 tabular-nums"
-                    style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+                    style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
                     {fmtNaira(w.amount_kobo)}
                   </p>
 
@@ -545,7 +545,7 @@ export default function AdminWithdrawalsPage() {
                   </div>
                   <div className="flex items-center justify-between">
                     <p className="text-lg font-bold text-amber-400"
-                      style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+                      style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
                       {fmtNaira(w.amount_kobo)}
                     </p>
                     <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>

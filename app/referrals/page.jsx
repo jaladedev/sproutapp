@@ -267,7 +267,7 @@ export default function ReferralDashboard() {
                 </p>
                 <p
                   className="text-xl sm:text-2xl font-bold text-white break-all"
-                  style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+                  style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}
                 >
                   {display}
                 </p>
@@ -284,7 +284,7 @@ export default function ReferralDashboard() {
             </div>
             <h2
               className="font-bold text-white text-lg"
-              style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+              style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}
             >
               Rewards Balance
             </h2>
@@ -304,7 +304,7 @@ export default function ReferralDashboard() {
               </div>
               <p
                 className="text-2xl font-bold text-white mb-1"
-                style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+                style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}
               >
                 ₦{koboToNaira(summary.totalKobo)}
               </p>
@@ -336,7 +336,7 @@ export default function ReferralDashboard() {
               </div>
               <p
                 className="text-2xl font-bold text-white mb-1"
-                style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+                style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}
               >
                 {summary.discountCount}
               </p>
@@ -373,7 +373,7 @@ export default function ReferralDashboard() {
               </div>
               <p
                 className="text-2xl font-bold text-white mb-1"
-                style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+                style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}
               >
                 {summary.bonusUnits.toLocaleString()}
               </p>
@@ -391,7 +391,7 @@ export default function ReferralDashboard() {
               </div>
               <h2
                 className="font-bold text-white text-lg"
-                style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+                style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}
               >
                 Your Rewards
               </h2>
@@ -458,7 +458,7 @@ export default function ReferralDashboard() {
               </div>
               <h2
                 className="font-bold text-white text-lg"
-                style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+                style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}
               >
                 Your Referrals
               </h2>
@@ -515,7 +515,7 @@ export default function ReferralDashboard() {
             <div className="text-5xl mb-4">🎁</div>
             <h3
               className="text-xl font-bold text-white mb-2"
-              style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+              style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}
             >
               No Referrals Yet
             </h3>

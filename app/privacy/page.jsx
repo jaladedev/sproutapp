@@ -120,7 +120,7 @@ function getSections(appname, privacyEmail) {
           </ul>
           <p className="mt-4">
             To exercise these rights, please contact us at{" "}
-            <a href={`mailto:${privacyEmail}`} className="text-amber-700 hover:underline">{privacyEmail}</a>.
+            <a href={`mailto:${privacyEmail}`} className="text-amber-400 hover:underline">{privacyEmail}</a>.
           </p>
         </>
       ),
@@ -192,7 +192,7 @@ export default function PrivacyPolicy() {
   const sections = getSections(appname, privacyEmail);
 
   return (
-    <div className="min-h-screen bg-[#FDFAF5]" style={{ fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif" }}>
+    <div className="min-h-screen bg-[#FDFAF5]" style={{ fontFamily: "var(--font-dm-sans), 'Helvetica Neue', sans-serif" }}>
 
       {/* Top bar */}
       <div className="bg-[#0D1F1A] px-6 py-4 flex items-center justify-between">
@@ -213,7 +213,7 @@ export default function PrivacyPolicy() {
             <div>
               <p className="text-xs font-bold tracking-[0.15em] uppercase text-emerald-700">Legal</p>
               <h1 className="text-3xl sm:text-4xl font-bold text-[#0D1F1A]"
-                style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+                style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
                 Privacy Policy
               </h1>
             </div>
@@ -259,7 +259,7 @@ export default function PrivacyPolicy() {
                   {s.number}
                 </span>
                 <h2 className="text-lg font-bold text-[#0D1F1A]"
-                  style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+                  style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
                   {s.title}
                 </h2>
               </div>

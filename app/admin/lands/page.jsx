@@ -74,7 +74,7 @@ export default function AdminLands() {
 
   return (
     <div className="min-h-screen bg-[#0D1F1A] relative"
-      style={{ fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif" }}>
+      style={{ fontFamily: "var(--font-dm-sans), 'Helvetica Neue', sans-serif" }}>
       <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
         style={{ backgroundImage: "radial-gradient(circle, #fff 1px, transparent 1px)", backgroundSize: "28px 28px" }} />
       <div className="absolute bottom-0 left-0 w-[35vw] h-[35vw] rounded-full opacity-10 pointer-events-none"
@@ -89,7 +89,7 @@ export default function AdminLands() {
         <div className="flex items-start justify-between flex-wrap gap-4 mb-10">
           <div>
             <p className="text-xs font-bold tracking-[0.2em] uppercase text-amber-600 mb-2">Admin Panel</p>
-            <h1 className="text-4xl font-bold text-white" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+            <h1 className="text-4xl font-bold text-white" style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
               Manage Lands
             </h1>
             <p className="text-white/60 mt-1 text-sm">{lands.length} total properties</p>
@@ -186,14 +186,14 @@ export default function AdminLands() {
       {showModal && selectedLand && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="w-full max-w-md rounded-3xl border border-white/10 bg-[#0f2820] shadow-2xl overflow-hidden"
-            style={{ fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif" }}>
+            style={{ fontFamily: "var(--font-dm-sans), 'Helvetica Neue', sans-serif" }}>
             <div className="flex items-center justify-between px-6 py-5 border-b border-white/10">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-amber-500/15 flex items-center justify-center">
                   <TrendingUp size={17} className="text-amber-500" />
                 </div>
                 <div>
-                  <h2 className="font-bold text-white text-base" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+                  <h2 className="font-bold text-white text-base" style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
                     Update Price
                   </h2>
                   <p className="text-xs text-white/55 mt-0.5 truncate max-w-45">{selectedLand.title}</p>
@@ -208,7 +208,7 @@ export default function AdminLands() {
             <div className="p-6 space-y-5">
               <div className="bg-white/5 border border-white/10 rounded-xl p-4">
                 <p className="text-xs text-white/55 mb-1">Current Price</p>
-                <p className="text-2xl font-bold text-amber-400" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+                <p className="text-2xl font-bold text-amber-400" style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
                   {formatNaira(currentPrice(selectedLand))}
                 </p>
               </div>

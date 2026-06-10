@@ -203,7 +203,7 @@ function EmptyState() {
         <MessageSquare size={24} className="text-amber-500/40" />
       </div>
       <p className="text-white/60 text-sm font-medium mb-1"
-        style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+        style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
         No active chat
       </p>
       <p className="text-white/20 text-xs leading-relaxed max-w-48">
@@ -423,7 +423,7 @@ export default function AgentChatPage() {
 
   return (
     <div className="h-dvh bg-[#0A1A12] flex flex-col overflow-hidden"
-      style={{ fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif" }}>
+      style={{ fontFamily: "var(--font-dm-sans), 'Helvetica Neue', sans-serif" }}>
 
       {/* ── Top bar ── */}
       <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-white/6 bg-[#0D1F1A] shrink-0">
@@ -446,7 +446,7 @@ export default function AgentChatPage() {
               Agent Dashboard
             </p>
             <p className="text-sm font-bold text-white"
-              style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+              style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
               {mobilePanel === "chat" && activeTicket
                 ? <span className="sm:hidden">{activeTicket.user?.name}</span>
                 : null}

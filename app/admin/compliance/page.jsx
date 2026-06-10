@@ -172,7 +172,7 @@ export default function ComplianceDashboard() {
   return (
     <div
       className="min-h-screen bg-[#0D1F1A] relative"
-      style={{ fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif" }}
+      style={{ fontFamily: "var(--font-dm-sans), 'Helvetica Neue', sans-serif" }}
     >
       {/* Background grid */}
       <div
@@ -201,7 +201,7 @@ export default function ComplianceDashboard() {
             <p className="text-xs font-bold tracking-[0.2em] uppercase text-red-400 mb-2">Compliance</p>
             <h1
               className="text-3xl sm:text-4xl font-bold text-white"
-              style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+              style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}
             >
               Sanctions & PEP Review
             </h1>
@@ -346,7 +346,7 @@ export default function ComplianceDashboard() {
                 <div className="min-w-0 flex-1 pr-3">
                   <h2
                     className="text-lg sm:text-xl font-bold text-white"
-                    style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+                    style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}
                   >
                     Screening Review
                   </h2>

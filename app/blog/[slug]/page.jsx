@@ -60,7 +60,7 @@ const isLoggedIn = !!user;
 
   return (
     <div className="min-h-screen bg-[#0D1F1A] relative"
-      style={{ fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif" }}>
+      style={{ fontFamily: "var(--font-dm-sans), 'Helvetica Neue', sans-serif" }}>
 
       {/* Background */}
       <div className="absolute inset-0 pointer-events-none opacity-[0.03]"
@@ -99,7 +99,7 @@ const isLoggedIn = !!user;
 
         {/* Title */}
         <h1 className="text-3xl sm:text-4xl font-bold text-white leading-tight mb-4"
-          style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+          style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
           {post.title}
         </h1>
 
@@ -153,7 +153,7 @@ const isLoggedIn = !!user;
        {!isLoggedIn && (
         <div className="mt-12 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-6 text-center">
           <p className="text-sm font-bold text-white/80 mb-1"
-            style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+            style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
             Ready to start investing in Nigerian land?
           </p>
           <p className="text-xs hover:border-white/[0.35] mb-4">
