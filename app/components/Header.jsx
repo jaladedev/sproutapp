@@ -150,7 +150,7 @@ export default function Header() {
                 onClick={() => setMenuOpen(false)}
                 aria-label={`${appname} Home`}
               >
-              <Image src="/reu_ng_logo.png" alt={`${appname} logo`} width={130} height={104}
+              <Image src="/reu_ng_logo.png" alt={`${appname} logo`} width={64} height={51}
                 className="h-8 w-auto" />
               </Link>
               <button
