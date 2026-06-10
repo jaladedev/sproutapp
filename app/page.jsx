@@ -125,7 +125,7 @@ async function getLands() {
 // ─── Shared UI helpers ────────────────────────────────────────────────────────
 function SectionLabel({ children }) {
   return (
-    <span className="text-xs font-bold tracking-[0.2em] uppercase text-amber-400 mb-2 block">
+    <span className="text-xs font-bold tracking-[0.2em] uppercase text-amber-600 mb-2 block">
       {children}
     </span>
   );
@@ -145,7 +145,7 @@ function SectionHeading({ children, light = false }) {
 function StatBadge({ value, label }) {
   return (
     <div className="text-center px-2 py-3 rounded-2xl bg-white/5 border border-white/10">
-      <p className="text-lg sm:text-2xl font-bold text-amber-400 leading-tight" style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>{value}</p>
+      <p className="text-lg sm:text-2xl font-bold text-amber-600 leading-tight" style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>{value}</p>
       <p className="text-[10px] sm:text-xs text-white/60 mt-0.5 leading-snug">{label}</p>
     </div>
   );
@@ -179,7 +179,7 @@ export default async function Homepage() {
           </div>
 
           <div className="relative z-10 w-full max-w-4xl mx-auto px-5 sm:px-8 text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 text-amber-400 text-xs font-bold mb-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 text-amber-600 text-xs font-bold mb-6">
             <BadgeCheck size={12} />
             <span>Fully verified land · Legally backed</span>
           </div>
@@ -280,7 +280,7 @@ export default async function Homepage() {
                 },
               ].map((s) => (
                 <div key={s.step} className="bg-white rounded-2xl p-6 border border-stone-100 shadow-sm relative overflow-hidden group hover:shadow-md hover:-translate-y-1 transition-all">
-                  <span className="absolute top-4 right-5 text-5xl font-black text-stone-300" style={{ fontFamily: "'Playfair Display', serif" }}>{s.step}</span>
+                  <span className="absolute top-4 right-5 text-5xl font-black text-stone-400" style={{ fontFamily: "'Playfair Display', serif" }}>{s.step}</span>
                   <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"
                     style={{ background: `${s.accent}18`, color: s.accent }}>
                     {s.icon}
@@ -292,7 +292,7 @@ export default async function Homepage() {
             </div>
             <div className="text-center mt-8">
               <Link href="/register"
-                className="inline-flex items-center gap-2 text-sm font-bold text-amber-400 hover:text-amber-600 transition-colors">
+                className="inline-flex items-center gap-2 text-sm font-bold text-amber-600 hover:text-amber-600 transition-colors">
                 Create your free account <ChevronRight size={15} />
               </Link>
             </div>
@@ -329,7 +329,7 @@ export default async function Homepage() {
                 </div>
               ))}
             </div>
-            <p className="text-center text-xs text-white/20 max-w-lg mx-auto">
+            <p className="text-center text-xs text-white/50 max-w-lg mx-auto">
               ⚠ Projected returns are based on historical market data and are not guaranteed.
               Land investment involves risk. Please read our investment disclosure before committing funds.
             </p>
@@ -497,7 +497,7 @@ export default async function Homepage() {
                 <SectionHeading light>Featured Properties</SectionHeading>
               </div>
               <Link href="/lands"
-                className="flex items-center gap-1.5 text-amber-500 hover:text-amber-400 text-sm font-semibold transition-colors">
+                className="flex items-center gap-1.5 text-amber-500 hover:text-amber-600 text-sm font-semibold transition-colors">
                 View all <ArrowRight size={14} />
               </Link>
             </div>
@@ -600,7 +600,7 @@ export default async function Homepage() {
                 <blockquote key={i} className="bg-white rounded-2xl p-5 sm:p-6 border border-stone-200 shadow-sm">
                   <div className="flex gap-0.5 mb-3">
                     {[...Array(t.rating)].map((_, j) => (
-                      <Star key={j} size={13} className="fill-amber-400 text-amber-400" />
+                      <Star key={j} size={13} className="fill-amber-400 text-amber-600" />
                     ))}
                   </div>
                   <p className="text-[#3D4D43] leading-relaxed mb-3 text-sm italic">"{t.text}"</p>

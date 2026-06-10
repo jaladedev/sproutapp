@@ -155,6 +155,8 @@ export default function Header() {
                 <img
                   src="/reu_ng_logo.svg"
                   alt={`${appname} logo`}
+                  width={117}
+                  height={64}
                   className="h-10 w-auto"
                 />
               </Link>

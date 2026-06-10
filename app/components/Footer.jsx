@@ -106,6 +106,8 @@ function BrandBlock({ user, appname }) {
         <img
           src="/reu_ng_logo.svg"
           alt={`${appname} logo`}
+          width={117}
+          height={64}
           className="h-16 w-auto transition-opacity group-hover:opacity-80"
         />
       </Link>
@@ -139,7 +141,7 @@ function LinkColumns({ user }) {
           <div key={col.heading}>
             <p
               className="text-[10px] font-black uppercase tracking-[0.2em] mb-3"
-              style={{ color: "rgba(255,255,255,0.40)" }}
+              style={{ color: "rgba(255,255,255,0.60)" }}
             >
               {col.heading}
             </p>
