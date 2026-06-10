@@ -54,7 +54,7 @@ function Field({ label, hint, children, index = 0 }) {
       transition={{ duration: 0.35, delay: 0.05 * index, ease: [0.22, 1, 0.36, 1] }}
     >
       {label && (
-        <label className="block text-[11px] font-bold text-white/35 uppercase tracking-[0.12em] mb-2">
+        <label className="block text-[11px] font-bold hover:border-white/[0.35] uppercase tracking-[0.12em] mb-2">
           {label}
           {hint && <span className="normal-case font-normal text-white/20 ml-1">{hint}</span>}
         </label>
@@ -70,7 +70,7 @@ const inputBase =
 
 function inputCls(extra = "", state = "default") {
   const borders = {
-    default: "border-white/8 hover:border-white/18 focus:border-amber-500/60 focus:ring-2 focus:ring-amber-500/15",
+    default: "border-white/[0.08] hover:border-white/18 focus:border-amber-500/60 focus:ring-2 focus:ring-amber-500/15",
     error:   "border-red-500/40 focus:border-red-500/60 focus:ring-2 focus:ring-red-500/10",
     success: "border-emerald-500/40 focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/10",
   };
@@ -111,6 +111,7 @@ function RegisterForm() {
   const [showReferral, setShowReferral]     = useState(false);
   const [referralLocked, setReferralLocked] = useState(false);
   const [step, setStep]                     = useState(1);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   const router = useRouter();
 
@@ -134,7 +135,7 @@ function RegisterForm() {
 
   const step1Valid  = form.first_name.trim() && form.last_name.trim() && form.email.trim();
   const step2Valid  = passedChecks === PASSWORD_CHECKS.length && passwordsMatch;
-  const isFormValid = step1Valid && step2Valid;
+  const isFormValid = step1Valid && step2Valid && acceptedTerms;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -193,7 +194,7 @@ function RegisterForm() {
           style={{ background: "radial-gradient(circle, #C8873A 0%, transparent 65%)" }} />
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-6">
-          <img src="/reu_ng_logo.png" alt={APP_NAME} className="h-20 w-auto" style={{ maxWidth: "180px ", filter: "brightness(2.1)" }} />
+          <img src="/reu_ng_logo.svg" alt={APP_NAME} className="h-20 w-auto" />
           </div>
           <h2 className="text-4xl xl:text-5xl font-bold text-white leading-[1.1] mb-6"
             style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
@@ -201,7 +202,7 @@ function RegisterForm() {
             <span style={{ color: "#C8873A" }}>wealth</span> in<br />
             Nigerian land.
           </h2>
-          <p className="text-white/40 text-sm leading-relaxed max-w-xs">
+          <p className="text-white/60 text-sm leading-relaxed max-w-xs">
             Invest in fully verified land plots across Nigeria — starting from just ₦5,000.
           </p>
         </div>
@@ -220,14 +221,14 @@ function RegisterForm() {
 
           {/* Mobile logo */}
           <div className="flex lg:hidden items-center justify-center gap-2.5 mb-4">
-            <img src="/reu_ng_logo.png" alt={APP_NAME} className="h-20 w-auto" style={{ maxWidth: "180px ", filter: "brightness(2.1)" }} />
+            <img src="/reu_ng_logo.svg" alt={APP_NAME} className="h-20 w-auto"/>
           </div>
 
           <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="mb-8">
             <h1 className="text-3xl font-bold text-white mb-1.5" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
               Create account
             </h1>
-            <p className="text-white/35 text-sm">Start your investment journey today</p>
+            <p className="hover:border-white/[0.35] text-sm">Start your investment journey today</p>
           </motion.div>
 
           {/* Step indicator */}
@@ -316,7 +317,7 @@ function RegisterForm() {
                       </button>
                     ) : (
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} transition={{ duration: 0.2 }}>
-                        <label className="block text-[11px] font-bold text-white/35 uppercase tracking-[0.12em] mb-2">
+                        <label className="block text-[11px] font-bold hover:border-white/[0.35] uppercase tracking-[0.12em] mb-2">
                           Referral code <span className="normal-case font-normal text-white/20">(optional)</span>
                         </label>
                         <div className="relative">
@@ -404,7 +405,7 @@ function RegisterForm() {
                         <motion.ul
                           initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
                           transition={{ duration: 0.2 }}
-                          className="mt-3 space-y-1.5 rounded-2xl border border-white/7 bg-white/3 p-3.5"
+                          className="mt-3 space-y-1.5 rounded-2xl border border-white/7 bg-white/[0.03] p-3.5"
                         >
                           {PASSWORD_CHECKS.map((check, i) => {
                             const passed = check.test.test(form.password);
@@ -442,10 +443,52 @@ function RegisterForm() {
                       <p className="text-xs text-red-400 mt-1.5">Passwords do not match</p>
                     )}
                   </Field>
-
+                  
+                   {/* Terms checkbox — sits above the Back/Submit buttons in Step 2 */}
+                    <label className="flex items-start gap-3 cursor-pointer group mt-1">
+                      <div className="relative mt-0.5 shrink-0">
+                        <input
+                          type="checkbox"
+                          checked={acceptedTerms}
+                          onChange={e => setAcceptedTerms(e.target.checked)}
+                          className="sr-only"
+                        />
+                        <div
+                          className="w-5 h-5 rounded-md border flex items-center justify-center transition-all duration-200"
+                          style={{
+                            background: acceptedTerms
+                              ? "linear-gradient(135deg, #C8873A 0%, #E8A850 100%)"
+                              : "rgba(255,255,255,0.04)",
+                            borderColor: acceptedTerms
+                              ? "#C8873A"
+                              : "rgba(255,255,255,0.12)",
+                            boxShadow: acceptedTerms
+                              ? "0 0 0 3px rgba(200,135,58,0.15)"
+                              : "none",
+                          }}
+                        >
+                          {acceptedTerms && (
+                            <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                              <path d="M1 4L3.5 6.5L9 1" stroke="#071410" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          )}
+                        </div>
+                      </div>
+                      <span className="text-[12px] leading-relaxed text-white/55 group-hover:text-white/45 transition-colors select-none">
+                        I agree to the{" "}
+                        <Link href="/terms" className="text-amber-500/70 hover:text-amber-400 underline underline-offset-2 transition-colors">
+                          Terms of Service
+                        </Link>
+                        {" "}and{" "}
+                        <Link href="/privacy" className="text-amber-500/70 hover:text-amber-400 underline underline-offset-2 transition-colors">
+                          Privacy Policy
+                        </Link>
+                      </span>
+                    </label>
+            
                   <div className="flex gap-3 mt-2">
                     <button type="button" onClick={() => setStep(1)}
-                      className="px-5 py-4 rounded-2xl text-sm font-semibold text-white/40 hover:text-white/70 border border-white/8 hover:border-white/18 transition-all">
+                      className="px-5 py-4 rounded-2xl text-sm font-semibold text-white/60 hover:text-white/70 border border-white/[0.08] hover:border-white/18 transition-all">
                       Back
                     </button>
                     <motion.button type="submit" disabled={loading || !isFormValid}
@@ -477,20 +520,14 @@ function RegisterForm() {
             <div className="flex-1 h-px bg-white/7" />
           </div>
 
-          <p className="text-center text-sm text-white/30">
+          <p className="text-center text-sm text-white/55">
             Already have an account?{" "}
             <Link href="/login" className="text-amber-500 hover:text-amber-400 font-semibold transition-colors">
               Sign in
             </Link>
           </p>
 
-          <p className="text-center text-[11px] text-white/18 mt-5 leading-relaxed">
-            By creating an account you agree to our{" "}
-            <Link href="/terms" className="underline underline-offset-2 hover:text-white/35 transition-colors">Terms</Link>
-            {" "}and{" "}
-            <Link href="/privacy" className="underline underline-offset-2 hover:text-white/35 transition-colors">Privacy Policy</Link>
-          </p>
-        </div>
+      </div>
       </div>
     </div>
   );

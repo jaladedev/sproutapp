@@ -122,13 +122,12 @@ function LoginForm() {
         <div className="text-center mb-10">
           <Link href="/" className="inline-flex items-center justify-center group">
             <img
-              src="/reu_ng_logo.png"
+              src="/reu_ng_logo.svg"
               alt={appname}
               className="h-20 w-auto transition-opacity group-hover:opacity-80"
-              style={{ maxWidth: "180px", filter: "brightness(2.1)" }}
             />
           </Link>
-          <p className="text-white/40 mt-2 text-sm">Welcome back — your portfolio awaits</p>
+          <p className="text-white/60 mt-2 text-sm">Welcome back — your portfolio awaits</p>
         </div>
 
         {/* Card */}
@@ -139,7 +138,7 @@ function LoginForm() {
           >
             Sign In
           </h2>
-          <p className="text-white/40 text-sm mb-8">Enter your credentials to continue</p>
+          <p className="text-white/60 text-sm mb-8">Enter your credentials to continue</p>
 
           {/* Global error */}
           {error && (
@@ -160,7 +159,7 @@ function LoginForm() {
                 Email Address
               </label>
               <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={16} />
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/55" size={16} />
                 <input
                   id="email" name="email" type="email" autoComplete="email"
                   value={form.email} onChange={handleChange}
@@ -190,7 +189,7 @@ function LoginForm() {
                 </Link>
               </div>
               <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={16} />
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/55" size={16} />
                 <input
                   id="password" name="password" autoComplete="current-password"
                   type={showPassword ? "text" : "password"}
@@ -203,7 +202,7 @@ function LoginForm() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-white/55 hover:text-white/60 transition-colors"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -235,14 +234,14 @@ function LoginForm() {
 
           {/* Divider */}
           <div className="flex items-center gap-3 my-7">
-            <div className="flex-1 h-px bg-white/10" />
+            <div className="flex-1 h-px bg-white/[0.01]0" />
             <span className="text-white/20 text-xs">OR</span>
-            <div className="flex-1 h-px bg-white/10" />
+            <div className="flex-1 h-px bg-white/[0.01]0" />
           </div>
 
           {/* Register link */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-1 text-sm">
-            <span className="text-white/40">Don't have an account?</span>
+            <span className="text-white/60">Don't have an account?</span>
             <Link href="/register" className="text-amber-500 hover:text-amber-400 font-semibold transition-colors">
               Create one free
             </Link>
@@ -252,9 +251,9 @@ function LoginForm() {
         {/* Footer */}
         <p className="text-center text-xs text-white/20 mt-6 px-4">
           By continuing, you agree to our{" "}
-          <Link href="/terms" className="underline hover:text-white/40 transition-colors">Terms</Link>
+          <Link href="/terms" className="underline hover:text-white/60 transition-colors">Terms</Link>
           {" "}and{" "}
-          <Link href="/privacy" className="underline hover:text-white/40 transition-colors">Privacy Policy</Link>
+          <Link href="/privacy" className="underline hover:text-white/60 transition-colors">Privacy Policy</Link>
         </p>
       </div>
     </div>

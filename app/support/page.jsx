@@ -39,7 +39,7 @@ const inp =
   `focus:border-amber-500/60 focus:ring-2 focus:ring-amber-500/15 transition-all duration-200`;
 
 const sel = inp + " appearance-none cursor-pointer";
-const lbl = "block text-[10px] font-bold text-white/30 uppercase tracking-[0.15em] mb-2";
+const lbl = "block text-[10px] font-bold text-white/55 uppercase tracking-[0.15em] mb-2";
 
 /* ── Category config ───────────────────────────────────────────────────────── */
 const CATEGORIES = [
@@ -48,7 +48,7 @@ const CATEGORIES = [
   { value: "withdrawal", label: "Withdrawals",          icon: <Landmark size={13} />,       color: "text-cyan-400 bg-cyan-500/10 border-cyan-500/20"          },
   { value: "kyc",        label: "KYC Verification",    icon: <Shield size={13} />,         color: "text-amber-400 bg-amber-500/10 border-amber-500/20"       },
   { value: "investment", label: "Land & Investment",   icon: <TrendingUp size={13} />,     color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" },
-  { value: "other",      label: "Other",                icon: <MoreHorizontal size={13} />, color: "text-white/40 bg-white/5 border-white/10"                 },
+  { value: "other",      label: "Other",                icon: <MoreHorizontal size={13} />, color: "text-white/60 bg-white/5 border-white/10"                 },
 ];
 
 const catCfg = (v) => CATEGORIES.find(c => c.value === v) || CATEGORIES[5];
@@ -58,14 +58,14 @@ const statusCfg = (s = "") => ({
   open:     { cls: "text-amber-400 bg-amber-500/10 border-amber-500/20",       dot: "#F59E0B", icon: <Clock size={10} />,       label: "Open"     },
   waiting:  { cls: "text-blue-400 bg-blue-500/10 border-blue-500/20",          dot: "#60A5FA", icon: <AlertCircle size={10} />, label: "Waiting"  },
   resolved: { cls: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20", dot: "#34D399", icon: <CheckCircle size={10} />, label: "Resolved" },
-  closed:   { cls: "text-white/30 bg-white/5 border-white/10",                 dot: "#6B7280", icon: <XCircle size={10} />,     label: "Closed"   },
-}[s] || { cls: "text-white/30 bg-white/5 border-white/10", dot: "#6B7280", icon: <XCircle size={10} />, label: "Closed" });
+  closed:   { cls: "text-white/55 bg-white/5 border-white/10",                 dot: "#6B7280", icon: <XCircle size={10} />,     label: "Closed"   },
+}[s] || { cls: "text-white/55 bg-white/5 border-white/10", dot: "#6B7280", icon: <XCircle size={10} />, label: "Closed" });
 
 const priorityCfg = (p = "") => ({
   high:   { cls: "text-red-400 bg-red-500/10 border-red-500/20",      label: "High"   },
-  normal: { cls: "text-white/35 bg-white/[0.04] border-white/10",     label: "Normal" },
+  normal: { cls: "hover:border-white/[0.35] bg-white/[0.04] border-white/10",     label: "Normal" },
   low:    { cls: "text-white/20 bg-white/[0.02] border-white/[0.06]", label: "Low"    },
-}[p] || { cls: "text-white/35 bg-white/[0.04] border-white/10", label: "Normal" });
+}[p] || { cls: "hover:border-white/[0.35] bg-white/[0.04] border-white/10", label: "Normal" });
 
 const fmtDate = (d) =>
   d ? new Date(d).toLocaleString("en-NG", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
@@ -99,7 +99,7 @@ function Pill({ active, onClick, children, "data-tab": dataTab }) {
       onClick={onClick}
       data-tab={dataTab}
       className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${
-        active ? "text-[#0A1A13] shadow-lg" : "border border-white/8 text-white/40 hover:text-white hover:bg-white/8"
+        active ? "text-[#0A1A13] shadow-lg" : "border border-white/[0.08] text-white/60 hover:text-white hover:bg-white/[0.08]"
       }`}
       style={active ? { background: grad } : {}}
     >
@@ -159,7 +159,7 @@ function AttachmentLink({ ticketId, message }) {
       {/* Inline image preview once loaded */}
       {fileType === "image" && blobUrl && (
         <div
-          className="mt-2 rounded-xl overflow-hidden cursor-zoom-in border border-white/10 max-w-[200px]"
+          className="mt-2 rounded-xl overflow-hidden cursor-zoom-in border border-white/10 max-w-50"
           onClick={() => setLightbox(true)}
         >
           <img src={blobUrl} alt="attachment" className="w-full h-auto object-cover" />
@@ -169,7 +169,7 @@ function AttachmentLink({ ticketId, message }) {
       {/* Attachment chip */}
       <div className="mt-2 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs bg-white/5 border-white/10 text-white/50">
         <FileIcon size={11} className="shrink-0" />
-        <span className="max-w-[140px] truncate">{fileName}</span>
+        <span className="max-w-35 truncate">{fileName}</span>
         {loading ? (
           <Loader2 size={11} className="animate-spin shrink-0" />
         ) : (
@@ -195,11 +195,11 @@ function AttachmentLink({ ticketId, message }) {
       {/* Lightbox */}
       {lightbox && blobUrl && (
         <div
-          className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black/90 backdrop-blur-sm z-60 flex items-center justify-center p-4"
           onClick={() => setLightbox(false)}
         >
           <button
-            className="absolute top-4 right-4 w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all"
+            className="absolute top-4 right-4 w-9 h-9 rounded-xl bg-white/[0.01]0 hover:bg-white/[0.02]0 flex items-center justify-center text-white transition-all"
             onClick={() => setLightbox(false)}
           >
             <X size={16} />
@@ -212,7 +212,7 @@ function AttachmentLink({ ticketId, message }) {
           />
           <button
             onClick={e => { e.stopPropagation(); handleDownload(); }}
-            className="absolute bottom-4 right-4 flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-all"
+            className="absolute bottom-4 right-4 flex items-center gap-2 px-4 py-2 rounded-xl bg-white/[0.01]0 hover:bg-white/[0.02]0 text-white text-xs font-semibold transition-all"
           >
             <Download size={13} /> Download
           </button>
@@ -260,15 +260,15 @@ export default function SupportPage() {
     <div className="min-h-screen relative" style={{ background: BG, fontFamily: "'DM Sans','Helvetica Neue',sans-serif" }}>
 
       {/* ── Atmospheric background ── */}
-      <div className="fixed inset-0 pointer-events-none" style={{
+      <div className="absolute inset-0 pointer-events-none" style={{
         backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.7) 1px, transparent 1px)",
         backgroundSize: "28px 28px", opacity: 0.025,
       }} />
-      <div className="fixed pointer-events-none" style={{
+      <div className="absolute pointer-events-none" style={{
         top: "-25%", right: "-15%", width: "55vw", height: "55vw",
         borderRadius: "50%", background: `radial-gradient(circle, ${AMBER} 0%, transparent 65%)`, opacity: 0.06,
       }} />
-      <div className="fixed pointer-events-none" style={{
+      <div className="absolute pointer-events-none" style={{
         bottom: "-30%", left: "-10%", width: "40vw", height: "40vw",
         borderRadius: "50%", background: "radial-gradient(circle, #1a5c3a 0%, transparent 65%)", opacity: 0.12,
       }} />
@@ -754,7 +754,7 @@ function TicketDetail({ id, onBack }) {
                 <div className="flex items-center gap-2">
                   <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white/50">
                     <Paperclip size={11} />
-                    <span className="max-w-[200px] truncate">{file.name}</span>
+                    <span className="max-w-50 truncate">{file.name}</span>
                     <span style={{ color: DIMMED }}>({(file.size / 1024).toFixed(0)} KB)</span>
                     <button
                       type="button"
@@ -807,7 +807,7 @@ const FAQ_CATEGORY_ICONS = {
   withdrawal: { icon: <Landmark size={13} />,   color: "text-cyan-400 bg-cyan-500/10 border-cyan-500/20"         },
   kyc:        { icon: <Shield size={13} />,     color: "text-amber-400 bg-amber-500/10 border-amber-500/20"      },
   investment: { icon: <TrendingUp size={13} />, color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"},
-  general:    { icon: <HelpCircle size={13} />, color: "text-white/40 bg-white/5 border-white/10"                },
+  general:    { icon: <HelpCircle size={13} />, color: "text-white/60 bg-white/5 border-white/10"                },
 };
 
 function FaqView({ onContact }) {
@@ -856,7 +856,7 @@ function FaqView({ onContact }) {
             return (
               <button key={c} onClick={() => { setActiveTab(c); setExpanded(null); }}
                 className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold capitalize border transition-all duration-200 ${
-                  isActive ? cfg.color : "bg-white/4 border-white/8 text-white/35 hover:text-white"
+                  isActive ? cfg.color : "bg-white/4 border-white/[0.08] hover:border-white/[0.35] hover:text-white"
                 }`}>
                 {c !== "all" && <span>{cfg.icon}</span>}
                 {c === "all" ? "All Topics" : c}
@@ -887,7 +887,7 @@ function FaqView({ onContact }) {
                 className="rounded-2xl overflow-hidden transition-all duration-200"
                 style={{ background: SURFACE, border: `1px solid ${isOpen ? "rgba(200,135,58,0.25)" : BORDER}` }}>
                 <button onClick={() => setExpanded(isOpen ? null : i)}
-                  className="w-full flex items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-white/3">
+                  className="w-full flex items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-white/[0.03]">
                   <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border ${cfg.color}`}>
                     {cfg.icon}
                   </div>
@@ -993,7 +993,7 @@ function GuestContactForm() {
           <Link href="/login" className="font-semibold transition-colors hover:opacity-80" style={{ color: AMBER }}>
             Sign in
           </Link>{" "}
-          to track your ticket and use AI chat support.
+          to track your ticket.
         </p>
       </div>
     </div>
@@ -1018,7 +1018,7 @@ function GuestContactForm() {
         <Link href="/login"
           className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-[#0A1A13] transition-all hover:scale-[1.02]"
           style={{ background: grad }}>
-          <Sparkles size={12} /> Sign in for AI chat
+          <Sparkles size={12} /> Sign in
         </Link>
       </div>
 

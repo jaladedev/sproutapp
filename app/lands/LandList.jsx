@@ -67,7 +67,7 @@ function AuthPromptModal({ onClose }) {
         {/* Close */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center rounded-full bg-white/5 text-white/30 hover:text-white/70 hover:bg-white/10 transition-all"
+          className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center rounded-full bg-white/5 text-white/55 hover:text-white/70 hover:bg-white/[0.01]0 transition-all"
         >
           <X size={13} />
         </button>
@@ -86,7 +86,7 @@ function AuthPromptModal({ onClose }) {
         >
           Sign in to Invest
         </h2>
-        <p className="text-white/40 text-sm text-center mb-7 leading-relaxed">
+        <p className="text-white/60 text-sm text-center mb-7 leading-relaxed">
           Create a free account or sign in to start investing in
           verified Nigerian land from as little as <strong className="text-white/60">₦5,000</strong>.
         </p>
@@ -140,7 +140,7 @@ function AccountBanner({ pinIsSet, kycStatus }) {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-amber-400">Transaction PIN not set</p>
-            <p className="text-xs text-white/40 mt-0.5">Set a PIN in settings before purchasing units.</p>
+            <p className="text-xs text-white/60 mt-0.5">Set a PIN in settings before purchasing units.</p>
           </div>
           <Link
             href="/settings?tab=pin"
@@ -158,7 +158,7 @@ function AccountBanner({ pinIsSet, kycStatus }) {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-purple-400">Identity Verification Required</p>
-            <p className="text-xs text-white/40 mt-0.5">{kycMessage}</p>
+            <p className="text-xs text-white/60 mt-0.5">{kycMessage}</p>
           </div>
           {["none", "rejected", "resubmit"].includes(kycStatus) && (
             <Link
@@ -185,7 +185,7 @@ function GuestCtaBanner() {
         </div>
         <div>
           <p className="text-sm font-bold text-amber-400">Ready to start investing?</p>
-          <p className="text-xs text-white/35 mt-0.5">Sign up free — own verified land from ₦5,000</p>
+          <p className="text-xs hover:border-white/[0.35] mt-0.5">Sign up free — own verified land from ₦5,000</p>
         </div>
       </div>
       <div className="flex gap-2 shrink-0">
@@ -217,7 +217,7 @@ function TrustBar() {
         [ShieldCheck, "Legally Backed"],
         [TrendingUp,  "15–30% Projected ROI"],
       ].map(([Icon, label]) => (
-        <span key={label} className="flex items-center gap-1.5 text-xs text-white/35">
+        <span key={label} className="flex items-center gap-1.5 text-xs hover:border-white/[0.35]">
           <Icon size={12} className="text-emerald-400" />
           {label}
         </span>
@@ -231,13 +231,13 @@ function TrustBar() {
 function SearchBar({ value, onChange }) {
   return (
     <div className="relative mb-8">
-      <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
+      <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/55 pointer-events-none" />
       <input
         type="search"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="Search by title or location…"
-        className="w-full pl-10 pr-4 py-3 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/25 focus:outline-none focus:border-amber-500/40 focus:bg-white/8 transition-all"
+        className="w-full pl-10 pr-4 py-3 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/25 focus:outline-none focus:border-amber-500/40 focus:bg-white/[0.08] transition-all"
         style={{ fontFamily: "'DM Sans', sans-serif" }}
       />
     </div>
@@ -381,7 +381,7 @@ export default function LandList() {
       <div className="min-h-screen flex items-center justify-center bg-[#0D1F1A]" style={{ fontFamily: "'DM Sans', sans-serif" }}>
         <div className="text-center">
           <div className="w-12 h-12 border-2 border-amber-500/30 border-t-amber-500 rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-white/40 text-sm tracking-widest uppercase">Loading properties</p>
+          <p className="text-white/60 text-sm tracking-widest uppercase">Loading properties</p>
         </div>
       </div>
     );
@@ -441,18 +441,18 @@ export default function LandList() {
                 <MapPin size={12} className="text-amber-500" />
                 <span className="text-white/60 text-xs font-semibold tabular-nums">{visibleLands.length} visible</span>
               </div>
-              <div className="w-px h-5 bg-white/10" />
+              <div className="w-px h-5 bg-white/[0.01]0" />
               <button
                 onClick={() => setShowHeatmap((v) => !v)}
-                className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${showHeatmap ? "text-white" : "text-white/70 hover:text-white hover:bg-white/10"}`}
+                className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${showHeatmap ? "text-white" : "text-white/70 hover:text-white hover:bg-white/[0.01]0"}`}
                 style={showHeatmap ? { background: "linear-gradient(135deg, #f97316, #ef4444)" } : {}}
               >
                 <Flame size={13} />{showHeatmap ? "Hide Heatmap" : "Show Heatmap"}
               </button>
-              <div className="w-px h-5 bg-white/10" />
+              <div className="w-px h-5 bg-white/[0.01]0" />
               <button
                 onClick={() => setIsFullScreen(false)}
-                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold text-white/70 hover:text-white hover:bg-white/10 transition-all"
+                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold text-white/70 hover:text-white hover:bg-white/[0.01]0 transition-all"
               >
                 <X size={13} /> Exit Fullscreen
               </button>
@@ -475,7 +475,7 @@ export default function LandList() {
             >
               Available Lands
             </h1>
-            <p className="text-white/40 mt-2 text-sm">
+            <p className="text-white/60 mt-2 text-sm">
               {visibleLands.length} verified {visibleLands.length === 1 ? "property" : "properties"} in current view
             </p>
           </div>
@@ -585,7 +585,7 @@ export default function LandList() {
                     >
                       {land.title}
                     </h2>
-                    <div className="flex items-center gap-1.5 text-white/40 text-xs mb-4">
+                    <div className="flex items-center gap-1.5 text-white/60 text-xs mb-4">
                       <MapPin size={11} />
                       <span>{land.location}</span>
                     </div>
@@ -593,7 +593,7 @@ export default function LandList() {
                     {/* Price / units row */}
                       <div className="flex items-end justify-between mb-5">
                         <div>
-                          <p className="text-xs text-white/30 uppercase tracking-wider mb-0.5">Per Unit</p>
+                          <p className="text-xs text-white/55 uppercase tracking-wider mb-0.5">Per Unit</p>
                           <p className="text-xl font-bold text-amber-400">
                             {priceKobo > 0
                               ? `₦${koboToNaira(priceKobo).toLocaleString()}`
@@ -611,10 +611,10 @@ export default function LandList() {
                           })()}
                         </div>
                         <div className="text-right">
-                          <p className="text-xs text-white/30 uppercase tracking-wider mb-0.5">Available</p>
+                          <p className="text-xs text-white/55 uppercase tracking-wider mb-0.5">Available</p>
                           <p className="text-lg font-bold text-white">
                             {land.available_units?.toLocaleString() ?? "—"}
-                            <span className="text-xs text-white/30 font-normal"> units</span>
+                            <span className="text-xs text-white/55 font-normal"> units</span>
                           </p>
                         </div>
                       </div>
@@ -633,7 +633,7 @@ export default function LandList() {
                       {/* Map pin — always public */}
                       <button
                         onClick={() => focusLandOnMap(land)}
-                        className="px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-amber-500/30 transition-all group/pin"
+                        className="px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/[0.01]0 hover:border-amber-500/30 transition-all group/pin"
                         title="Show on map"
                         aria-label="Show on map"
                       >
@@ -669,7 +669,7 @@ export default function LandList() {
           {/* Bottom guest CTA */}
           {authLoaded && !user && displayedLands.length > 0 && (
             <div className="mt-14 text-center">
-              <p className="text-white/30 text-sm mb-4">
+              <p className="text-white/55 text-sm mb-4">
                 Enjoying the listings? Create an account to start investing.
               </p>
               <Link

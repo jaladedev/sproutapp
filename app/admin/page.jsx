@@ -132,7 +132,7 @@ export default function AdminDashboard() {
         style={{ fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif" }}>
         <div className="text-center">
           <div className="w-10 h-10 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-white/40 text-sm">Loading dashboard...</p>
+          <p className="text-white/60 text-sm">Loading dashboard...</p>
         </div>
       </div>
     );
@@ -259,7 +259,7 @@ export default function AdminDashboard() {
               style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
               Dashboard
             </h1>
-            <p className="text-white/40 mt-1 text-sm">Manage your platform from one central location</p>
+            <p className="text-white/60 mt-1 text-sm">Manage your platform from one central location</p>
           </div>
           <Link href="/admin/lands/create"
             className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-[#0D1F1A] text-sm transition-all hover:scale-105"
@@ -279,7 +279,7 @@ export default function AdminDashboard() {
                   style={{ background: `${card.accent}20`, color: card.accent }}>
                   {card.icon}
                 </div>
-                <p className="text-white/40 text-xs font-semibold uppercase tracking-widest mb-1">{card.label}</p>
+                <p className="text-white/60 text-xs font-semibold uppercase tracking-widest mb-1">{card.label}</p>
                 <p className="text-3xl font-bold text-white mb-4"
                   style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
                   {card.value}
@@ -313,7 +313,7 @@ export default function AdminDashboard() {
                   Land Management
                 </h2>
               </div>
-              <span className="text-xs text-white/30 bg-white/5 px-3 py-1 rounded-full border border-white/10">
+              <span className="text-xs text-white/55 bg-white/5 px-3 py-1 rounded-full border border-white/10">
                 {stats.lands.total} total
               </span>
             </div>
@@ -359,7 +359,7 @@ export default function AdminDashboard() {
                   User Management
                 </h2>
               </div>
-              <span className="text-xs text-white/30 bg-white/5 px-3 py-1 rounded-full border border-white/10">
+              <span className="text-xs text-white/55 bg-white/5 px-3 py-1 rounded-full border border-white/10">
                 {stats.users.total} users
               </span>
             </div>
@@ -405,7 +405,7 @@ export default function AdminDashboard() {
                   Blog Management
                 </h2>
               </div>
-              <span className="text-xs text-white/30 bg-white/5 px-3 py-1 rounded-full border border-white/10">
+              <span className="text-xs text-white/55 bg-white/5 px-3 py-1 rounded-full border border-white/10">
                 {stats.blog.total} posts
               </span>
             </div>
@@ -427,7 +427,7 @@ export default function AdminDashboard() {
                   Referral System
                 </h2>
               </div>
-              <span className="text-xs text-white/30 bg-white/5 px-3 py-1 rounded-full border border-white/10">
+              <span className="text-xs text-white/55 bg-white/5 px-3 py-1 rounded-full border border-white/10">
                 {stats.referrals.total} total
               </span>
             </div>
@@ -515,7 +515,7 @@ export default function AdminDashboard() {
                   {stats.liveChat.queued} in queue
                 </span>
               ) : (
-                <span className="text-xs text-white/30 bg-white/5 px-3 py-1 rounded-full border border-white/10">
+                <span className="text-xs text-white/55 bg-white/5 px-3 py-1 rounded-full border border-white/10">
                   Queue empty
                 </span>
               )}
@@ -563,7 +563,7 @@ export default function AdminDashboard() {
                 { href: "/admin/compliance",                 icon: <Shield          size={20} />, label: "Compliance",   accent: "#EF4444" },
               ].map((action) => (
                 <Link key={action.label} href={action.href}
-                  className="flex flex-col items-center gap-2.5 p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 hover:-translate-y-1 transition-all text-center group">
+                  className="flex flex-col items-center gap-2.5 p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/[0.01]0 hover:-translate-y-1 transition-all text-center group">
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform"
                     style={{ background: `${action.accent}20`, color: action.accent }}>
                     {action.icon}
@@ -586,7 +586,7 @@ function ManagementRow({ href, icon, title, subtitle, accent, highlight }) {
   return (
     <Link href={href}
       className={`flex items-center justify-between p-4 rounded-xl border transition-all group ${
-        highlight ? "border-white/10 bg-white/5 hover:bg-white/10" : "border-transparent hover:bg-white/5"
+        highlight ? "border-white/10 bg-white/5 hover:bg-white/[0.01]0" : "border-transparent hover:bg-white/5"
       }`}>
       <div className="flex items-center gap-3">
         <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
@@ -598,7 +598,7 @@ function ManagementRow({ href, icon, title, subtitle, accent, highlight }) {
         </div>
         <div>
           <p className="text-sm font-semibold text-white/80 group-hover:text-white transition-colors">{title}</p>
-          <p className="text-xs text-white/30">{subtitle}</p>
+          <p className="text-xs text-white/55">{subtitle}</p>
         </div>
       </div>
       <ArrowRight size={14} className="text-white/20 group-hover:text-white/50 group-hover:translate-x-1 transition-all shrink-0" />

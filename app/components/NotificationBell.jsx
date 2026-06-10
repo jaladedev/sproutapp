@@ -78,7 +78,7 @@ export default function NotificationBell() {
       <button
         ref={buttonRef}
         onClick={handleBellClick}
-        className="relative w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-all"
+        className="relative w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/[0.01]0 text-white/50 hover:text-white transition-all"
       >
         <Bell size={16} />
 
@@ -113,7 +113,7 @@ export default function NotificationBell() {
             {unreadCount > 0 && (
               <button
                 onClick={handleMarkAllAsRead}
-                className="flex items-center gap-1 text-xs text-white/30 hover:text-emerald-400 transition-colors"
+                className="flex items-center gap-1 text-xs text-white/55 hover:text-emerald-400 transition-colors"
               >
                 <CheckCheck size={12} />
                 Mark all read
@@ -128,7 +128,7 @@ export default function NotificationBell() {
                 <div className="w-6 h-6 border-2 border-amber-500/30 border-t-amber-500 rounded-full animate-spin" />
               </div>
             ) : notifications.length === 0 ? (
-              <div className="py-10 text-center text-white/30 text-sm">
+              <div className="py-10 text-center text-white/55 text-sm">
                 No notifications yet
               </div>
             ) : (

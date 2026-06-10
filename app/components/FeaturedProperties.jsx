@@ -26,7 +26,7 @@ export default function FeaturedProperties({ lands }) {
     return (
       <div className="text-center py-20 border border-white/10 rounded-2xl">
         <Home size={48} className="mx-auto mb-4 opacity-20 text-white" />
-        <p className="text-white/40">New properties coming soon</p>
+        <p className="text-white/60">New properties coming soon</p>
       </div>
     );
   }
@@ -67,7 +67,7 @@ export default function FeaturedProperties({ lands }) {
                     Featured
                   </span>
                   {land.sold_percentage > 0 && (
-                    <span className="bg-white/20 backdrop-blur-sm text-white text-xs px-3 py-1 rounded-full">
+                    <span className="bg-white/[0.02]0 backdrop-blur-sm text-white text-xs px-3 py-1 rounded-full">
                       {land.sold_percentage}% sold
                     </span>
                   )}
@@ -86,7 +86,7 @@ export default function FeaturedProperties({ lands }) {
 
                 <div className="flex items-center justify-between flex-wrap gap-4">
                   <div>
-                    <p className="text-white/40 text-xs mb-1">Price per unit</p>
+                    <p className="text-white/60 text-xs mb-1">Price per unit</p>
                     <p
                       className="text-3xl font-bold text-amber-400"
                       style={{ fontFamily: "'Playfair Display', Georgia, serif" }}

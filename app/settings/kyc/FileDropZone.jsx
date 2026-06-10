@@ -155,7 +155,7 @@ export default function FileDropZone({
 
   return (
     <div>
-      <label className="block text-xs font-bold text-white/30 uppercase tracking-widest mb-2">
+      <label className="block text-xs font-bold text-white/55 uppercase tracking-widest mb-2">
         {label} {required && <span className="text-red-400">*</span>}
       </label>
 
@@ -241,7 +241,7 @@ export default function FileDropZone({
             style={{ height: "clamp(110px, 26vw, 148px)" }}
           >
             <ImageIcon size={18} className="text-white/20 mb-2" />
-            <p className="text-white/40 text-sm font-medium">Choose from gallery</p>
+            <p className="text-white/60 text-sm font-medium">Choose from gallery</p>
             <p className="text-white/20 text-xs mt-1 text-center px-4">
               JPG, PNG or WebP · max {MAX_MB} MB
             </p>
@@ -254,7 +254,7 @@ export default function FileDropZone({
           <button
             type="button"
             onClick={() => cameraRef.current?.click()}
-            className="mt-2 w-full flex items-center justify-center gap-2 border border-white/10 bg-white/5 hover:bg-white/10 text-white/50 hover:text-white/70 font-semibold text-sm rounded-xl py-3 transition-all touch-manipulation"
+            className="mt-2 w-full flex items-center justify-center gap-2 border border-white/10 bg-white/5 hover:bg-white/[0.01]0 text-white/50 hover:text-white/70 font-semibold text-sm rounded-xl py-3 transition-all touch-manipulation"
           >
             <Camera size={13} className="text-amber-500" />
             Take photo with camera

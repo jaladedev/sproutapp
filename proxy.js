@@ -29,20 +29,20 @@ export function proxy(request) {
 
   const normalizedPath = pathname.replace(/\/+$/, "") || "/";
 
-  const isPublicRoute = PUBLIC_ROUTES.some((route) =>
-    route === "/"
-      ? normalizedPath === "/"
-      : normalizedPath === route || normalizedPath.startsWith(route + "/")
-  );
+  const isPublicRoute = PUBLIC_ROUTES.some((route) => {
+    if (route === "/") return normalizedPath === "/";
+    if (route === "/lands") return normalizedPath === "/lands";
+    return normalizedPath === route || normalizedPath.startsWith(route + "/");
+  });
 
   const isAdminRoute = ADMIN_ROUTES.some((route) =>
     normalizedPath.startsWith(route)
   );
   
   //waitlist redirect
-  if (!token && pathname === "/register") {
-    return NextResponse.redirect(new URL("/waitlist", request.url));
-  }
+  // if (!token && pathname === "/register") {
+  //   return NextResponse.redirect(new URL("/waitlist", request.url));
+  // }
 
   // Logged-in user hitting "/" or auth pages → dashboard
   if (token && (pathname === "/" || pathname === "/login" || pathname === "/register")) {
@@ -57,7 +57,7 @@ export function proxy(request) {
     loginUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(loginUrl);
   }
-
+  
   // Admin route without admin role
   if (isAdminRoute && token && userRole !== "admin") {
     return NextResponse.redirect(new URL("/dashboard", request.url));

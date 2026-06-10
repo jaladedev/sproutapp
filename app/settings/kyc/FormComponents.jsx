@@ -8,7 +8,7 @@ import { STEPS } from "./constants";
 export function Field({ label, required, error, children }) {
   return (
     <div>
-      <label className="block text-xs font-bold text-white/30 uppercase tracking-widest mb-2">
+      <label className="block text-xs font-bold text-white/55 uppercase tracking-widest mb-2">
         {label} {required && <span className="text-red-400">*</span>}
       </label>
       {children}
@@ -44,13 +44,13 @@ export function ProgressRail({ current }) {
                 {done ? <CheckCircle size={13} /> : i + 1}
               </motion.div>
               <span className={`text-xs mt-1.5 font-semibold whitespace-nowrap ${
-                active ? "text-amber-500" : done ? "text-white/40" : "text-white/15"
+                active ? "text-amber-500" : done ? "text-white/60" : "text-white/15"
               }`}>
                 {step}
               </span>
             </div>
             {i < STEPS.length - 1 && (
-              <div className="flex-1 h-px mx-2 mb-5 bg-white/10 rounded-full overflow-hidden">
+              <div className="flex-1 h-px mx-2 mb-5 bg-white/[0.01]0 rounded-full overflow-hidden">
                 <motion.div
                   className="h-full rounded-full"
                   style={{ background: "linear-gradient(90deg, #C8873A, #E8A850)" }}
@@ -87,7 +87,7 @@ export function NavButtons({ step, totalSteps, onNext, onSubmit, onBack, submitt
           type="button"
           onClick={onBack}
           disabled={submitting}
-          className="flex items-center gap-1.5 text-white/30 hover:text-white/60 text-sm font-semibold transition-colors py-2 px-1"
+          className="flex items-center gap-1.5 text-white/55 hover:text-white/60 text-sm font-semibold transition-colors py-2 px-1"
         >
           <ChevronLeft size={15} /> Back
         </button>
@@ -109,7 +109,7 @@ export function NavButtons({ step, totalSteps, onNext, onSubmit, onBack, submitt
           type="button"
           onClick={onSubmit}
           disabled={submitting}
-          className="flex items-center justify-center gap-2 bg-white/10 hover:bg-white/15 border border-white/10 disabled:opacity-50 text-white font-bold text-sm py-3.5 px-6 rounded-xl transition-all active:scale-95 touch-manipulation"
+          className="flex items-center justify-center gap-2 bg-white/[0.01]0 hover:bg-white/[0.01]5 border border-white/10 disabled:opacity-50 text-white font-bold text-sm py-3.5 px-6 rounded-xl transition-all active:scale-95 touch-manipulation"
         >
           {submitting ? (
             <>

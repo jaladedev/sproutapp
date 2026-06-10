@@ -146,7 +146,7 @@ function StatBadge({ value, label }) {
   return (
     <div className="text-center px-2 py-3 rounded-2xl bg-white/5 border border-white/10">
       <p className="text-lg sm:text-2xl font-bold text-amber-400 leading-tight" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>{value}</p>
-      <p className="text-[10px] sm:text-xs text-white/40 mt-0.5 leading-snug">{label}</p>
+      <p className="text-[10px] sm:text-xs text-white/60 mt-0.5 leading-snug">{label}</p>
     </div>
   );
 }
@@ -208,7 +208,7 @@ export default async function Homepage() {
                 <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
               </Link>
               <Link href="/lands"
-                className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl font-semibold text-white border border-white/20 hover:bg-white/10 transition-all text-sm sm:text-base">
+                className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl font-semibold text-white border border-white/20 hover:bg-white/[0.01]0 transition-all text-sm sm:text-base">
                 Browse Properties
               </Link>
             </div>
@@ -221,7 +221,7 @@ export default async function Homepage() {
               <StatBadge value="Multiple cities" label="Major growth corridors in Nigeria" />
             </div>
 
-            <div className="flex flex-wrap justify-center gap-5 text-xs text-white/35">
+            <div className="flex flex-wrap justify-center gap-5 text-xs hover:border-white/[0.35]">
               {[
                 [CheckCircle, "Verified Properties"],
                 [Shield, "Secure Payments"],
@@ -307,7 +307,7 @@ export default async function Homepage() {
             <div className="text-center mb-10">
               <SectionLabel>Returns & ROI</SectionLabel>
               <SectionHeading light>What Your Investment Can Earn</SectionHeading>
-              <p className="text-white/40 mt-3 text-sm max-w-lg mx-auto">
+              <p className="text-white/60 mt-3 text-sm max-w-lg mx-auto">
                 Nigeria's land market is driven by rapid urbanisation, infrastructure
                 investment and rising demand in tier-1 cities.
               </p>
@@ -324,8 +324,8 @@ export default async function Homepage() {
                     {r.icon}
                   </div>
                   <p className="text-2xl font-bold text-white mb-1" style={{ fontFamily: "'Playfair Display', serif" }}>{r.value}</p>
-                  <p className="text-xs font-bold uppercase tracking-widest text-white/40 mb-2">{r.label}</p>
-                  <p className="text-xs text-white/30 leading-relaxed">{r.note}</p>
+                  <p className="text-xs font-bold uppercase tracking-widest text-white/60 mb-2">{r.label}</p>
+                  <p className="text-xs text-white/55 leading-relaxed">{r.note}</p>
                 </div>
               ))}
             </div>
@@ -396,7 +396,7 @@ export default async function Homepage() {
                       <CheckCircle size={15} className="text-emerald-400 shrink-0 mt-0.5" />
                       <div>
                         <p className="text-sm font-bold text-white">{title}</p>
-                        <p className="text-xs text-white/35 mt-0.5 leading-relaxed">{desc}</p>
+                        <p className="text-xs hover:border-white/[0.35] mt-0.5 leading-relaxed">{desc}</p>
                       </div>
                     </li>
                   ))}
@@ -415,7 +415,7 @@ export default async function Homepage() {
                       {d.icon}
                     </div>
                     <p className="text-sm font-bold text-white">{d.label}</p>
-                    <p className="text-xs text-white/30 mt-0.5">{d.sub}</p>
+                    <p className="text-xs text-white/55 mt-0.5">{d.sub}</p>
                   </div>
                 ))}
               </div>
@@ -545,7 +545,7 @@ export default async function Homepage() {
             <div className="text-center mb-10">
               <SectionLabel>Regulatory & Compliance</SectionLabel>
               <SectionHeading light>Built on a Foundation of Trust</SectionHeading>
-              <p className="text-white/40 mt-3 text-sm max-w-lg mx-auto">
+              <p className="text-white/60 mt-3 text-sm max-w-lg mx-auto">
                 {appname} operates within Nigeria's regulatory framework so your
                 investment is always on solid legal ground.
               </p>
@@ -563,7 +563,7 @@ export default async function Homepage() {
                     {c.icon}
                   </div>
                   <h3 className="text-sm font-bold text-white mb-1">{c.title}</h3>
-                  <p className="text-xs text-white/35 leading-relaxed">{c.desc}</p>
+                  <p className="text-xs hover:border-white/[0.35] leading-relaxed">{c.desc}</p>
                 </div>
               ))}
             </div>
@@ -642,7 +642,7 @@ export default async function Homepage() {
                 Start Investing <ArrowRight size={15} className="group-hover:translate-x-1 transition-transform" />
               </Link>
               <Link href="/lands"
-                className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl font-semibold text-white border border-white/20 hover:bg-white/10 transition-all text-sm sm:text-base">
+                className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl font-semibold text-white border border-white/20 hover:bg-white/[0.01]0 transition-all text-sm sm:text-base">
                 Browse Properties
               </Link>
             </div>

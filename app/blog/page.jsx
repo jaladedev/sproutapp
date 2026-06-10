@@ -20,7 +20,7 @@ async function apiFetch(path) {
 function PostCard({ post }) {
   return (
     <Link href={`/blog/${post.slug}`} className="group block">
-      <article className="rounded-2xl border border-white/[0.07] bg-white/[0.025] overflow-hidden hover:border-white/[0.14] hover:bg-white/[0.04] transition-all duration-300 h-full flex flex-col">
+      <article className="rounded-2xl border border-white/[0.07] bg-white/[0.02].5 overflow-hidden hover:border-white/[0.14] hover:bg-white/4 transition-all duration-300 h-full flex flex-col">
 
         {/* Cover image */}
         {post.cover_image_url ? (
@@ -59,13 +59,13 @@ function PostCard({ post }) {
 
           {/* Excerpt */}
           {post.excerpt && (
-            <p className="text-xs text-white/40 leading-relaxed mb-4 flex-1 line-clamp-3">
+            <p className="text-xs text-white/60 leading-relaxed mb-4 flex-1 line-clamp-3">
               {post.excerpt}
             </p>
           )}
 
           {/* Meta */}
-          <div className="flex items-center justify-between mt-auto pt-3 border-t border-white/[0.05]">
+          <div className="flex items-center justify-between mt-auto pt-3 border-t border-white/5">
             <div className="flex items-center gap-3 text-[11px] text-white/25">
               <span className="flex items-center gap-1">
                 <Clock size={10} /> {post.read_time_minutes}m read
@@ -85,7 +85,7 @@ function PostCard({ post }) {
 /* ─── Skeleton card ─────────────────────────────────────────────────────── */
 function SkeletonCard() {
   return (
-    <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] overflow-hidden animate-pulse">
+    <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02].5 overflow-hidden animate-pulse">
       <div className="h-44 bg-white/5" />
       <div className="p-5 space-y-3">
         <div className="h-2.5 bg-white/5 rounded w-1/4" />
@@ -156,9 +156,9 @@ export default function BlogPage() {
       style={{ fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif" }}>
 
       {/* Background */}
-      <div className="fixed inset-0 pointer-events-none opacity-[0.03]"
+      <div className="absolute inset-0 pointer-events-none opacity-[0.03]"
         style={{ backgroundImage: "radial-gradient(circle, #fff 1px, transparent 1px)", backgroundSize: "28px 28px" }} />
-      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[700px] h-[300px] pointer-events-none"
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-175 h-75 pointer-events-none"
         style={{ background: "radial-gradient(ellipse, rgba(200,135,58,0.06) 0%, transparent 70%)" }} />
 
       <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-14">
@@ -172,7 +172,7 @@ export default function BlogPage() {
             style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
             Insights & Updates
           </h1>
-          <p className="text-white/40 max-w-xl mx-auto text-sm leading-relaxed">
+          <p className="text-white/60 max-w-xl mx-auto text-sm leading-relaxed">
             Land investment guides, market updates, and property insights from the {appname} team.
           </p>
         </div>
@@ -197,7 +197,7 @@ export default function BlogPage() {
               className={`px-3.5 py-1.5 rounded-full text-xs font-bold border transition-all ${
                 !activeCategory
                   ? "border-amber-500/50 bg-amber-500/10 text-amber-400"
-                  : "border-white/10 bg-white/5 text-white/40 hover:border-white/20"
+                  : "border-white/10 bg-white/5 text-white/60 hover:border-white/20"
               }`}>
               All
             </button>
@@ -207,7 +207,7 @@ export default function BlogPage() {
                 className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition-all ${
                   activeCategory === c.slug
                     ? "border-amber-500/50 bg-amber-500/10 text-amber-400"
-                    : "border-white/10 bg-white/5 text-white/40 hover:border-white/20"
+                    : "border-white/10 bg-white/5 text-white/60 hover:border-white/20"
                 }`}>
                 <Folder size={10} /> {c.name}
                 <span className="text-white/20">({c.posts_count})</span>
@@ -225,7 +225,7 @@ export default function BlogPage() {
                 className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold border transition-all ${
                   activeTag === t.slug
                     ? "border-amber-500/40 bg-amber-500/8 text-amber-400"
-                    : "border-white/[0.07] bg-transparent text-white/25 hover:border-white/15 hover:text-white/40"
+                    : "border-white/[0.07] bg-transparent text-white/25 hover:border-white/15 hover:text-white/60"
                 }`}>
                 <Tag size={8} /> {t.name}
               </button>
@@ -243,7 +243,7 @@ export default function BlogPage() {
               {meta?.total != null && ` · ${meta.total} result${meta.total !== 1 ? "s" : ""}`}
             </p>
             <button onClick={clearFilters}
-              className="flex items-center gap-1 text-xs text-white/30 hover:text-white/60 transition-colors">
+              className="flex items-center gap-1 text-xs text-white/55 hover:text-white/60 transition-colors">
               <X size={11} /> Clear
             </button>
           </div>
@@ -276,7 +276,7 @@ export default function BlogPage() {
             <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1}
-              className="px-4 py-2 rounded-xl text-xs font-bold border border-white/10 text-white/40 hover:border-white/20 hover:text-white/70 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+              className="px-4 py-2 rounded-xl text-xs font-bold border border-white/10 text-white/60 hover:border-white/20 hover:text-white/70 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
               Previous
             </button>
             <span className="text-xs text-white/25 px-3">
@@ -285,7 +285,7 @@ export default function BlogPage() {
             <button
               onClick={() => setPage((p) => Math.min(meta.last_page, p + 1))}
               disabled={page === meta.last_page}
-              className="px-4 py-2 rounded-xl text-xs font-bold border border-white/10 text-white/40 hover:border-white/20 hover:text-white/70 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+              className="px-4 py-2 rounded-xl text-xs font-bold border border-white/10 text-white/60 hover:border-white/20 hover:text-white/70 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
               Next
             </button>
           </div>

@@ -14,11 +14,11 @@ import {
 const STATUS_CONFIG = {
   open:    { label:"Open",    color:"text-cyan-400",  bg:"bg-cyan-500/10  border-cyan-500/20",  icon:<AlertCircle size={11}/> },
   waiting: { label:"Waiting", color:"text-amber-400", bg:"bg-amber-500/10 border-amber-500/20", icon:<Clock size={11}/> },
-  closed:  { label:"Closed",  color:"text-white/40",  bg:"bg-white/5      border-white/10",     icon:<CheckCircle size={11}/> },
+  closed:  { label:"Closed",  color:"text-white/60",  bg:"bg-white/5      border-white/10",     icon:<CheckCircle size={11}/> },
 };
 
 const PRIORITY_CONFIG = {
-  low:    { label:"Low",    color:"text-white/40", dot:"bg-white/20" },
+  low:    { label:"Low",    color:"text-white/60", dot:"bg-white/[0.02]0" },
   normal: { label:"Normal", color:"text-blue-400", dot:"bg-blue-400" },
   high:   { label:"High",   color:"text-red-400",  dot:"bg-red-400"  },
 };
@@ -99,7 +99,7 @@ function Attachment({ messageId, path, isAdmin }) {
       {/* Inline image preview */}
       {fileType === "image" && blobUrl && (
         <div
-          className="mt-2 rounded-xl overflow-hidden cursor-zoom-in border border-white/10 max-w-[220px]"
+          className="mt-2 rounded-xl overflow-hidden cursor-zoom-in border border-white/10 max-w-55"
           onClick={() => setLightbox(true)}
         >
           <img src={blobUrl} alt="attachment" className="w-full h-auto object-cover"/>
@@ -114,7 +114,7 @@ function Attachment({ messageId, path, isAdmin }) {
         }`}
       >
         <FileIcon size={12} className="shrink-0"/>
-        <span className="max-w-[120px] truncate">{fileName}</span>
+        <span className="max-w-30 truncate">{fileName}</span>
 
         {loading ? (
           <div className={`w-3 h-3 border border-current border-t-transparent rounded-full animate-spin`}/>
@@ -141,11 +141,11 @@ function Attachment({ messageId, path, isAdmin }) {
       {/* Lightbox */}
       {lightbox && blobUrl && (
         <div
-          className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black/90 backdrop-blur-sm z-60 flex items-center justify-center p-4"
           onClick={() => setLightbox(false)}
         >
           <button
-            className="absolute top-4 right-4 w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all"
+            className="absolute top-4 right-4 w-9 h-9 rounded-xl bg-white/[0.01]0 hover:bg-white/[0.02]0 flex items-center justify-center text-white transition-all"
             onClick={() => setLightbox(false)}
           >
             <X size={16}/>
@@ -158,7 +158,7 @@ function Attachment({ messageId, path, isAdmin }) {
           />
           <button
             onClick={e => { e.stopPropagation(); handleDownload(); }}
-            className="absolute bottom-4 right-4 flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-all"
+            className="absolute bottom-4 right-4 flex items-center gap-2 px-4 py-2 rounded-xl bg-white/[0.01]0 hover:bg-white/[0.02]0 text-white text-xs font-semibold transition-all"
           >
             <Download size={13}/> Download
           </button>
@@ -296,7 +296,7 @@ function TicketModal({ ticket, onClose, onUpdate }) {
             <h2 className="text-base font-bold text-white truncate" style={{ fontFamily:"'Playfair Display', Georgia, serif" }}>
               {localTicket.subject}
             </h2>
-            <p className="text-xs text-white/40 mt-0.5">
+            <p className="text-xs text-white/60 mt-0.5">
               {localTicket.user
                 ? `${localTicket.user.name} · ${localTicket.user.email}`
                 : `${localTicket.guest_name} · ${localTicket.guest_email} (guest)`}
@@ -305,7 +305,7 @@ function TicketModal({ ticket, onClose, onUpdate }) {
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/50 hover:text-white transition-all shrink-0"
+            className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/[0.01]0 flex items-center justify-center text-white/50 hover:text-white transition-all shrink-0"
           >
             <X size={16}/>
           </button>
@@ -313,7 +313,7 @@ function TicketModal({ ticket, onClose, onUpdate }) {
 
         {/* Status / Priority controls */}
         <div className="flex items-center gap-2 px-6 py-3 border-b border-white/5 bg-white/5 shrink-0 flex-wrap">
-          <span className="text-xs text-white/30 mr-1">Status:</span>
+          <span className="text-xs text-white/55 mr-1">Status:</span>
           {["open","waiting","closed"].map(s => (
             <button
               key={s}
@@ -321,15 +321,15 @@ function TicketModal({ ticket, onClose, onUpdate }) {
               disabled={statusUpdating || localTicket.status === s}
               className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all border ${
                 localTicket.status === s
-                  ? "bg-white/10 border-white/20 text-white"
-                  : "border-white/5 text-white/40 hover:text-white hover:border-white/20 hover:bg-white/5"
+                  ? "bg-white/[0.01]0 border-white/20 text-white"
+                  : "border-white/5 text-white/60 hover:text-white hover:border-white/20 hover:bg-white/5"
               }`}
             >
               {STATUS_CONFIG[s].label}
             </button>
           ))}
           <div className="ml-auto flex items-center gap-2">
-            <span className="text-xs text-white/30">Priority:</span>
+            <span className="text-xs text-white/55">Priority:</span>
             <DarkSelect
               value={localTicket.priority || "normal"}
               onChange={e => handlePriorityChange(e.target.value)}
@@ -381,11 +381,11 @@ function TicketModal({ ticket, onClose, onUpdate }) {
               <div className="flex items-center gap-2 mb-2 px-1">
                 <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white/60">
                   <Paperclip size={11}/>
-                  <span className="max-w-[200px] truncate">{attachment.name}</span>
-                  <span className="text-white/30">({(attachment.size / 1024).toFixed(0)} KB)</span>
+                  <span className="max-w-50 truncate">{attachment.name}</span>
+                  <span className="text-white/55">({(attachment.size / 1024).toFixed(0)} KB)</span>
                   <button
                     onClick={() => { setAttachment(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
-                    className="text-white/30 hover:text-red-400 transition-colors ml-1"
+                    className="text-white/55 hover:text-red-400 transition-colors ml-1"
                   >
                     <X size={11}/>
                   </button>
@@ -416,7 +416,7 @@ function TicketModal({ ticket, onClose, onUpdate }) {
                     className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-all ${
                       attachment
                         ? "border-cyan-500/40 text-cyan-400 bg-cyan-500/10"
-                        : "border-white/10 text-white/30 hover:border-white/20 hover:text-white/60"
+                        : "border-white/10 text-white/55 hover:border-white/20 hover:text-white/60"
                     }`}
                   >
                     <Paperclip size={12}/>
@@ -442,7 +442,7 @@ function TicketModal({ ticket, onClose, onUpdate }) {
         ) : (
           <div className="p-4 border-t border-white/10 bg-white/5 shrink-0">
             <div className="flex items-center justify-between">
-              <p className="text-xs text-white/30">This ticket is closed.</p>
+              <p className="text-xs text-white/55">This ticket is closed.</p>
               <div className="flex gap-2">
                 <button
                   onClick={() => handleStatusChange("open")}
@@ -543,7 +543,7 @@ function AdminSupportTicketsInner() {
       />
 
       <div className="relative z-10 max-w-7xl mx-auto px-6 py-10">
-        <Link href="/admin" className="inline-flex items-center gap-1.5 text-xs text-white/30 hover:text-white/60 transition-colors mb-8">
+        <Link href="/admin" className="inline-flex items-center gap-1.5 text-xs text-white/55 hover:text-white/60 transition-colors mb-8">
           <ArrowLeft size={13}/> Back to Dashboard
         </Link>
 
@@ -553,7 +553,7 @@ function AdminSupportTicketsInner() {
             <h1 className="text-4xl font-bold text-white" style={{ fontFamily:"'Playfair Display', Georgia, serif" }}>
               Support Tickets
             </h1>
-            <p className="text-white/40 mt-1 text-sm">
+            <p className="text-white/60 mt-1 text-sm">
               {pagination.total} total · {openCount} open · {waitCount} waiting
             </p>
           </div>
@@ -567,7 +567,7 @@ function AdminSupportTicketsInner() {
                 key={tab.value}
                 onClick={() => handleFilterChange("status", tab.value)}
                 className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                  filters.status === tab.value ? "bg-white/10 text-white" : "text-white/40 hover:text-white/70"
+                  filters.status === tab.value ? "bg-white/[0.01]0 text-white" : "text-white/60 hover:text-white/70"
                 }`}
               >
                 {tab.label}
@@ -621,13 +621,13 @@ function AdminSupportTicketsInner() {
         ) : tickets.length === 0 ? (
           <div className="text-center py-24 border border-white/10 rounded-2xl">
             <MessageSquare size={40} className="mx-auto mb-4 text-white/10"/>
-            <p className="text-white/30">No tickets found</p>
+            <p className="text-white/55">No tickets found</p>
           </div>
         ) : (
           <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
             <div className="grid grid-cols-[70px_1.8fr_1fr_1fr_80px_80px_50px] gap-3 px-6 py-3 border-b border-white/10 bg-white/5">
               {["Ref", "Subject / User", "Category", "Status", "Priority", "Updated", ""].map(h => (
-                <span key={h} className="text-xs font-bold uppercase tracking-widest text-white/30">{h}</span>
+                <span key={h} className="text-xs font-bold uppercase tracking-widest text-white/55">{h}</span>
               ))}
             </div>
 
@@ -644,7 +644,7 @@ function AdminSupportTicketsInner() {
                 </code>
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-white truncate">{ticket.subject}</p>
-                  <p className="text-xs text-white/30 mt-0.5 flex items-center gap-1">
+                  <p className="text-xs text-white/55 mt-0.5 flex items-center gap-1">
                     <User size={10}/>{ticket.user?.name || ticket.guest_name || "Guest"}
                     {ticket.latest_message?.attachment_path && (
                       <span className="ml-1 text-white/20 flex items-center gap-0.5">
@@ -656,7 +656,7 @@ function AdminSupportTicketsInner() {
                 <span className="text-xs text-white/50 capitalize">{ticket.category}</span>
                 <StatusBadge status={ticket.status}/>
                 <PriorityDot priority={ticket.priority || "normal"}/>
-                <p className="text-xs text-white/30">{new Date(ticket.updated_at).toLocaleDateString()}</p>
+                <p className="text-xs text-white/55">{new Date(ticket.updated_at).toLocaleDateString()}</p>
                 <Eye size={14} className="text-white/20 hover:text-white/60 transition-colors"/>
               </div>
             ))}
@@ -673,7 +673,7 @@ function AdminSupportTicketsInner() {
                 className={`w-9 h-9 rounded-xl text-sm font-semibold transition-all ${
                   pagination.currentPage === page
                     ? "bg-cyan-500/20 border border-cyan-500/30 text-cyan-400"
-                    : "text-white/30 hover:text-white hover:bg-white/5 border border-transparent"
+                    : "text-white/55 hover:text-white hover:bg-white/5 border border-transparent"
                 }`}
               >
                 {page}

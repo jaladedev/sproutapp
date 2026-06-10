@@ -112,7 +112,7 @@ export default function BankDetails() {
 
         <div className="flex items-start gap-2.5 rounded-xl border border-white/10 bg-white/5 p-3.5 mt-2">
           <Lock size={13} className="text-amber-500 shrink-0 mt-0.5" />
-          <p className="text-xs text-white/40 leading-relaxed">
+          <p className="text-xs text-white/60 leading-relaxed">
             Bank details are locked after being set once. Contact support to change them.
           </p>
         </div>
@@ -173,7 +173,7 @@ export default function BankDetails() {
           <div className="relative">
             <input
               type="text" value={accountName} readOnly
-              className="w-full bg-white/3 border border-emerald-500/20 text-emerald-400 px-4 py-3 rounded-xl text-sm cursor-not-allowed"
+              className="w-full bg-white/[0.03] border border-emerald-500/20 text-emerald-400 px-4 py-3 rounded-xl text-sm cursor-not-allowed"
             />
             <CheckCircle size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-emerald-400" />
           </div>
@@ -201,7 +201,7 @@ export default function BankDetails() {
 function Field({ label, children }) {
   return (
     <div>
-      <label className="block text-xs font-bold uppercase tracking-widest text-white/30 mb-2">{label}</label>
+      <label className="block text-xs font-bold uppercase tracking-widest text-white/55 mb-2">{label}</label>
       {children}
     </div>
   );
@@ -212,7 +212,7 @@ function ReadonlyField({ label, value }) {
     <Field label={label}>
       <input
         type="text" value={value} readOnly
-        className="w-full bg-white/3 border border-white/8 text-white/50 px-4 py-3 rounded-xl text-sm cursor-not-allowed"
+        className="w-full bg-white/[0.03] border border-white/[0.08] text-white/50 px-4 py-3 rounded-xl text-sm cursor-not-allowed"
       />
     </Field>
   );

@@ -48,7 +48,7 @@ const isLoggedIn = !!user;
       <div className="min-h-screen bg-[#0D1F1A] flex items-center justify-center"
         style={{ fontFamily: "'DM Sans', sans-serif" }}>
         <div className="text-center">
-          <p className="text-white/40 mb-4">{error || "Article not found."}</p>
+          <p className="text-white/60 mb-4">{error || "Article not found."}</p>
           <Link href="/blog" className="text-amber-500 hover:text-amber-400 text-sm">← Back to Blog</Link>
         </div>
       </div>
@@ -63,7 +63,7 @@ const isLoggedIn = !!user;
       style={{ fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif" }}>
 
       {/* Background */}
-      <div className="fixed inset-0 pointer-events-none opacity-[0.03]"
+      <div className="absolute inset-0 pointer-events-none opacity-[0.03]"
         style={{ backgroundImage: "radial-gradient(circle, #fff 1px, transparent 1px)", backgroundSize: "28px 28px" }} />
 
       {/* Cover image — full-width hero */}
@@ -83,7 +83,7 @@ const isLoggedIn = !!user;
 
         {/* Back nav */}
         <Link href="/blog"
-          className="inline-flex items-center gap-1.5 text-xs text-white/30 hover:text-white/60 transition-colors mb-8">
+          className="inline-flex items-center gap-1.5 text-xs text-white/55 hover:text-white/60 transition-colors mb-8">
           <ArrowLeft size={13} /> Back to Blog
         </Link>
 
@@ -111,7 +111,7 @@ const isLoggedIn = !!user;
         )}
 
         {/* Meta strip */}
-        <div className="flex flex-wrap items-center gap-4 text-xs text-white/30 mb-8 pb-8 border-b border-white/[0.06]">
+        <div className="flex flex-wrap items-center gap-4 text-xs text-white/55 mb-8 pb-8 border-b border-white/6">
           <span className="flex items-center gap-1.5">
             <Calendar size={11} /> {fmtDate(post.published_at)}
           </span>
@@ -134,14 +134,14 @@ const isLoggedIn = !!user;
 
         {/* Tags */}
         {post.tags?.length > 0 && (
-          <div className="mt-10 pt-8 border-t border-white/[0.06]">
+          <div className="mt-10 pt-8 border-t border-white/6">
             <p className="text-[10px] font-black uppercase tracking-[0.22em] text-white/25 mb-3">Tags</p>
             <div className="flex flex-wrap gap-2">
               {post.tags.map((t) => (
                 <Link
                   key={t.id}
                   href={`/blog?tag=${t.slug}`}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border border-white/10 bg-white/5 text-white/40 hover:border-amber-500/30 hover:text-amber-400 hover:bg-amber-500/5 transition-all">
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border border-white/10 bg-white/5 text-white/60 hover:border-amber-500/30 hover:text-amber-400 hover:bg-amber-500/5 transition-all">
                   <Tag size={9} /> {t.name}
                 </Link>
               ))}
@@ -156,7 +156,7 @@ const isLoggedIn = !!user;
             style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
             Ready to start investing in Nigerian land?
           </p>
-          <p className="text-xs text-white/35 mb-4">
+          <p className="text-xs hover:border-white/[0.35] mb-4">
             Join thousands of investors already on the platform.
           </p>
           <Link href="/register"

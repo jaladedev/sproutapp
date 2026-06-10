@@ -200,7 +200,7 @@ export default function PrivacyPolicy() {
           className="flex items-center gap-2 text-white/70 hover:text-white transition-colors text-sm font-medium">
           <ArrowLeft size={15} /> Back to {appname}
         </Link>
-        <span className="text-white/30 text-xs hidden sm:block">Updated {LAST_UPDATED}</span>
+        <span className="text-white/55 text-xs hidden sm:block">Updated {LAST_UPDATED}</span>
       </div>
 
       <div className="max-w-4xl mx-auto px-6 py-16 sm:py-24">

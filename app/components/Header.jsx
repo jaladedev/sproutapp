@@ -45,8 +45,7 @@ export default function Header() {
         className="w-full border-b"
         style={{
           fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif",
-          background: "rgba(13, 31, 26, 0.95)",
-          backdropFilter: "blur(12px)",
+          background: "#0D1F1A",
           borderColor: "rgba(255,255,255,0.07)",
           position: "relative",
           zIndex: 40,
@@ -54,23 +53,16 @@ export default function Header() {
       >
         <div className="max-w-7xl mx-auto flex items-center justify-between px-5 sm:px-8 py-3 gap-4">
 
-          {/* Logo */}
           <Link
             href={user ? "/dashboard" : "/"}
             className="flex items-center shrink-0 group"
             aria-label={`${appname} Home`}
           >
-          <img
-            src="/reu_ng_logo.png"
-            alt={`${appname} logo`}
-            className="h-16 w-auto transition-opacity group-hover:opacity-80"
-            style={{
-              maxWidth: "160px",
-              filter: "brightness(2.1)",
-              background: "transparent",
-              mixBlendMode: "screen",   
-            }}
-          />
+            <img
+              src="/reu_ng_logo.svg"
+              alt={`${appname} logo`}
+              className="h-16 w-auto transition-opacity group-hover:opacity-80"
+            />
           </Link>
 
           {user && (
@@ -88,8 +80,8 @@ export default function Header() {
                       aria-current={active ? "page" : undefined}
                       className={`relative px-3 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
                         active
-                          ? "text-white bg-white/8"
-                          : "text-white/40 hover:text-white/80 hover:bg-white/5"
+                          ? "text-white bg-white/[0.08]"
+                          : "text-white/60 hover:text-white/80 hover:bg-white/5"
                       }`}
                     >
                       {link.name}
@@ -104,13 +96,12 @@ export default function Header() {
                 })}
               </nav>
 
-              {/* Logout + bell — desktop only */}
               <div className="hidden lg:flex items-center gap-2 shrink-0">
                 <NotificationBell />
                 <button
                   onClick={handleLogout}
                   aria-label="Logout"
-                  className="flex items-center gap-1.5 text-sm text-white/30 hover:text-red-400 transition-colors px-3 py-2 rounded-lg hover:bg-red-500/8"
+                  className="flex items-center gap-1.5 text-sm text-white/55 hover:text-red-400 transition-colors px-3 py-2 rounded-lg hover:bg-red-500/8"
                 >
                   <LogOut size={13} />
                   <span>Logout</span>
@@ -118,11 +109,9 @@ export default function Header() {
               </div>
 
               <div className="lg:hidden flex items-center gap-2 shrink-0">
-                <div className="hidden sm:block">
-                  <NotificationBell />
-                </div>
+                <NotificationBell />
                 <button
-                  className="w-9 h-9 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-all"
+                  className="w-9 h-9 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/[0.01]0 text-white/50 hover:text-white transition-all"
                   onClick={() => setMenuOpen(!menuOpen)}
                   aria-label={menuOpen ? "Close menu" : "Open menu"}
                   aria-expanded={menuOpen}
@@ -135,12 +124,10 @@ export default function Header() {
         </div>
       </header>
 
-      {/* ── Drawer (phones + tablets, below lg) ───────────────────────────── */}
       {user && (
         <>
-          {/* Backdrop */}
           <div
-            className={`fixed inset-0 bg-black/70 backdrop-blur-sm lg:hidden z-40 transition-opacity duration-300 ${
+            className={`fixed inset-0 bg-black/70  lg:hidden z-40 transition-opacity duration-300 ${
               menuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
             }`}
             onClick={() => setMenuOpen(false)}
@@ -159,29 +146,26 @@ export default function Header() {
               borderLeft: "1px solid rgba(255,255,255,0.07)",
             }}
           >
-            {/* Drawer header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-white/8 shrink-0">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.08] shrink-0">
               <Link
                 href={user ? "/dashboard" : "/"}
                 onClick={() => setMenuOpen(false)}
                 aria-label={`${appname} Home`}
               >
                 <img
-                  src="/reu_ng_logo.png"
+                  src="/reu_ng_logo.svg"
                   alt={`${appname} logo`}
                   className="h-10 w-auto"
-                  style={{ maxWidth: "130px", filter: "brightness(2.1)" }}
                 />
               </Link>
               <button
                 onClick={() => setMenuOpen(false)}
-                className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 text-white/40 hover:text-white transition-all"
+                className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/[0.01]0 text-white/60 hover:text-white transition-all"
               >
                 <X size={14} />
               </button>
             </div>
 
-            {/* Scrollable link list */}
             <nav className="flex-1 overflow-y-auto flex flex-col px-3 py-3 gap-0.5">
               {links.map((link) => {
                 const active = pathname === link.path;
@@ -192,8 +176,8 @@ export default function Header() {
                     aria-current={active ? "page" : undefined}
                     className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                       active
-                        ? "bg-white/8 text-white"
-                        : "text-white/40 hover:bg-white/5 hover:text-white/70"
+                        ? "bg-white/[0.08] text-white"
+                        : "text-white/60 hover:bg-white/5 hover:text-white/70"
                     }`}
                   >
                     <span>{link.name}</span>
@@ -210,11 +194,11 @@ export default function Header() {
               })}
             </nav>
 
-            <div className="shrink-0 px-3 pt-4 pb-24 border-t border-white/8 flex items-center justify-between">
-              <div className="sm:hidden">
-                <NotificationBell />
-              </div>
-              <div className="hidden sm:block" /> {/* spacer on tablet */}
+            <div
+              className="shrink-0 px-3 py-4 border-t border-white/[0.08] flex items-center justify-between"
+              style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}
+            >
+              <NotificationBell />
               <button
                 onClick={handleLogout}
                 className="flex items-center gap-2 text-sm text-red-400/60 hover:text-red-400 hover:bg-red-500/8 px-4 py-2.5 rounded-xl transition-all font-medium"

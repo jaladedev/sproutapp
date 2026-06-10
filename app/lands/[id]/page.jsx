@@ -74,11 +74,11 @@ function Section({ title, icon, children, defaultOpen = true, accent = "amber" }
   const a = accentMap[accent] || accentMap.amber;
 
   return (
-    <div className="rounded-2xl border border-white/[0.07] bg-white/2.5 overflow-hidden">
+    <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02].5 overflow-hidden">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between px-5 py-4 hover:bg-white/3 transition-colors"
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-white/[0.03] transition-colors"
       >
         <div className="flex items-center gap-3">
           <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${a.icon}`}>
@@ -105,7 +105,7 @@ function Section({ title, icon, children, defaultOpen = true, accent = "amber" }
 function DataRow({ label, value, highlight, mono, children }) {
   return (
     <div className="flex items-start justify-between gap-4 py-2 border-b border-white/4 last:border-0">
-      <span className="text-xs text-white/35 shrink-0 w-44">{label}</span>
+      <span className="text-xs hover:border-white/[0.35] shrink-0 w-44">{label}</span>
       {children ?? (
         <span className={`text-xs text-right ${
           highlight ? "font-bold text-amber-400" :
@@ -141,10 +141,10 @@ function SignalBar({ strength }) {
   const color = pct >= 70 ? "bg-emerald-400" : pct >= 40 ? "bg-amber-400" : "bg-red-400";
   return (
     <div className="flex items-center gap-2">
-      <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
+      <div className="flex-1 h-1.5 rounded-full bg-white/[0.01]0 overflow-hidden">
         <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
       </div>
-      <span className="text-xs text-white/40 w-8 text-right">{pct}%</span>
+      <span className="text-xs text-white/60 w-8 text-right">{pct}%</span>
     </div>
   );
 }
@@ -168,8 +168,8 @@ function PromoPriceTable({ land }) {
 
   return (
     <div className="mb-10 rounded-2xl border border-white/[0.07] overflow-hidden">
-      <div className="px-5 py-4 border-b border-white/5 bg-white/3">
-        <p className="text-[10px] font-black uppercase tracking-[0.22em] text-white/40">
+      <div className="px-5 py-4 border-b border-white/5 bg-white/[0.03]">
+        <p className="text-[10px] font-black uppercase tracking-[0.22em] text-white/60">
           Price Journey
         </p>
       </div>
@@ -179,17 +179,17 @@ function PromoPriceTable({ land }) {
             key={label}
             className={`flex items-center justify-between px-5 py-3.5 ${isCurrent ? "bg-amber-500/5" : ""}`}
           >
-            <span className={`text-sm ${isCurrent ? "font-bold text-white" : "text-white/40"}`}>
+            <span className={`text-sm ${isCurrent ? "font-bold text-white" : "text-white/60"}`}>
               {label}
             </span>
-            <span className={`text-sm font-bold tabular-nums ${isCurrent ? "text-amber-400" : "text-white/30"}`}
+            <span className={`text-sm font-bold tabular-nums ${isCurrent ? "text-amber-400" : "text-white/55"}`}
               style={isCurrent ? { fontFamily: "'Playfair Display', Georgia, serif" } : {}}>
               ₦{(kobo / 100).toLocaleString()}
             </span>
           </div>
         ))}
       </div>
-      <div className="px-5 py-3 bg-white/2 border-t border-white/5">
+      <div className="px-5 py-3 bg-white/[0.02] border-t border-white/5">
         <p className="text-[10px] text-white/20">
           Promotional prices are for reference only. Purchase price is the current price.
         </p>
@@ -306,7 +306,7 @@ function PriceTrendPanel({ valuations = [] }) {
             </div>
           )}
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
-            <span className="text-[11px] font-semibold text-white/40">{points.length} data points</span>
+            <span className="text-[11px] font-semibold text-white/60">{points.length} data points</span>
           </div>
         </div>
       </div>
@@ -441,7 +441,7 @@ function PriceTrendPanel({ valuations = [] }) {
 function StatCard({ label, value, accent }) {
   return (
     <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-      <p className="text-xs font-bold uppercase tracking-widest text-white/30 mb-1">{label}</p>
+      <p className="text-xs font-bold uppercase tracking-widest text-white/55 mb-1">{label}</p>
       <p className={`text-xl font-bold ${accent ? "text-amber-400" : "text-white"}`}>{value}</p>
     </div>
   );
@@ -471,11 +471,11 @@ function KycBanner({ kycStatus }) {
       </div>
       <div className="flex-1 min-w-0">
         <p className={`text-sm font-bold ${colors.text}`}>Identity Verification Required</p>
-        <p className="text-xs text-white/40 mt-0.5">{config.msg}</p>
+        <p className="text-xs text-white/60 mt-0.5">{config.msg}</p>
       </div>
       {["none", "rejected", "resubmit"].includes(kycStatus) && (
         <Link href="/settings?tab=kyc"
-          className="shrink-0 text-xs font-bold text-white px-3 py-2 rounded-lg border border-white/20 hover:bg-white/10 transition-all">
+          className="shrink-0 text-xs font-bold text-white px-3 py-2 rounded-lg border border-white/20 hover:bg-white/[0.01]0 transition-all">
           {kycStatus === "none" ? "Submit KYC" : "Resubmit"}
         </Link>
       )}
@@ -487,9 +487,9 @@ function KycBanner({ kycStatus }) {
 function BreakdownRow({ label, value, highlight, strikethrough, green, muted }) {
   return (
     <div className="flex justify-between items-center py-1">
-      <span className={`text-xs ${muted ? "text-white/30" : "text-white/50"}`}>{label}</span>
+      <span className={`text-xs ${muted ? "text-white/55" : "text-white/50"}`}>{label}</span>
       <span className={`text-xs font-semibold ${
-        strikethrough ? "line-through text-white/30" :
+        strikethrough ? "line-through text-white/55" :
         green         ? "text-emerald-400" :
         highlight     ? "text-amber-400"   :
         "text-white"
@@ -757,7 +757,7 @@ export default function LandDetails() {
       <div className="min-h-screen flex items-center justify-center bg-[#0D1F1A]" style={{ fontFamily: "'DM Sans', sans-serif" }}>
         <div className="text-center">
           <div className="w-12 h-12 border-2 border-amber-500/30 border-t-amber-500 rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-white/40 text-sm tracking-widest uppercase">Loading property</p>
+          <p className="text-white/60 text-sm tracking-widest uppercase">Loading property</p>
         </div>
       </div>
     );
@@ -792,7 +792,7 @@ export default function LandDetails() {
         style={{ backgroundImage: "radial-gradient(circle, #fff 1px, transparent 1px)", backgroundSize: "28px 28px" }} />
 
       <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 py-10">
-        <Link href="/lands" className="inline-flex items-center gap-1.5 text-xs text-white/30 hover:text-white/60 transition-colors mb-8">
+        <Link href="/lands" className="inline-flex items-center gap-1.5 text-xs text-white/55 hover:text-white/60 transition-colors mb-8">
           <ArrowLeft size={13} /> Back to Lands
         </Link>
 
@@ -817,7 +817,7 @@ export default function LandDetails() {
           <h1 className="text-4xl font-bold text-white mb-3" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
             {land.title}
           </h1>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-white/40 text-sm">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-white/60 text-sm">
             <span className="flex items-center gap-1.5"><MapPin size={13} /> {land.location}</span>
             {land.lga   && <span className="text-white/25">LGA: {land.lga}</span>}
             {land.city  && <span className="text-white/25">{land.city}</span>}
@@ -844,7 +844,7 @@ export default function LandDetails() {
             </div>
             <div className="flex-1">
               <p className="text-sm font-bold text-amber-400 mb-1">Transaction PIN Required</p>
-              <p className="text-xs text-white/40 leading-relaxed">Set a 4-digit transaction PIN before buying or selling land units.</p>
+              <p className="text-xs text-white/60 leading-relaxed">Set a 4-digit transaction PIN before buying or selling land units.</p>
             </div>
             <Link href="/settings?tab=pin"
               className="shrink-0 flex items-center gap-1.5 text-xs font-bold text-[#0D1F1A] px-3 py-2 rounded-lg transition-all hover:scale-105"
@@ -863,11 +863,11 @@ export default function LandDetails() {
             <div>
               <p className="text-xs font-bold uppercase tracking-widest text-amber-500/70 mb-0.5">Your Holdings</p>
               <p className="text-white font-bold text-lg">
-                {userUnits} <span className="text-white/40 text-sm font-normal">units owned</span>
+                {userUnits} <span className="text-white/60 text-sm font-normal">units owned</span>
               </p>
             </div>
             <div className="ml-auto text-right">
-              <p className="text-xs text-white/30 mb-0.5">Est. Value</p>
+              <p className="text-xs text-white/55 mb-0.5">Est. Value</p>
               <p className="text-amber-400 font-bold">{priceKobo > 0 ? formatNaira(userUnits * priceKobo) : "—"}</p>
             </div>
           </div>
@@ -882,7 +882,7 @@ export default function LandDetails() {
           </button>
           {userUnits > 0 && (
             <button onClick={() => openModal("sell")}
-              className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl font-bold text-white border border-white/20 bg-white/5 hover:bg-white/10 transition-all hover:scale-[1.02] active:scale-[0.98]">
+              className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl font-bold text-white border border-white/20 bg-white/5 hover:bg-white/[0.01]0 transition-all hover:scale-[1.02] active:scale-[0.98]">
               <TrendingUp size={16} /> Sell Units
             </button>
           )}
@@ -942,7 +942,7 @@ export default function LandDetails() {
               </div>
               <div className="space-y-1.5">
                 {neighbouringTx.map((tx, i) => (
-                  <div key={i} className="grid grid-cols-4 gap-2 items-center px-3 py-2.5 rounded-xl bg-white/3 border border-white/5">
+                  <div key={i} className="grid grid-cols-4 gap-2 items-center px-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/5">
                     <span className="text-xs text-white/60">
                       {tx.plot_size ? `${Number(tx.plot_size).toLocaleString()} m²` : "—"}
                     </span>
@@ -1118,7 +1118,7 @@ export default function LandDetails() {
                 </h2>
               </div>
               <button onClick={closeModal}
-                className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-white transition-all">
+                className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/[0.01]0 flex items-center justify-center text-white/60 hover:text-white transition-all">
                 <X size={14} />
               </button>
             </div>
@@ -1127,7 +1127,7 @@ export default function LandDetails() {
 
               {/* Units input */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-white/30 mb-2">
+                <label className="block text-xs font-bold uppercase tracking-widest text-white/55 mb-2">
                   Number of Units
                   {maxUnits > 0 && (
                     <span className="ml-2 normal-case text-white/20 font-normal">
@@ -1139,7 +1139,7 @@ export default function LandDetails() {
                   <button type="button"
                     onClick={() => setUnitsInput((v) => String(Math.max(1, Number(v || 1) - 1)))}
                     disabled={!unitsInput || Number(unitsInput) <= 1}
-                    className="w-10 h-10 shrink-0 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-lg font-bold">
+                    className="w-10 h-10 shrink-0 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/[0.01]0 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-lg font-bold">
                     −
                   </button>
                   <input
@@ -1163,7 +1163,7 @@ export default function LandDetails() {
                   <button type="button"
                     onClick={() => setUnitsInput((v) => String(Math.min(maxUnits, Number(v || 0) + 1)))}
                     disabled={maxUnits > 0 && Number(unitsInput) >= maxUnits}
-                    className="w-10 h-10 shrink-0 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-lg font-bold">
+                    className="w-10 h-10 shrink-0 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/[0.01]0 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-lg font-bold">
                     +
                   </button>
                 </div>
@@ -1260,7 +1260,7 @@ export default function LandDetails() {
 
               {/* PIN */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-white/30 mb-2">
+                <label className="block text-xs font-bold uppercase tracking-widest text-white/55 mb-2">
                   Transaction PIN
                 </label>
                 <input type="password" inputMode="numeric" maxLength={4}
@@ -1278,7 +1278,7 @@ export default function LandDetails() {
 
               <div className="flex gap-3 pt-1">
                 <button onClick={closeModal}
-                  className="flex-1 py-3 rounded-xl bg-white/5 border border-white/10 text-white/60 hover:bg-white/10 text-sm font-semibold transition-all">
+                  className="flex-1 py-3 rounded-xl bg-white/5 border border-white/10 text-white/60 hover:bg-white/[0.01]0 text-sm font-semibold transition-all">
                   Cancel
                 </button>
                 <button onClick={handleAction}
@@ -1316,7 +1316,7 @@ export default function LandDetails() {
               <h2 className="text-2xl font-bold text-white mb-3" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
                 Set Transaction PIN
               </h2>
-              <p className="text-white/40 text-sm mb-6 leading-relaxed">
+              <p className="text-white/60 text-sm mb-6 leading-relaxed">
                 You need a 4-digit transaction PIN before buying or selling land units.
               </p>
               <div className="space-y-3">
@@ -1326,7 +1326,7 @@ export default function LandDetails() {
                   <ShieldCheck size={15} /> Go to Settings
                 </Link>
                 <button onClick={() => setShowPinModal(false)}
-                  className="w-full py-3 rounded-xl bg-white/5 border border-white/10 text-white/50 hover:bg-white/10 text-sm font-semibold transition-all">
+                  className="w-full py-3 rounded-xl bg-white/5 border border-white/10 text-white/50 hover:bg-white/[0.01]0 text-sm font-semibold transition-all">
                   Dismiss
                 </button>
               </div>
@@ -1348,7 +1348,7 @@ export default function LandDetails() {
               <h2 className="text-2xl font-bold text-white mb-3" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
                 Complete KYC First
               </h2>
-              <p className="text-white/40 text-sm mb-6 leading-relaxed">
+              <p className="text-white/60 text-sm mb-6 leading-relaxed">
                 {{
                   none:     "Identity verification is required before you can invest.",
                   pending:  "Your KYC is under review. Please wait for approval.",
@@ -1364,7 +1364,7 @@ export default function LandDetails() {
                   </Link>
                 )}
                 <button onClick={() => setShowKycModal(false)}
-                  className="w-full py-3 rounded-xl bg-white/5 border border-white/10 text-white/50 hover:bg-white/10 text-sm font-semibold transition-all">
+                  className="w-full py-3 rounded-xl bg-white/5 border border-white/10 text-white/50 hover:bg-white/[0.01]0 text-sm font-semibold transition-all">
                   Dismiss
                 </button>
               </div>

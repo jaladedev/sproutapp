@@ -131,7 +131,7 @@ export default function VerifyEmail() {
               Verify Your Email
             </h2>
             {email && (
-              <p className="text-white/40 text-sm mt-2 text-center leading-relaxed px-2">
+              <p className="text-white/60 text-sm mt-2 text-center leading-relaxed px-2">
                 We sent a 6-digit code to{" "}
                 <span className="text-white/70 font-semibold break-all">{email}</span>
               </p>
@@ -196,7 +196,7 @@ export default function VerifyEmail() {
 
           {/* Resend */}
           <div className="mt-5 text-center">
-            <p className="text-sm text-white/30">
+            <p className="text-sm text-white/55">
               Didn't receive the code?{" "}
               {cooldown > 0 ? (
                 <span className="text-white/20 cursor-not-allowed">

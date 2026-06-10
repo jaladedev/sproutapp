@@ -105,7 +105,7 @@ export default function SetNewPassword() {
             <h2 className="text-2xl font-bold text-white" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
               Set New Password
             </h2>
-            <p className="text-white/40 text-sm mt-2 text-center">
+            <p className="text-white/60 text-sm mt-2 text-center">
               Choose a strong password for your account
             </p>
           </div>
@@ -125,7 +125,7 @@ export default function SetNewPassword() {
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* New Password */}
             <div>
-              <label className="block text-xs font-bold uppercase tracking-widest text-white/40 mb-2">
+              <label className="block text-xs font-bold uppercase tracking-widest text-white/60 mb-2">
                 New Password
               </label>
               <div className="relative">
@@ -166,7 +166,7 @@ export default function SetNewPassword() {
 
             {/* Confirm Password */}
             <div>
-              <label className="block text-xs font-bold uppercase tracking-widest text-white/40 mb-2">
+              <label className="block text-xs font-bold uppercase tracking-widest text-white/60 mb-2">
                 Confirm Password
               </label>
               <div className="relative">

@@ -13,7 +13,7 @@ function StatusBadge({ status }) {
   const cfg = {
     pending:   { label: "Pending",   color: "text-amber-400",   bg: "bg-amber-500/10  border-amber-500/20",   icon: <Clock size={11} /> },
     completed: { label: "Completed", color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/20", icon: <CheckCircle size={11} /> },
-  }[status] || { label: status, color: "text-white/40", bg: "bg-white/5 border-white/10", icon: null };
+  }[status] || { label: status, color: "text-white/60", bg: "bg-white/5 border-white/10", icon: null };
 
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${cfg.color} ${cfg.bg}`}>
@@ -63,7 +63,7 @@ export default function AdminReferralManagement() {
 
       <div className="relative z-10 max-w-7xl mx-auto px-6 py-10">
 
-       <Link href="/admin" className="inline-flex items-center gap-1.5 text-xs text-white/30 hover:text-white/60 transition-colors mb-8">
+       <Link href="/admin" className="inline-flex items-center gap-1.5 text-xs text-white/55 hover:text-white/60 transition-colors mb-8">
           ← Back to Dashboard
         </Link>
 
@@ -73,7 +73,7 @@ export default function AdminReferralManagement() {
           <h1 className="text-4xl font-bold text-white" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
             Referral System
           </h1>
-          <p className="text-white/40 mt-1 text-sm">Track referrals, rewards, and top performers</p>
+          <p className="text-white/60 mt-1 text-sm">Track referrals, rewards, and top performers</p>
         </div>
 
         {loading ? (
@@ -107,7 +107,7 @@ export default function AdminReferralManagement() {
                       style={{ background: `${card.accent}20`, color: card.accent }}>
                       {card.icon}
                     </div>
-                    <p className="text-xs font-bold uppercase tracking-widest text-white/30 mb-1">{card.label}</p>
+                    <p className="text-xs font-bold uppercase tracking-widest text-white/55 mb-1">{card.label}</p>
                     <p className="text-3xl font-bold text-white" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
                       {card.value}
                     </p>
@@ -132,7 +132,7 @@ export default function AdminReferralManagement() {
                 {/* Table header */}
                 <div className="grid grid-cols-[40px_1.5fr_1.5fr_1fr_80px] gap-4 px-6 py-3 border-b border-white/5 bg-white/5">
                   {["#", "Name", "Email", "Code", "Referrals"].map((h) => (
-                    <span key={h} className="text-xs font-bold uppercase tracking-widest text-white/30">{h}</span>
+                    <span key={h} className="text-xs font-bold uppercase tracking-widest text-white/55">{h}</span>
                   ))}
                 </div>
 
@@ -145,8 +145,8 @@ export default function AdminReferralManagement() {
                   >
                     <span className="text-lg">{MEDAL[i] || `#${i + 1}`}</span>
                     <p className="text-sm font-semibold text-white">{referrer.name}</p>
-                    <p className="text-sm text-white/40 truncate">{referrer.email}</p>
-                    <code className="text-xs bg-white/10 border border-white/10 px-2 py-1 rounded-lg text-amber-400 font-mono w-fit">
+                    <p className="text-sm text-white/60 truncate">{referrer.email}</p>
+                    <code className="text-xs bg-white/[0.01]0 border border-white/10 px-2 py-1 rounded-lg text-amber-400 font-mono w-fit">
                       {referrer.referral_code}
                     </code>
                     <span
@@ -179,7 +179,7 @@ export default function AdminReferralManagement() {
                       key={s}
                       onClick={() => setFilter(s)}
                       className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all capitalize ${
-                        filter === s ? "bg-white/10 text-white" : "text-white/40 hover:text-white/70"
+                        filter === s ? "bg-white/[0.01]0 text-white" : "text-white/60 hover:text-white/70"
                       }`}
                     >
                       {s === "all" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
@@ -191,14 +191,14 @@ export default function AdminReferralManagement() {
               {referrals.length === 0 ? (
                 <div className="text-center py-16">
                   <Gift size={36} className="mx-auto mb-3 text-white/10" />
-                  <p className="text-white/30 text-sm">No {filter !== "all" ? filter : ""} referrals found</p>
+                  <p className="text-white/55 text-sm">No {filter !== "all" ? filter : ""} referrals found</p>
                 </div>
               ) : (
                 <>
                   {/* Table header */}
                   <div className="grid grid-cols-[1.5fr_1.5fr_1fr_1fr_1fr] gap-4 px-6 py-3 border-b border-white/5 bg-white/5">
                     {["Referrer", "Referred User", "Status", "Created", "Completed"].map((h) => (
-                      <span key={h} className="text-xs font-bold uppercase tracking-widest text-white/30">{h}</span>
+                      <span key={h} className="text-xs font-bold uppercase tracking-widest text-white/55">{h}</span>
                     ))}
                   </div>
 
@@ -211,15 +211,15 @@ export default function AdminReferralManagement() {
                     >
                       <div>
                         <p className="text-sm font-semibold text-white">{referral.referrer.name}</p>
-                        <p className="text-xs text-white/30 mt-0.5">{referral.referrer.email}</p>
+                        <p className="text-xs text-white/55 mt-0.5">{referral.referrer.email}</p>
                       </div>
                       <div>
                         <p className="text-sm font-semibold text-white">{referral.referred_user.name}</p>
-                        <p className="text-xs text-white/30 mt-0.5">{referral.referred_user.email}</p>
+                        <p className="text-xs text-white/55 mt-0.5">{referral.referred_user.email}</p>
                       </div>
                       <StatusBadge status={referral.status} />
-                      <p className="text-sm text-white/40">{new Date(referral.created_at).toLocaleDateString()}</p>
-                      <p className="text-sm text-white/40">
+                      <p className="text-sm text-white/60">{new Date(referral.created_at).toLocaleDateString()}</p>
+                      <p className="text-sm text-white/60">
                         {referral.completed_at ? new Date(referral.completed_at).toLocaleDateString() : "—"}
                       </p>
                     </div>

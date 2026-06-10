@@ -117,7 +117,7 @@ export default function ResetVerify() {
             <h2 className="text-2xl font-bold text-white" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
               Verify Code
             </h2>
-            <p className="text-white/40 text-sm mt-2 text-center leading-relaxed">
+            <p className="text-white/60 text-sm mt-2 text-center leading-relaxed">
               We sent a 6-digit code to<br />
               <span className="text-white/70 font-semibold">{email || "your email"}</span>
             </p>
@@ -174,7 +174,7 @@ export default function ResetVerify() {
 
           {/* Resend & back */}
           <div className="mt-6 space-y-3 text-center">
-            <p className="text-sm text-white/30">
+            <p className="text-sm text-white/55">
               Didn't receive the code?{" "}
               <button
                 type="button"

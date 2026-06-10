@@ -77,7 +77,7 @@ export default function NotificationsPage() {
     <div className="min-h-screen bg-[#0D1F1A] relative"
       style={{ fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif" }}>
 
-      <div className="fixed inset-0 pointer-events-none"
+      <div className="absolute inset-0 pointer-events-none"
         style={{ backgroundImage: "radial-gradient(circle, #fff 1px, transparent 1px)", backgroundSize: "28px 28px", opacity: 0.03 }} />
 
       <div className="relative max-w-2xl mx-auto px-4 py-8 sm:py-12">
@@ -86,7 +86,7 @@ export default function NotificationsPage() {
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
             <button onClick={() => router.back()}
-              className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/40 hover:text-white transition-all">
+              className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/[0.01]0 border border-white/10 text-white/60 hover:text-white transition-all">
               <ArrowLeft size={15} />
             </button>
             <div>
@@ -99,7 +99,7 @@ export default function NotificationsPage() {
 
           {unreadCount > 0 && (
             <button onClick={handleMarkAllAsRead}
-              className="flex items-center gap-1.5 text-xs font-semibold text-white/30 hover:text-emerald-400 transition-colors px-3 py-2 rounded-xl hover:bg-emerald-500/10 border border-transparent hover:border-emerald-500/20">
+              className="flex items-center gap-1.5 text-xs font-semibold text-white/55 hover:text-emerald-400 transition-colors px-3 py-2 rounded-xl hover:bg-emerald-500/10 border border-transparent hover:border-emerald-500/20">
               <CheckCheck size={13} />
               Mark all read
             </button>
@@ -153,7 +153,7 @@ export default function NotificationsPage() {
                 <div key={n.id}
                   onClick={() => unread && handleMarkAsRead(n.id)}
                   className={`px-5 py-4 border-b border-white/5 last:border-0 transition-colors ${
-                    unread ? "cursor-pointer hover:bg-white/6" : "hover:bg-white/3"
+                    unread ? "cursor-pointer hover:bg-white/6" : "hover:bg-white/[0.03]"
                   }`}
                   style={unread ? { borderLeft: "2px solid rgba(200,135,58,0.6)" } : {}}
                 >

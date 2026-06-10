@@ -231,7 +231,7 @@ export default function KycPanel({ kycStatus: kycStatusProp, setKycStatus: setKy
           <p className="text-xl text-white font-bold mb-1" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
             You're Verified
           </p>
-          <p className="text-white/30 text-sm">All identity checks passed successfully.</p>
+          <p className="text-white/55 text-sm">All identity checks passed successfully.</p>
         </motion.div>
       )}
 
@@ -250,14 +250,14 @@ export default function KycPanel({ kycStatus: kycStatusProp, setKycStatus: setKy
               >
                 {meta.title}
               </h2>
-              <p className="text-white/30 text-xs mt-0.5">{meta.subtitle}</p>
+              <p className="text-white/55 text-xs mt-0.5">{meta.subtitle}</p>
             </div>
             <span className="ml-auto text-xs text-white/20 font-medium tabular-nums sm:hidden">
               {step + 1}/{STEPS.length}
             </span>
           </div>
 
-          <div className="sm:hidden h-0.5 bg-white/10 rounded-full mb-5 overflow-hidden">
+          <div className="sm:hidden h-0.5 bg-white/[0.01]0 rounded-full mb-5 overflow-hidden">
             <motion.div
               className="h-full rounded-full"
               style={{ background: "linear-gradient(90deg, #C8873A, #E8A850)" }}

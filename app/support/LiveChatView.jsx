@@ -321,7 +321,7 @@ export default function LiveChatView({ onSwitchToAi, initialTicket = null }) {
       <div className="rounded-2xl p-6" style={{ background: SURFACE, border: `1px solid ${BORDER}` }}>
         <form onSubmit={handleRequest} className="space-y-4">
           <div>
-            <label className="block text-[10px] font-bold text-white/30 uppercase tracking-[0.15em] mb-2">
+            <label className="block text-[10px] font-bold text-white/55 uppercase tracking-[0.15em] mb-2">
               Subject *
             </label>
             <input value={reqForm.subject}
@@ -330,7 +330,7 @@ export default function LiveChatView({ onSwitchToAi, initialTicket = null }) {
           </div>
 
           <div>
-            <label className="block text-[10px] font-bold text-white/30 uppercase tracking-[0.15em] mb-2">
+            <label className="block text-[10px] font-bold text-white/55 uppercase tracking-[0.15em] mb-2">
               Category *
             </label>
             <div className="relative">
@@ -349,7 +349,7 @@ export default function LiveChatView({ onSwitchToAi, initialTicket = null }) {
           </div>
 
           <div>
-            <label className="block text-[10px] font-bold text-white/30 uppercase tracking-[0.15em] mb-2">
+            <label className="block text-[10px] font-bold text-white/55 uppercase tracking-[0.15em] mb-2">
               Initial message *
             </label>
             <textarea value={reqForm.message}

@@ -5,14 +5,18 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "../../context/AuthContext";
 import toast from "react-hot-toast";
 import api from "../../utils/api";
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import {
   TrendingUp, Wallet, MapPin, Activity,
   ArrowUpRight, LayoutGrid, ChevronRight,
   ArrowDownLeft, Sparkles, RefreshCw, Star,
+  WifiOff,
 } from "lucide-react";
 
-/* ── Helpers ──────────────────────────────────────────────────────────────── */
+const FOUNDING_MEMBER_MAX_ID = 50;
+const TX_DISPLAY_LIMIT = 8;
+
+const GOLD_TEXT_STYLE = { color: "#E8A850" };
 
 const statusCfg = (status = "") => {
   const s = status?.toLowerCase() ?? "";
@@ -40,20 +44,26 @@ const formatDate = (date) =>
       })
     : "—";
 
-const greeting = () => {
+const getGreeting = () => {
   const h = new Date().getHours();
   if (h < 12) return "Good morning";
   if (h < 17) return "Good afternoon";
   return "Good evening";
 };
 
-// ── Animated counter ──────────────────────────────────────────────────────────
+const isFoundingMember = (user) =>
+  user?.id && Number(user.id) <= FOUNDING_MEMBER_MAX_ID;
+
 function useCountUp(target, duration = 1100, enabled = true) {
   const [value, setValue] = useState(0);
   const raf = useRef(null);
 
   useEffect(() => {
+    cancelAnimationFrame(raf.current);
+    setValue(0);
+
     if (!enabled || target === 0) { setValue(target); return; }
+
     const start = performance.now();
     const tick = (now) => {
       const p    = Math.min((now - start) / duration, 1);
@@ -67,27 +77,21 @@ function useCountUp(target, duration = 1100, enabled = true) {
 
   return value;
 }
-    // ── Founding member helper ─────────────────────────────────────────────────
-  const isFoundingMember = (user) => {
-    return user?.id && Number(user.id) <= 50;
-  };
 
-/* ── Data hook ────────────────────────────────────────────────────────────── */
 function useDashboardData(enabled) {
   const [stats, setStats]               = useState(null);
+  const [statsError, setStatsError]     = useState(false);
   const [transactions, setTransactions] = useState([]);
+  const [txError, setTxError]           = useState(false);
   const [loadingStats, setLoadingStats] = useState(true);
   const [loadingTx, setLoadingTx]       = useState(true);
 
-  const loadData = useCallback(async () => {
-    if (!enabled) return;
+  const fetchStats = useCallback(async (signal) => {
+    setLoadingStats(true);
+    setStatsError(false);
     try {
-      const [statsRes, txRes] = await Promise.all([
-        api.get("/user/stats"),
-        api.get("/transactions/user"),
-      ]);
-
-      const s = statsRes.data?.data ?? {};
+      const res = await api.get("/user/stats", { signal });
+      const s   = res.data?.data ?? {};
       setStats({
         balance:                 (s.balance_kobo                ?? 0) / 100,
         current_portfolio_value: (s.current_portfolio_value_kobo ?? 0) / 100,
@@ -97,51 +101,85 @@ function useDashboardData(enabled) {
         total_withdrawn:         (s.total_withdrawn_kobo          ?? 0) / 100,
         pending_withdrawals:      s.pending_withdrawals,
       });
-
-      const txList = txRes.data?.data ?? [];
-      setTransactions(Array.isArray(txList) ? txList : []);
     } catch (err) {
-      if (err.response?.status !== 401) toast.error("Failed to load dashboard data.");
+      if (err.name === "CanceledError" || err.name === "AbortError") return;
+      if (err.response?.status !== 401) setStatsError(true);
     } finally {
       setLoadingStats(false);
+    }
+  }, []);
+
+  const fetchTransactions = useCallback(async (signal) => {
+    setLoadingTx(true);
+    setTxError(false);
+    try {
+      const res    = await api.get("/transactions/user", { signal });
+      const txList = res.data?.data ?? [];
+      setTransactions(Array.isArray(txList) ? txList : []);
+    } catch (err) {
+      if (err.name === "CanceledError" || err.name === "AbortError") return;
+      if (err.response?.status !== 401) setTxError(true);
+    } finally {
       setLoadingTx(false);
     }
-  }, [enabled]);
+  }, []);
 
-  // Reset loading state when enabled flips (e.g. user logs in)
+  const cleanupRef = useRef(() => {});
+
+  const loadData = useCallback(() => {
+    if (!enabled) return () => {};
+
+    cleanupRef.current();
+
+    const statsCtrl  = new AbortController();
+    const txCtrl     = new AbortController();
+    const statsTimer = setTimeout(() => statsCtrl.abort(), 8_000);
+    const txTimer    = setTimeout(() => txCtrl.abort(),    8_000);
+
+    const cleanup = () => {
+      clearTimeout(statsTimer);
+      clearTimeout(txTimer);
+      statsCtrl.abort();
+      txCtrl.abort();
+    };
+    cleanupRef.current = cleanup;
+
+    fetchStats(statsCtrl.signal);
+    fetchTransactions(txCtrl.signal);
+
+    return cleanup;
+  }, [enabled, fetchStats, fetchTransactions]);
+
   useEffect(() => {
-    if (enabled) {
-      setLoadingStats(true);
-      setLoadingTx(true);
-    }
-    loadData();
-  }, [loadData, enabled]);
+    const cleanup = loadData();
+    return cleanup;
+  }, [loadData]);
 
-  return { stats, transactions, loadingStats, loadingTx, refetch: loadData };
+  const refetch = useCallback(() => { loadData(); }, [loadData]);
+
+  return { stats, statsError, transactions, txError, loadingStats, loadingTx, refetch };
 }
 
-/* ── Page ─────────────────────────────────────────────────────────────────── */
 export default function Dashboard() {
   const { user, loading: loadingUser } = useAuth();
   const router = useRouter();
 
   const [mounted, setMounted]           = useState(false);
+  const [slowHint, setSlowHint]         = useState(false);
   const [authTimedOut, setAuthTimedOut] = useState(false);
+
+  const greetingText = useMemo(() => getGreeting(), []);
 
   useEffect(() => {
     requestAnimationFrame(() => setMounted(true));
-
-    // Safety net: if the auth context is still loading after 12 s (server
-    // unreachable), redirect to login rather than spinning forever.
-    const timer = setTimeout(() => setAuthTimedOut(true), 12_000);
-    return () => clearTimeout(timer);
+    const hintTimer    = setTimeout(() => setSlowHint(true),     3_000);
+    const timeoutTimer = setTimeout(() => setAuthTimedOut(true), 8_000);
+    return () => { clearTimeout(hintTimer); clearTimeout(timeoutTimer); };
   }, []);
 
-  // Only fetch data once the context has resolved and a user exists.
-  const { stats, transactions, loadingStats, loadingTx, refetch } =
+  const { stats, statsError, transactions, txError, loadingStats, loadingTx, refetch } =
     useDashboardData(!!user);
 
-  // ── Welcome toast (once per login session) ────────────────────────────────
   useEffect(() => {
     if (!user) return;
     if (sessionStorage.getItem("justLoggedIn") === "1") {
@@ -150,123 +188,89 @@ export default function Dashboard() {
     }
   }, [user]);
 
-  // ── Redirect unauthenticated visitors ────────────────────────────────────
   useEffect(() => {
-    if (!loadingUser && !user) {
-      router.replace("/login");
-    }
-    if (authTimedOut && !user) {
-      router.replace("/login");
-    }
+    if (!loadingUser && !user) router.replace("/login");
+    if (authTimedOut && !loadingUser && !user) router.replace("/login");
   }, [loadingUser, user, router, authTimedOut]);
 
-  // ── Loading spinner ───────────────────────────────────────────────────────
   if (loadingUser || !user) {
     return (
       <div className="min-h-screen bg-[#0D1F1A] flex flex-col items-center justify-center gap-4">
         <div className="relative w-12 h-12">
-          <div className="absolute inset-0 w-12 h-12 border-2 border-amber-500/15 rounded-full" />
+          <div className="absolute inset-0 w-12 h-12 border-2 border-[#2a3d37] rounded-full" />
           <div className="absolute inset-0 w-12 h-12 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
         </div>
-        {authTimedOut && (
-          <p className="text-white/30 text-xs animate-pulse">
-            Loading....
+        {slowHint && (
+          <p className="text-[#7aab97] text-xs animate-pulse">
+            Still loading… check your connection
           </p>
         )}
       </div>
     );
   }
 
-  /* ── Render ──────────────────────────────────────────────────────────────── */
   return (
     <div
-      className="min-h-screen bg-[#0D1F1A] relative overflow-x-hidden"
+      className="min-h-screen bg-[#0D1F1A] relative overflow-x-clip"
       style={{ fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif" }}
     >
-      {/* ── Background ── */}
-      <div className="fixed inset-0 pointer-events-none select-none">
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.065) 1px, transparent 1px)",
-            backgroundSize: "32px 32px",
-          }}
-        />
-        <div
-          className="absolute -top-[15%] -right-[5%] w-[55vw] h-[55vw] rounded-full"
-          style={{ background: "radial-gradient(circle, rgba(200,135,58,0.11) 0%, transparent 65%)" }}
-        />
-        <div
-          className="absolute -bottom-[10%] -left-[10%] w-[45vw] h-[45vw] rounded-full"
-          style={{ background: "radial-gradient(circle, rgba(45,122,85,0.09) 0%, transparent 65%)" }}
-        />
-        <div className="absolute top-0 left-0 right-0 h-48 bg-linear-to-b from-black/25 to-transparent" />
-      </div>
-
       <main className="relative max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-5">
 
         {/* ── Header ── */}
-        <header
-          className="transition-all duration-700"
-          style={{ opacity: mounted ? 1 : 0, transform: mounted ? "none" : "translateY(10px)" }}
-        >
-          <div className="flex items-start justify-between flex-wrap gap-4">
-            <div>
+        <header>
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
+            <div className="min-w-0">
               <div className="flex items-center gap-2 mb-2.5">
-                <span className="text-[10px] font-black tracking-[0.28em] uppercase text-amber-500/60">
+                <span className="text-[10px] font-black tracking-[0.28em] uppercase text-[#6b8c7e]">
                   Dashboard
                 </span>
-                <span className="w-1 h-1 rounded-full bg-amber-500/30" />
-                <span className="text-[10px] text-white/20">
+                <span className="w-1 h-1 rounded-full bg-[#2d4f44]" />
+                <span className="text-[10px] text-[#7aab97]">
                   {new Date().toLocaleDateString("en-NG", {
                     weekday: "short", month: "short", day: "numeric",
                   })}
                 </span>
               </div>
-              <div className="flex items-center gap-2 min-w-0">
-                  <h1 className="text-2xl sm:text-4xl font-bold leading-tight whitespace-nowrap" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
-                    <span className="text-white">{greeting()}, </span>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1
+                  className="text-2xl sm:text-4xl font-bold leading-tight"
+                  style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+                >
+                  <span className="text-white">{greetingText}, </span>
+                  {/* Solid color — eliminates gradient-text layer promotion */}
+                  <span style={GOLD_TEXT_STYLE}>
+                    {user?.name?.split(" ")[0] || "Investor"}
+                  </span>
+                </h1>
+
+                {isFoundingMember(user) && (
+                  <>
+                    <MobileFoundingBadge />
                     <span
+                      className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border"
                       style={{
-                        background: "linear-gradient(135deg, #E8A850 0%, #C8873A 50%, #E8A850 100%)",
-                        backgroundSize: "200% auto",
-                        WebkitBackgroundClip: "text",
-                        WebkitTextFillColor: "transparent",
-                        backgroundClip: "text",
+                        backgroundColor: "#201b0e",
+                        borderColor: "#4a3018",
+                        color: "#E8A850",
+                        fontFamily: "'DM Sans', sans-serif",
                       }}
                     >
-                      {user?.name?.split(" ")[0] || "Investor"}
+                      <Star size={10} className="fill-amber-400 text-amber-400" />
+                      Founding Investor
                     </span>
-                  </h1>
-                  {isFoundingMember(user) && (
-                    <>
-                      {/* Mobile: star icon with tap-to-show tooltip */}
-                      <MobileFoundingBadge />
+                  </>
+                )}
+              </div>
 
-                      {/* Desktop: full badge */}
-                      <span
-                        className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border"
-                        style={{
-                          background: "linear-gradient(135deg, rgba(200,135,58,0.15), rgba(232,168,80,0.08))",
-                          borderColor: "rgba(200,135,58,0.35)",
-                          color: "#E8A850",
-                          fontFamily: "'DM Sans', sans-serif",
-                        }}
-                      >
-                        <Star size={10} className="fill-amber-400 text-amber-400" />
-                        Founding Investor
-                      </span>
-                    </>
-                  )}
-                                
-                </div>        <p className="text-sm text-white/30 mt-1.5">
+              <p className="text-sm text-[#7aab97] mt-1.5">
                 Here's how your investments are performing today.
               </p>
             </div>
 
             <button
               onClick={refetch}
-              className="group flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-white/30 border border-white/10 hover:border-white/20 hover:text-white/55 hover:bg-white/5 transition-all"
+              className="group self-start flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-[#7aab97] border border-[#1e3530] hover:border-[#2a4a42] hover:text-[#7aab97] hover:bg-[#142D25] transition-all"
             >
               <RefreshCw size={12} className="group-hover:rotate-180 transition-transform duration-500" />
               Refresh
@@ -274,39 +278,40 @@ export default function Dashboard() {
           </div>
         </header>
 
-        {/* ── Stat Cards ── */}
-        <section
-          className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 transition-all duration-700 delay-100"
-          style={{ opacity: mounted ? 1 : 0, transform: mounted ? "none" : "translateY(14px)" }}
-        >
+        {/* ── Stat cards ── */}
+        <section className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {loadingStats ? (
-            [1, 2, 3, 4].map((i) => <SkeletonCard key={i} />)
+            [1, 2, 3].map((i) => <SkeletonCard key={i} />)
+          ) : statsError ? (
+            <StatErrorCard onRetry={refetch} />
           ) : (
             <>
-              <StatCard icon={<Wallet size={16} />}     label="Wallet Balance"  value={stats?.balance ?? 0}                  accent="amber"   href="/wallet"    mounted={mounted} />
-              <StatCard icon={<TrendingUp size={16} />} label="Portfolio Value" value={stats?.current_portfolio_value ?? 0}  accent="emerald" href="/portfolio" mounted={mounted} />
-              <StatCard icon={<MapPin size={16} />}     label="Lands Invested"  value={stats?.lands_owned ?? 0}              accent="blue"    href="/portfolio" mounted={mounted} isCount sub={`${stats?.units_owned ?? 0} units`} />
-              <StatCard icon={<Activity size={16} />}   label="Sale Proceeds"   value={stats?.total_withdrawn ?? 0}          accent="purple"  href="/wallet"    mounted={mounted} />
+              <StatCard icon={<Wallet size={16} />}     label="Wallet Balance"  value={stats?.balance ?? 0}                 accent="amber"   href="/wallet"    mounted={mounted} />
+              <StatCard icon={<TrendingUp size={16} />} label="Portfolio Value" value={stats?.current_portfolio_value ?? 0} accent="emerald" href="/portfolio" mounted={mounted} />
+              <div className="col-span-2 lg:col-span-1">
+                <StatCard icon={<MapPin size={16} />}   label="Lands Invested"  value={stats?.lands_owned ?? 0}            accent="blue"    href="/portfolio" mounted={mounted} isCount sub={`${stats?.units_owned ?? 0} units`} />
+              </div>
             </>
           )}
         </section>
 
-        {/* ── Quick Actions ── */}
-        <section
-          className="grid grid-cols-3 gap-3 sm:gap-4 transition-all duration-700 delay-175"
-          style={{ opacity: mounted ? 1 : 0, transform: mounted ? "none" : "translateY(14px)" }}
-        >
-          <QuickCard title="Wallet"    desc="Fund & manage"     href="/wallet"    icon={<Wallet size={17} />}     accent="#C8873A" />
-          <QuickCard title="Portfolio" desc="Track investments" href="/portfolio" icon={<LayoutGrid size={17} />} accent="#2D7A55" />
-          <QuickCard title="Explore"   desc="New opportunities" href="/lands"     icon={<MapPin size={17} />}     accent="#8B5CF6" />
+        {/* ── Quick links ── */}
+        <section>
+          <div className="grid grid-cols-3 gap-3 sm:gap-4">
+            <QuickCard title="Wallet"    desc="Fund & manage"     href="/wallet"    icon={<Wallet size={17} />}     accent="#C8873A" />
+            <QuickCard title="Portfolio" desc="Track investments" href="/portfolio" icon={<LayoutGrid size={17} />} accent="#2D7A55" />
+            <QuickCard title="Explore"   desc="New opportunities" href="/lands"     icon={<MapPin size={17} />}     accent="#8B5CF6" />
+          </div>
         </section>
 
         {/* ── Transactions ── */}
-        <section
-          className="transition-all duration-700 delay-250"
-          style={{ opacity: mounted ? 1 : 0, transform: mounted ? "none" : "translateY(14px)" }}
-        >
-          <TransactionsSection transactions={transactions} loading={loadingTx} />
+        <section>
+          <TransactionsSection
+            transactions={transactions}
+            loading={loadingTx}
+            error={txError}
+            onRetry={refetch}
+          />
         </section>
 
       </main>
@@ -314,12 +319,14 @@ export default function Dashboard() {
   );
 }
 
+// ── Sub-components ────────────────────────────────────────────────────────────
+
 function MobileFoundingBadge() {
   const [show, setShow] = useState(false);
 
   useEffect(() => {
     if (!show) return;
-    const t = setTimeout(() => setShow(false), 2000); // auto-hide after 2s
+    const t = setTimeout(() => setShow(false), 2000);
     return () => clearTimeout(t);
   }, [show]);
 
@@ -331,12 +338,12 @@ function MobileFoundingBadge() {
         onClick={() => setShow(v => !v)}
       />
       <span
-        className={`absolute left-1/2 -translate-x-1/2 bottom-6 z-50 whitespace-nowrap px-2 py-1 rounded-lg text-[10px] font-bold border pointer-events-none transition-opacity duration-200 ${
+        className={`absolute bottom-6 left-1/2 -translate-x-1/2 z-50 whitespace-nowrap px-2.5 py-1 rounded-lg text-[10px] font-bold border pointer-events-none transition-opacity duration-200 ${
           show ? "opacity-100" : "opacity-0"
         }`}
         style={{
-          background: "linear-gradient(135deg, rgba(20,40,30,0.98), rgba(15,30,22,0.98))",
-          borderColor: "rgba(200,135,58,0.35)",
+          backgroundColor: "#142818",
+          borderColor: "#4a3018",
           color: "#E8A850",
         }}
       >
@@ -345,56 +352,72 @@ function MobileFoundingBadge() {
     </div>
   );
 }
-/* ── SkeletonCard ─────────────────────────────────────────────────────────── */
+
 function SkeletonCard() {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 h-32 overflow-hidden relative">
-      <div className="absolute inset-0 animate-pulse bg-white/5" />
+    <div className="rounded-2xl border border-[#1e3530] bg-[#142D25] min-h-32 relative">
+      <div className="absolute inset-0 bg-[#142D25] rounded-2xl" />
     </div>
   );
 }
 
-/* ── StatCard ─────────────────────────────────────────────────────────────── */
+function StatErrorCard({ onRetry }) {
+  return (
+    <div className="col-span-2 lg:col-span-3 rounded-2xl border border-[#3d1f1f] bg-[#1f1414] min-h-32 flex flex-col items-center justify-center gap-3 p-5 text-center">
+      <WifiOff size={20} className="text-red-400/60" />
+      <p className="text-sm text-[#7a5555]">Couldn't load stats</p>
+      <button
+        onClick={onRetry}
+        className="px-4 py-1.5 rounded-xl text-xs font-bold border border-[#3d1f1f] text-[#a06060] hover:bg-[#2a1818] transition-all"
+      >
+        Retry
+      </button>
+    </div>
+  );
+}
+
 function StatCard({ icon, label, value, accent, href, mounted, isCount, sub }) {
   const palette = {
-    amber:   { glow: "rgba(200,135,58,0.14)",  icon: "rgba(200,135,58,1)",  ring: "rgba(200,135,58,0.22)"  },
-    emerald: { glow: "rgba(45,122,85,0.14)",   icon: "rgba(74,222,128,1)",  ring: "rgba(45,122,85,0.22)"   },
-    blue:    { glow: "rgba(59,130,246,0.14)",  icon: "rgba(96,165,250,1)",  ring: "rgba(59,130,246,0.22)"  },
-    purple:  { glow: "rgba(139,92,246,0.14)",  icon: "rgba(167,139,250,1)", ring: "rgba(139,92,246,0.22)"  },
+    amber:   { glow: "#251d0e", icon: "#C8873A", ring: "#362211" },
+    emerald: { glow: "#0f2118", icon: "#4ade80", ring: "#132d1f" },
+    blue:    { glow: "#0f1826", icon: "#60a5fa", ring: "#131d38" },
   };
-  const a        = palette[accent] ?? palette.amber;
-  const num      = parseFloat(value) || 0;
-  const animated = useCountUp(num, 1000, mounted);
-  const display  = isCount
+  const a   = palette[accent] ?? palette.amber;
+  const num = parseFloat(value) || 0;
+
+  const intPart  = Math.floor(num);
+  const fracPart = isCount ? null : (num % 1).toFixed(2).slice(1);
+  const animated = useCountUp(intPart, 1000, mounted);
+
+  const display = isCount
     ? animated.toLocaleString()
-    : "₦" + animated.toLocaleString("en-NG");
+    : "₦" + animated.toLocaleString("en-NG") + fracPart;
 
   const inner = (
-    <div className="group relative rounded-2xl border border-white/[0.07] bg-white/[0.035] p-4 sm:p-5 hover:bg-white/5.5 hover:border-white/12 transition-all duration-300 overflow-hidden h-full flex flex-col">
-      <div
-        className="absolute -top-10 -right-10 w-28 h-28 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-        style={{ background: `radial-gradient(circle, ${a.glow}, transparent 70%)` }}
-      />
+    <div
+      className="group relative rounded-2xl border border-[#1e3530] p-4 sm:p-5 hover:bg-[#18352b] hover:border-[#2a4a42] transition-all duration-300 min-h-32 flex flex-col"
+      style={{ backgroundColor: "#132922" }}
+    >
       <div
         className="w-9 h-9 rounded-xl flex items-center justify-center mb-4 shrink-0"
-        style={{ background: a.glow, boxShadow: `0 0 0 1px ${a.ring}`, color: a.icon }}
+        style={{ backgroundColor: a.glow, boxShadow: `0 0 0 1px ${a.ring}`, color: a.icon }}
       >
         {icon}
       </div>
-      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/25 mb-1.5 truncate">
+      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#8ab9a9] mb-1.5 truncate">
         {label}
       </p>
       <p
         className="text-xl sm:text-2xl font-bold text-white leading-none mt-auto"
-        style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+        style={{ fontFamily: "'Playfair Display', Georgia, serif", contain: "content" }}
         title={isCount ? String(num) : `₦${num.toLocaleString()}`}
       >
         {display}
       </p>
-      {sub && <p className="text-[11px] text-white/25 mt-1.5 truncate">{sub}</p>}
+      {sub && <p className="text-[11px] text-[#8ab9a9] mt-1.5 truncate">{sub}</p>}
       <ChevronRight
         size={12}
-        className="absolute bottom-4 right-4 text-white/15 opacity-0 group-hover:opacity-100 translate-x-1 group-hover:translate-x-0 transition-all duration-300"
+        className="absolute bottom-4 right-4 text-[#8ab9a9] opacity-0 group-hover:opacity-100 translate-x-1 group-hover:translate-x-0 transition-all duration-300"
       />
     </div>
   );
@@ -402,26 +425,22 @@ function StatCard({ icon, label, value, accent, href, mounted, isCount, sub }) {
   return href ? <Link href={href}>{inner}</Link> : <div>{inner}</div>;
 }
 
-/* ── QuickCard ────────────────────────────────────────────────────────────── */
 function QuickCard({ title, desc, href, icon, accent }) {
   return (
     <Link
       href={href}
-      className="group relative rounded-2xl border border-white/[0.07] bg-white/3 hover:bg-white/5.5 hover:border-white/12 transition-all duration-300 overflow-hidden block"
+      className="group relative rounded-2xl border border-[#1e3530] bg-[#132922] hover:bg-[#18352b] hover:border-[#2a4a42] transition-all duration-300 block"
     >
-      <div
-        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-        style={{ background: `radial-gradient(ellipse at 20% 60%, ${accent}15, transparent 65%)` }}
-      />
       <div className="relative p-4 sm:p-5">
         <div
           className="w-9 h-9 rounded-xl flex items-center justify-center mb-3.5 transition-transform duration-300 group-hover:scale-[1.08]"
-          style={{ background: `${accent}16`, color: accent, boxShadow: `0 0 0 1px ${accent}28` }}
+          // Solid bg derived from accent at ~9% opacity over #132922
+          style={{ backgroundColor: `${accent}18`, color: accent, boxShadow: `0 0 0 1px ${accent}30` }}
         >
           {icon}
         </div>
-        <h3 className="font-bold text-white/85 text-sm leading-none">{title}</h3>
-        <p className="text-[11px] text-white/27 mt-1 hidden sm:block leading-snug">{desc}</p>
+        <h3 className="font-bold text-[#c8ddd7] text-sm leading-none">{title}</h3>
+        <p className="text-[11px] text-[#7aab97] mt-1 sm:block leading-snug">{desc}</p>
         <div className="hidden sm:flex items-center gap-1 mt-3">
           <span className="text-xs font-bold transition-colors" style={{ color: accent }}>Open</span>
           <ArrowUpRight
@@ -435,23 +454,22 @@ function QuickCard({ title, desc, href, icon, accent }) {
   );
 }
 
-/* ── TransactionsSection ──────────────────────────────────────────────────── */
-function TransactionsSection({ transactions, loading }) {
+function TransactionsSection({ transactions, loading, error, onRetry }) {
   if (loading) {
     return (
-      <div className="rounded-2xl border border-white/[0.07] bg-white/3 overflow-hidden">
-        <div className="px-5 py-4 border-b border-white/5 bg-white/2">
-          <div className="h-4 w-44 rounded-lg bg-white/[0.07] animate-pulse" />
+      <div className="rounded-2xl border border-[#1e3530] bg-[#132922] overflow-hidden">
+        <div className="px-5 py-4 border-b border-[#193028] bg-[#142D25]">
+          <div className="h-4 w-44 rounded-lg bg-[#1e3530] animate-pulse" />
         </div>
-        <div className="divide-y divide-white/5">
+        <div className="divide-y divide-[#193028]">
           {[...Array(5)].map((_, i) => (
             <div key={i} className="px-5 py-4 flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl bg-white/5 animate-pulse shrink-0" />
+              <div className="w-10 h-10 rounded-xl bg-[#142D25] shrink-0" />
               <div className="flex-1 space-y-2">
-                <div className="h-3 rounded bg-white/5 animate-pulse w-2/5" />
-                <div className="h-2.5 rounded bg-white/3 animate-pulse w-1/4" />
+                <div className="h-3 rounded bg-[#142D25] w-2/5" />
+                <div className="h-2.5 rounded bg-[#132922] w-1/4" />
               </div>
-              <div className="h-4 rounded bg-white/5 animate-pulse w-20" />
+              <div className="h-4 rounded bg-[#142D25] w-20" />
             </div>
           ))}
         </div>
@@ -459,18 +477,35 @@ function TransactionsSection({ transactions, loading }) {
     );
   }
 
+  if (error) {
+    return (
+      <div className="rounded-2xl border border-[#1e3530] bg-[#132922] overflow-hidden">
+        <div className="flex flex-col items-center text-center px-5 py-10 gap-3">
+          <WifiOff size={20} className="text-[#8ab9a9]" />
+          <p className="text-sm text-[#7aab97]">Couldn't load transactions</p>
+          <button
+            onClick={onRetry}
+            className="px-4 py-1.5 rounded-xl text-xs font-bold border border-[#1e3530] text-[#7aab97] hover:bg-[#142D25] transition-all"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (!transactions?.length) {
     return (
-      <div className="rounded-2xl border border-white/[0.07] bg-white/3 overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 bg-white/2">
+      <div className="rounded-2xl border border-[#1e3530] bg-[#132922] overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[#193028] bg-[#142D25]">
           <div className="flex items-center gap-2.5">
             <div
               className="w-7 h-7 rounded-lg flex items-center justify-center"
-              style={{ background: "rgba(200,135,58,0.1)", boxShadow: "0 0 0 1px rgba(200,135,58,0.18)" }}
+              style={{ backgroundColor: "#251d0e", boxShadow: "0 0 0 1px #362211" }}
             >
               <Activity size={13} className="text-amber-500" />
             </div>
-            <h2 className="text-[10px] font-black uppercase tracking-[0.22em] text-white/35">
+            <h2 className="text-[10px] font-black uppercase tracking-[0.22em] text-[#7aab97]">
               Recent Transactions
             </h2>
           </div>
@@ -478,23 +513,24 @@ function TransactionsSection({ transactions, loading }) {
         <div className="flex flex-col items-center text-center px-5 py-10">
           <div
             className="w-10 h-10 rounded-xl flex items-center justify-center mb-4"
-            style={{ background: "rgba(200,135,58,0.07)", boxShadow: "0 0 0 1px rgba(200,135,58,0.13)" }}
+            style={{ backgroundColor: "#1e1a0f", boxShadow: "0 0 0 1px #362211" }}
           >
             <Sparkles size={16} className="text-amber-500/50" />
           </div>
           <p
-            className="font-bold text-white/60 text-sm mb-1"
+            className="font-bold text-[#7aab97] text-sm mb-1"
             style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
           >
             No transactions yet
           </p>
-          <p className="text-xs text-white/25 mb-5 max-w-50 leading-relaxed">
+          <p className="text-xs text-[#8ab9a9] mb-5 max-w-[12rem] leading-relaxed">
             Invest in verified land to see activity here.
           </p>
+          {/* Solid color button — was linear-gradient, caused layer promotion */}
           <Link
             href="/lands"
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg font-bold text-xs text-[#0D1F1A] transition-all hover:scale-[1.03] active:scale-[0.98]"
-            style={{ background: "linear-gradient(135deg, #C8873A 0%, #E8A850 100%)" }}
+            style={{ backgroundColor: "#C8873A" }}
           >
             Browse Properties <ArrowUpRight size={11} />
           </Link>
@@ -504,26 +540,25 @@ function TransactionsSection({ transactions, loading }) {
   }
 
   return (
-    <div className="rounded-2xl border border-white/[0.07] bg-white/3 overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 bg-white/2">
+    <div className="rounded-2xl border border-[#1e3530] bg-[#132922] overflow-hidden">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-[#193028] bg-[#142D25]">
         <div className="flex items-center gap-2.5">
           <div
             className="w-7 h-7 rounded-lg flex items-center justify-center"
-            style={{ background: "rgba(200,135,58,0.1)", boxShadow: "0 0 0 1px rgba(200,135,58,0.18)" }}
+            style={{ backgroundColor: "#251d0e", boxShadow: "0 0 0 1px #362211" }}
           >
             <Activity size={13} className="text-amber-500" />
           </div>
-          <h2 className="text-[10px] font-black uppercase tracking-[0.22em] text-white/35">
+          <h2 className="text-[10px] font-black uppercase tracking-[0.22em] text-[#7aab97]">
             Recent Transactions
           </h2>
-          <span className="text-[9px] font-bold px-2 py-0.5 rounded-full border border-white/10 text-white/20">
+          <span className="text-[9px] font-bold px-2 py-0.5 rounded-full border border-[#1e3530] text-[#8ab9a9]">
             {transactions.length}
           </span>
         </div>
         <Link
           href="/wallet"
-          className="flex items-center gap-1 text-xs font-bold text-amber-500/65 hover:text-amber-400 transition-colors"
+          className="flex items-center gap-1 text-xs font-bold text-[#9a7040] hover:text-amber-400 transition-colors"
         >
           View all <ChevronRight size={11} />
         </Link>
@@ -533,7 +568,7 @@ function TransactionsSection({ transactions, loading }) {
       <div className="hidden md:block">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-white/5">
+            <tr className="border-b border-[#193028]">
               {[
                 { label: "Type / Asset", align: "text-left"  },
                 { label: "Amount",       align: "text-right" },
@@ -542,7 +577,7 @@ function TransactionsSection({ transactions, loading }) {
               ].map(({ label, align }) => (
                 <th
                   key={label}
-                  className={`px-5 py-3 text-[9px] font-black uppercase tracking-[0.22em] text-white/20 ${align}`}
+                  className={`px-5 py-3 text-[9px] font-black uppercase tracking-[0.22em] text-[#8ab9a9] ${align}`}
                 >
                   {label}
                 </th>
@@ -550,7 +585,7 @@ function TransactionsSection({ transactions, loading }) {
             </tr>
           </thead>
           <tbody>
-            {transactions.slice(0, 8).map((tx, idx) => {
+            {transactions.slice(0, TX_DISPLAY_LIMIT).map((tx, idx) => {
               const { sign, color, isCredit } = amountMeta(tx?.type);
               const { cls, dot }              = statusCfg(tx?.status);
               const amountNaira = Number(tx?.amount ?? 0);
@@ -559,31 +594,31 @@ function TransactionsSection({ transactions, loading }) {
               return (
                 <tr
                   key={idx}
-                  className="border-b border-white/[0.035] hover:bg-white/[0.022] transition-colors group"
+                  className="border-b border-[#182e27] hover:bg-[#162d26] transition-colors group last:border-b-0"
                 >
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
                       <div
                         className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-[1.04] ${
-                          isCredit === true    ? "bg-emerald-500/10"
-                          : isCredit === false ? "bg-red-500/10"
-                          : "bg-white/5"
+                          isCredit === true    ? "bg-[#0f2118]"
+                          : isCredit === false ? "bg-[#1f1414]"
+                          : "bg-[#142D25]"
                         }`}
                       >
                         {isCredit === true
                           ? <ArrowDownLeft size={14} className="text-emerald-400" />
                           : isCredit === false
                           ? <ArrowUpRight size={14} className="text-red-400" />
-                          : <Activity size={14} className="text-white/25" />}
+                          : <Activity size={14} className="text-[#8ab9a9]" />}
                       </div>
                       <div className="min-w-0">
-                        <p className="font-semibold capitalize text-white/75 text-sm leading-none truncate">
+                        <p className="font-semibold capitalize text-[#c8ddd7] text-sm leading-none truncate">
                           {tx?.type || "Transaction"}
                         </p>
-                        <p className="text-[11px] text-white/22 mt-1 truncate">
+                        <p className="text-[11px] text-[#7aab97] mt-1 truncate">
                           {tx?.land || "Wallet"}
                           {tx?.units != null && (
-                            <span className="ml-1.5 text-white/20">
+                            <span className="ml-1.5 text-[#8ab9a9]">
                               · {tx.units} unit{tx.units !== 1 ? "s" : ""}
                             </span>
                           )}
@@ -608,7 +643,7 @@ function TransactionsSection({ transactions, loading }) {
                     </span>
                   </td>
 
-                  <td className="px-5 py-4 text-[11px] text-white/22 whitespace-nowrap">
+                  <td className="px-5 py-4 text-[11px] text-[#7aab97] whitespace-nowrap">
                     {formatDate(txDate)}
                   </td>
                 </tr>
@@ -619,8 +654,8 @@ function TransactionsSection({ transactions, loading }) {
       </div>
 
       {/* Mobile list */}
-      <div className="md:hidden divide-y divide-white/5">
-        {transactions.slice(0, 6).map((tx, idx) => {
+      <div className="md:hidden divide-y divide-[#193028]">
+        {transactions.slice(0, TX_DISPLAY_LIMIT).map((tx, idx) => {
           const { sign, color, isCredit } = amountMeta(tx?.type);
           const { cls, dot }              = statusCfg(tx?.status);
           const amountNaira = Number(tx?.amount ?? 0);
@@ -629,34 +664,34 @@ function TransactionsSection({ transactions, loading }) {
           return (
             <div
               key={idx}
-              className="px-4 py-3.5 flex items-center gap-3 hover:bg-white/2 transition-colors"
+              className="px-4 py-4 flex items-center gap-3 hover:bg-[#162d26] transition-colors"
             >
               <div
                 className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                  isCredit === true    ? "bg-emerald-500/10"
-                  : isCredit === false ? "bg-red-500/10"
-                  : "bg-white/5"
+                  isCredit === true    ? "bg-[#0f2118]"
+                  : isCredit === false ? "bg-[#1f1414]"
+                  : "bg-[#142D25]"
                 }`}
               >
                 {isCredit === true
                   ? <ArrowDownLeft size={15} className="text-emerald-400" />
                   : isCredit === false
                   ? <ArrowUpRight size={15} className="text-red-400" />
-                  : <Activity size={15} className="text-white/25" />}
+                  : <Activity size={15} className="text-[#8ab9a9]" />}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm capitalize text-white/75 truncate leading-none">
+                <p className="font-semibold text-sm capitalize text-[#c8ddd7] truncate leading-none">
                   {tx?.type || "Transaction"}
                 </p>
-                <p className="text-[11px] text-white/22 mt-1 truncate">
+                <p className="text-[11px] text-[#7aab97] mt-0.5 truncate">
                   {tx?.land || "Wallet"}
                   {tx?.units != null && (
-                    <span className="ml-1.5 text-white/20">
-                      · {tx.units} unit{tx.units !== 1 ? "s" : ""}
+                    <span className="text-[#8ab9a9]">
+                      {" "}· {tx.units} unit{tx.units !== 1 ? "s" : ""}
                     </span>
                   )}
-                  {" · "}{formatDate(txDate)}
                 </p>
+                <p className="text-[10px] text-[#8ab9a9] mt-0.5">{formatDate(txDate)}</p>
               </div>
               <div className="flex flex-col items-end gap-1.5 shrink-0">
                 <span className={`font-bold text-sm tabular-nums ${color}`}>
@@ -672,12 +707,11 @@ function TransactionsSection({ transactions, loading }) {
         })}
       </div>
 
-      {/* Footer */}
-      {transactions.length > 6 && (
-        <div className="px-5 py-3 border-t border-white/5 text-center bg-white/1">
+      {transactions.length > TX_DISPLAY_LIMIT && (
+        <div className="px-5 py-2 border-t border-[#193028] text-center bg-[#121f1b]">
           <Link
             href="/wallet"
-            className="text-xs text-white/20 hover:text-amber-500 transition-colors font-semibold"
+            className="text-xs text-[#8ab9a9] hover:text-amber-500 transition-colors font-semibold"
           >
             View all {transactions.length} transactions →
           </Link>

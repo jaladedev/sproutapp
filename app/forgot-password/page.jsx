@@ -72,7 +72,7 @@ export default function ForgotPassword() {
             <h2 className="text-2xl font-bold text-white" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
               Forgot Password?
             </h2>
-            <p className="text-white/40 text-sm mt-2 text-center leading-relaxed">
+            <p className="text-white/60 text-sm mt-2 text-center leading-relaxed">
               No worries! Enter your email and we'll send you a reset code.
             </p>
           </div>
@@ -94,7 +94,7 @@ export default function ForgotPassword() {
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Email */}
             <div>
-              <label className="block text-xs font-bold uppercase tracking-widest text-white/40 mb-2">
+              <label className="block text-xs font-bold uppercase tracking-widest text-white/60 mb-2">
                 Email Address
               </label>
               <div className="relative">
@@ -132,7 +132,7 @@ export default function ForgotPassword() {
           <div className="mt-6 text-center">
             <Link
               href="/login"
-              className="inline-flex items-center gap-1.5 text-sm text-white/30 hover:text-white/60 transition-colors"
+              className="inline-flex items-center gap-1.5 text-sm text-white/55 hover:text-white/60 transition-colors"
             >
               <ArrowLeft size={14} /> Back to Login
             </Link>

@@ -58,7 +58,7 @@ function NavItem({ item, active, kycStatus, pinIsSet, onClick }) {
     >
       <div
         className={`relative w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
-          active ? "text-[#0D1F1A]" : "bg-white/5 text-white/40 group-hover:bg-white/10 group-hover:text-white/60"
+          active ? "text-[#0D1F1A]" : "bg-white/5 text-white/60 group-hover:bg-white/[0.01]0 group-hover:text-white/60"
         }`}
         style={active ? { background: "linear-gradient(135deg, #C8873A 0%, #E8A850 100%)" } : {}}
       >
@@ -76,7 +76,7 @@ function NavItem({ item, active, kycStatus, pinIsSet, onClick }) {
         </div>
         <p className="text-xs text-white/25 mt-1 truncate">{item.desc}</p>
       </div>
-      <ChevronRight size={13} className={`shrink-0 ${active ? "text-amber-500" : "text-white/20 group-hover:text-white/40"}`} />
+      <ChevronRight size={13} className={`shrink-0 ${active ? "text-amber-500" : "text-white/20 group-hover:text-white/60"}`} />
     </button>
   );
 }
@@ -93,7 +93,7 @@ function PanelHeader({ item }) {
           {item.label}
         </h2>
       </div>
-      <p className="text-white/30 text-sm mt-2 ml-12 leading-relaxed">{item.desc}</p>
+      <p className="text-white/55 text-sm mt-2 ml-12 leading-relaxed">{item.desc}</p>
     </div>
   );
 }
@@ -102,7 +102,7 @@ function HelpCard() {
   return (
     <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4">
       <p className="text-amber-400 text-xs font-bold mb-1">Need help?</p>
-      <p className="text-white/30 text-xs leading-relaxed">
+      <p className="text-white/55 text-xs leading-relaxed">
         Contact{" "}
         <a href="/support" className="text-amber-400 hover:underline">
           support
@@ -170,7 +170,7 @@ export default function Settings() {
     <div className="min-h-screen bg-[#0D1F1A] text-white" style={{ fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif" }}>
 
       {/* dot grid */}
-      <div className="fixed inset-0 pointer-events-none opacity-[0.03]"
+      <div className="absolute inset-0 pointer-events-none opacity-[0.03]"
         style={{ backgroundImage: "radial-gradient(circle, #fff 1px, transparent 1px)", backgroundSize: "28px 28px" }} />
 
       {/* amber top bar */}
@@ -189,7 +189,7 @@ export default function Settings() {
           <h1 className="text-3xl sm:text-4xl font-bold text-white" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
             Settings
           </h1>
-          <p className="text-white/40 text-sm mt-1">Manage your profile, security, and verification</p>
+          <p className="text-white/60 text-sm mt-1">Manage your profile, security, and verification</p>
         </motion.div>
 
         <div className="sm:flex sm:gap-6 sm:items-start">
@@ -225,7 +225,7 @@ export default function Settings() {
                 <div className="flex items-center gap-3 mb-5">
                   <button
                     onClick={() => setMobilePanel(false)}
-                    className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-white transition-colors touch-manipulation shrink-0"
+                    className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:text-white transition-colors touch-manipulation shrink-0"
                   >
                     <ArrowLeft size={15} />
                   </button>
@@ -239,7 +239,7 @@ export default function Settings() {
                           style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
                           {activeNav.label}
                         </h2>
-                        <p className="text-white/30 text-xs truncate">{activeNav.desc}</p>
+                        <p className="text-white/55 text-xs truncate">{activeNav.desc}</p>
                       </div>
                     </div>
                   )}

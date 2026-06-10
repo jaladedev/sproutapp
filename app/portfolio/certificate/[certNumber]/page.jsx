@@ -42,8 +42,8 @@ function Seal({ size = 96 }) {
 /* ─── Detail Row ────────────────────────────────────────────────────────── */
 function DetailRow({ label, value, mono = false, highlight = false }) {
   return (
-    <div className="flex items-start justify-between gap-4 py-2.5 border-b border-white/[0.05] last:border-0">
-      <span className="text-[10px] font-black uppercase tracking-[0.18em] text-white/30 shrink-0 w-40 mt-0.5">
+    <div className="flex items-start justify-between gap-4 py-2.5 border-b border-white/5 last:border-0">
+      <span className="text-[10px] font-black uppercase tracking-[0.18em] text-white/55 shrink-0 w-40 mt-0.5">
         {label}
       </span>
       <span className={`text-sm text-right break-all ${
@@ -123,7 +123,7 @@ export default function CertificatePage() {
         style={{ fontFamily: "'DM Sans', sans-serif" }}>
         <div className="text-center">
           <div className="w-12 h-12 border-2 border-amber-500/30 border-t-amber-500 rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-white/30 text-sm tracking-widest uppercase">Loading certificate</p>
+          <p className="text-white/55 text-sm tracking-widest uppercase">Loading certificate</p>
         </div>
       </div>
     );
@@ -151,12 +151,12 @@ export default function CertificatePage() {
       style={{ fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif" }}>
 
       {/* Background dot grid */}
-      <div className="fixed inset-0 pointer-events-none opacity-[0.03]"
+      <div className="absolute inset-0 pointer-events-none opacity-[0.03]"
         style={{ backgroundImage: "radial-gradient(circle, #fff 1px, transparent 1px)", backgroundSize: "28px 28px" }} />
 
       {/* Ambient glow */}
-      <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] rounded-full"
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-150 h-100 rounded-full"
           style={{ background: "radial-gradient(ellipse, rgba(200,135,58,0.07) 0%, transparent 70%)" }} />
       </div>
 
@@ -165,7 +165,7 @@ export default function CertificatePage() {
         {/* Nav */}
         <div className="flex items-center justify-between mb-8">
           <Link href="/portfolio"
-            className="inline-flex items-center gap-1.5 text-xs text-white/30 hover:text-white/60 transition-colors">
+            className="inline-flex items-center gap-1.5 text-xs text-white/55 hover:text-white/60 transition-colors">
             <ArrowLeft size={13} /> Back to Portfolio
           </Link>
 
@@ -202,17 +202,17 @@ export default function CertificatePage() {
         )}
 
         {/* ── Certificate card ── */}
-        <div className="rounded-3xl border border-white/[0.09] overflow-hidden"
+        <div className="rounded-3xl border border-white/9 overflow-hidden"
           style={{
             background: "linear-gradient(160deg, rgba(200,135,58,0.07) 0%, rgba(13,31,26,0.0) 50%)",
             boxShadow: "0 32px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(200,135,58,0.12)",
           }}>
 
           {/* ── Header ── */}
-          <div className="relative px-8 pt-10 pb-8 text-center border-b border-white/[0.06]"
+          <div className="relative px-8 pt-10 pb-8 text-center border-b border-white/6"
             style={{ background: "rgba(0,0,0,0.15)" }}>
 
-            <div className="absolute top-0 left-0 right-0 h-[2px]"
+            <div className="absolute top-0 left-0 right-0 h-0.5"
               style={{ background: "linear-gradient(90deg, transparent, #C8873A 30%, #E8A850 50%, #C8873A 70%, transparent)" }} />
 
             <div className="flex justify-center mb-5">
@@ -228,7 +228,7 @@ export default function CertificatePage() {
               Certificate of Investment
             </h1>
 
-            <p className="text-xs text-white/30 tracking-wider">
+            <p className="text-xs text-white/55 tracking-wider">
               FRACTIONAL LAND INVESTMENT · VERIFIED DIGITAL CERTIFICATE
             </p>
 
@@ -250,14 +250,14 @@ export default function CertificatePage() {
           <div className="px-8 py-8">
 
             <div className="text-center mb-8">
-              <p className="text-xs text-white/30 italic mb-3">This is to certify that</p>
+              <p className="text-xs text-white/55 italic mb-3">This is to certify that</p>
 
               <p className="text-3xl font-bold text-amber-400 mb-3"
                 style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
                 {cert.owner_name}
               </p>
 
-              <p className="text-xs text-white/30 italic mb-3">
+              <p className="text-xs text-white/55 italic mb-3">
                 {isRevoked ? "was the registered holder of" : "is the registered holder of"}
               </p>
 
@@ -265,12 +265,12 @@ export default function CertificatePage() {
                 style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
                 {Number(cert.units).toLocaleString()}
               </p>
-              <p className="text-xs font-black tracking-[0.25em] text-white/40">UNITS</p>
+              <p className="text-xs font-black tracking-[0.25em] text-white/60">UNITS</p>
 
-              <p className="text-xs text-white/30 italic mt-4 mb-1">in</p>
+              <p className="text-xs text-white/55 italic mt-4 mb-1">in</p>
 
               <p className="text-lg font-bold text-amber-400/90">{cert.property_title}</p>
-              <p className="text-xs text-white/30 mt-1 flex items-center justify-center gap-1">
+              <p className="text-xs text-white/55 mt-1 flex items-center justify-center gap-1">
                 <MapPin size={10} /> {cert.property_location}
               </p>
             </div>
@@ -293,14 +293,14 @@ export default function CertificatePage() {
               style={{ background: "linear-gradient(90deg, transparent, rgba(200,135,58,0.2), transparent)" }} />
 
             {/* Digital signature */}
-            <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5 mb-6">
+            <div className="rounded-2xl border border-white/6 bg-white/[0.02] p-5 mb-6">
               <div className="flex items-center gap-2 mb-3">
                 <ShieldCheck size={14} className="text-amber-500/70" />
-                <span className="text-[10px] font-black tracking-[0.2em] text-white/35 uppercase">
+                <span className="text-[10px] font-black tracking-[0.2em] hover:border-white/[0.35] uppercase">
                   Digital Signature
                 </span>
               </div>
-              <p className="font-mono text-[10px] text-white/30 break-all leading-relaxed">
+              <p className="font-mono text-[10px] text-white/55 break-all leading-relaxed">
                 {cert.digital_signature}
               </p>
             </div>
@@ -319,12 +319,12 @@ export default function CertificatePage() {
           </div>
 
           {/* ── Footer ── */}
-          <div className="px-8 py-5 border-t border-white/[0.05] text-center"
+          <div className="px-8 py-5 border-t border-white/5 text-center"
             style={{ background: "rgba(0,0,0,0.1)" }}>
             <p className="text-[9px] text-white/20 leading-relaxed">
               This certificate is digitally issued and verifiable at {appname}/verify
               <br />
-              {appname}  · info@{appname.toLowerCase()}
+              {appname} · info@{appname.toLowerCase()}
             </p>
           </div>
         </div>
