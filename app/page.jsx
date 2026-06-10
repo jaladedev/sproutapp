@@ -125,7 +125,7 @@ async function getLands() {
 // ─── Shared UI helpers ────────────────────────────────────────────────────────
 function SectionLabel({ children }) {
   return (
-    <span className="text-xs font-bold tracking-[0.2em] uppercase text-amber-600 mb-2 block">
+    <span className="text-xs font-bold tracking-[0.2em] uppercase text-amber-700 mb-2 block">
       {children}
     </span>
   );
@@ -280,7 +280,7 @@ export default async function Homepage() {
                 },
               ].map((s) => (
                 <div key={s.step} className="bg-white rounded-2xl p-6 border border-stone-100 shadow-sm relative overflow-hidden group hover:shadow-md hover:-translate-y-1 transition-all">
-                  <span className="absolute top-4 right-5 text-5xl font-black text-stone-400" style={{ fontFamily: "'Playfair Display', serif" }}>{s.step}</span>
+                  <span className="absolute top-4 right-5 text-5xl font-black text-stone-300" style={{ fontFamily: "'Playfair Display', serif" }}>{s.step}</span>
                   <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"
                     style={{ background: `${s.accent}18`, color: s.accent }}>
                     {s.icon}
@@ -292,7 +292,7 @@ export default async function Homepage() {
             </div>
             <div className="text-center mt-8">
               <Link href="/register"
-                className="inline-flex items-center gap-2 text-sm font-bold text-amber-600 hover:text-amber-600 transition-colors">
+                className="inline-flex items-center gap-2 text-sm font-bold text-amber-700 hover:text-amber-600 transition-colors">
                 Create your free account <ChevronRight size={15} />
               </Link>
             </div>

@@ -60,7 +60,7 @@ export default function Header() {
             aria-label={`${appname} Home`}
           >
           <Image src="/reu_ng_logo.png" alt={`${appname} logo`} width={160} height={128}
-            priority className="h-16 w-auto transition-opacity group-hover:opacity-80" />
+            priority className="h-10 w-auto transition-opacity group-hover:opacity-80" />
           </Link>
 
           {user && (
@@ -151,7 +151,7 @@ export default function Header() {
                 aria-label={`${appname} Home`}
               >
               <Image src="/reu_ng_logo.png" alt={`${appname} logo`} width={130} height={104}
-                className="h-10 w-auto" />
+                className="h-8 w-auto" />
               </Link>
               <button
                 onClick={() => setMenuOpen(false)}
