@@ -1,20 +1,21 @@
 const FALLBACK = "/no-image.jpeg";
+const R2_BASE  = process.env.NEXT_PUBLIC_R2_URL?.replace(/\/$/, "") ?? "";
 
-export function getLandImage(land) {
-  const first = land?.images?.[0];
-  if (!first) return FALLBACK;
-  return first.image_url || first.image_path || first.url || FALLBACK;
+function resolveUrl(img) {
+  if (!img) return FALLBACK;
+  const raw = img.image_url || img.url || img.image_path;
+  if (!raw) return FALLBACK;
+  if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
+  return `${R2_BASE}/${raw.replace(/^\//, "")}`;
 }
 
-/**
- * Returns all images from a land as lightbox-ready slide objects: [{ src }]
- * Falls back to a single getLandImage slide if images array is empty.
- */
+export function getLandImage(land) {
+  return resolveUrl(land?.images?.[0]);
+}
+
 export function getLandSlides(land) {
   if (land?.images?.length) {
-    return land.images.map((img) => ({
-      src: img.image_url || img.image_path || img.url || FALLBACK,
-    }));
+    return land.images.map((img) => ({ src: resolveUrl(img) }));
   }
   return [{ src: getLandImage(land) }];
 }
