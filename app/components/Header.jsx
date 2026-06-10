@@ -7,6 +7,7 @@ import { Menu, X, LogOut, ChevronRight } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import NotificationBell from "./NotificationBell";
 import toast from "react-hot-toast";
+import Image from "next/image";
 
 const appname = process.env.NEXT_PUBLIC_APP_NAME || "REU.ng";
 
@@ -58,11 +59,8 @@ export default function Header() {
             className="flex items-center shrink-0 group"
             aria-label={`${appname} Home`}
           >
-            <img
-              src="/reu_ng_logo.svg"
-              alt={`${appname} logo`}
-              className="h-16 w-auto transition-opacity group-hover:opacity-80"
-            />
+          <Image src="/reu_ng_logo.png" alt={`${appname} logo`} width={160} height={128}
+            priority className="h-16 w-auto transition-opacity group-hover:opacity-80" />
           </Link>
 
           {user && (
@@ -152,13 +150,8 @@ export default function Header() {
                 onClick={() => setMenuOpen(false)}
                 aria-label={`${appname} Home`}
               >
-                <img
-                  src="/reu_ng_logo.svg"
-                  alt={`${appname} logo`}
-                  width={117}
-                  height={64}
-                  className="h-10 w-auto"
-                />
+              <Image src="/reu_ng_logo.png" alt={`${appname} logo`} width={130} height={104}
+                className="h-10 w-auto" />
               </Link>
               <button
                 onClick={() => setMenuOpen(false)}

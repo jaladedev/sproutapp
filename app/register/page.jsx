@@ -10,6 +10,7 @@ import {
   Gift, CheckCircle, AlertCircle,
 } from "lucide-react";
 import api from "../../utils/api";
+import Image from "next/image";
 
 const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || "REU.ng";
 
@@ -194,7 +195,8 @@ function RegisterForm() {
           style={{ background: "radial-gradient(circle, #C8873A 0%, transparent 65%)" }} />
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-6">
-          <img src="/reu_ng_logo.svg" alt={APP_NAME} className="h-20 w-auto" />
+            <Image src="/reu_ng_logo.png" alt={APP_NAME} width={160} height={128}
+              className="h-20 w-auto" />
           </div>
           <h2 className="text-4xl xl:text-5xl font-bold text-white leading-[1.1] mb-6"
             style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
@@ -221,7 +223,8 @@ function RegisterForm() {
 
           {/* Mobile logo */}
           <div className="flex lg:hidden items-center justify-center gap-2.5 mb-4">
-            <img src="/reu_ng_logo.svg" alt={APP_NAME} className="h-20 w-auto"/>
+            <Image src="/reu_ng_logo.png" alt={APP_NAME} width={160} height={128}
+              className="h-20 w-auto" />
           </div>
 
           <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="mb-8">

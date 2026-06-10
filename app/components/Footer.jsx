@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { MapPin, Mail, Phone } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import Image from "next/image";
 
 const appname = process.env.NEXT_PUBLIC_APP_NAME || "REU.ng";
 
@@ -103,13 +104,8 @@ function BrandBlock({ user, appname }) {
   return (
     <div>
       <Link href={user ? "/dashboard" : "/"} className="inline-flex items-center mb-4 group">
-        <img
-          src="/reu_ng_logo.svg"
-          alt={`${appname} logo`}
-          width={117}
-          height={64}
-          className="h-16 w-auto transition-opacity group-hover:opacity-80"
-        />
+        <Image src="/reu_ng_logo.png" alt={`${appname} logo`} width={160} height={128}
+          className="h-16 w-auto transition-opacity group-hover:opacity-80" />
       </Link>
 
       <p className="text-sm leading-relaxed mb-5 max-w-xs" style={{ color: "rgba(255,255,255,0.7)" }}>

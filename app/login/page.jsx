@@ -7,6 +7,7 @@ import toast from "react-hot-toast";
 import { useAuth } from "../../context/AuthContext";
 import FormError from "../components/FormError";
 import { Eye, EyeOff, Mail, Lock, ArrowRight, AlertCircle } from "lucide-react";
+import Image from "next/image";
 
 const appname = process.env.NEXT_PUBLIC_APP_NAME || "REU.ng";
 
@@ -121,11 +122,8 @@ function LoginForm() {
         {/* Logo */}
         <div className="text-center mb-10">
           <Link href="/" className="inline-flex items-center justify-center group">
-            <img
-              src="/reu_ng_logo.svg"
-              alt={appname}
-              className="h-20 w-auto transition-opacity group-hover:opacity-80"
-            />
+            <Image src="/reu_ng_logo.png" alt={appname} width={160} height={128}
+              priority className="h-20 w-auto transition-opacity group-hover:opacity-80" />
           </Link>
           <p className="text-white/60 mt-2 text-sm">Welcome back — your portfolio awaits</p>
         </div>
