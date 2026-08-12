@@ -713,7 +713,7 @@ export default function CreateLand() {
 
           {/* ── Images ────────────────────────────────────────────────────── */}
           <FormSection title="Land Images" icon={<Image size={15} className="text-amber-500" />}>
-            <label className={`flex flex-col items-center justify-center w-full h-28 rounded-xl border-2 border-dashed bg-white/5 cursor-pointer transition-all ${compressing ? "border-amber-500/60 animate-pulse" : "border-white/15 hover:border-amber-500/40 hover:bg-white/[0.07]"}`}>
+            <label className={`flex flex-col items-center justify-center w-full h-28 rounded-xl border-2 border-dashed bg-white/5 cursor-pointer transition-all ${compressing ? "border-amber-500/60 animate-pulse" : "border-white/15 hover:border-amber-500/40 hover:bg-white/07"}`}>
               {compressing ? (
                 <>
                   <div className="w-5 h-5 border-2 border-amber-500/50 border-t-amber-500 rounded-full animate-spin mb-1" />

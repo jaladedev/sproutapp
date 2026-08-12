@@ -416,7 +416,7 @@ export default function Portfolio() {
                     const isPurchase = t.type === "Purchase";
                     return (
                       <div key={t.reference ?? `${t.type}-${t.date}-${i}`}
-                        className="flex justify-between items-center rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 hover:border-white/15 transition-all">
+                        className="flex justify-between items-center rounded-xl border border-white/8 bg-white/03 px-4 py-3 hover:border-white/15 transition-all">
                         <div className="flex items-center gap-3">
                           <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
                             isPurchase ? "bg-emerald-500/10" : "bg-red-500/10"}`}>

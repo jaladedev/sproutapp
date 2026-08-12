@@ -171,7 +171,7 @@ export default function CreateListingPage() {
                     )}
                     <div className="min-w-0">
                       <p className="text-sm font-bold text-white truncate">{selectedLand.title}</p>
-                      <p className="text-xs hover:border-white/[0.35] truncate">{selectedLand.location}</p>
+                      <p className="text-xs hover:border-white/35 truncate">{selectedLand.location}</p>
                       <p className="text-xs text-amber-400/70 mt-0.5">
                         You own: <span className="font-bold text-amber-400">{availableUnits} units</span>
                       </p>
@@ -262,7 +262,7 @@ export default function CreateListingPage() {
             </div>
 
             {/* Platform fee note */}
-            <div className="flex items-start gap-2.5 rounded-xl border border-white/5 bg-white/[0.03] px-4 py-3">
+            <div className="flex items-start gap-2.5 rounded-xl border border-white/5 bg-white/03 px-4 py-3">
               <AlertCircle size={13} className="text-white/20 shrink-0 mt-0.5" />
               <p className="text-xs text-white/25 leading-relaxed">
                 A <span className="text-white/60 font-semibold">1% platform fee</span> is deducted from the

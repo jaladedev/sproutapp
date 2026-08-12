@@ -133,7 +133,7 @@ function WithdrawalDrawer({ withdrawal, onClose, onApprove, onReject, approving 
         style={{ background: "#0D1F1A" }}>
 
         {/* Header */}
-        <div className="px-6 py-5 border-b border-white/[0.07] flex items-center justify-between sticky top-0 bg-[#0D1F1A] z-10">
+        <div className="px-6 py-5 border-b border-white/07 flex items-center justify-between sticky top-0 bg-[#0D1F1A] z-10">
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.22em] text-white/55 mb-0.5">Withdrawal Details</p>
             <p className="text-xl font-bold text-white" style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
@@ -155,18 +155,18 @@ function WithdrawalDrawer({ withdrawal, onClose, onApprove, onReject, approving 
           </div>
 
           {/* User info */}
-          <div className="rounded-xl border border-white/[0.07] bg-white/[0.02].5 p-4 space-y-3">
+          <div className="rounded-xl border border-white/07 bg-white/[0.02].5 p-4 space-y-3">
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/25 flex items-center gap-1.5">
               <User size={10} /> User
             </p>
             <div>
               <p className="text-sm font-bold text-white">{withdrawal.user?.name}</p>
-              <p className="text-xs hover:border-white/[0.35] mt-0.5">{withdrawal.user?.email}</p>
+              <p className="text-xs hover:border-white/35 mt-0.5">{withdrawal.user?.email}</p>
             </div>
           </div>
 
           {/* Bank details */}
-          <div className="rounded-xl border border-white/[0.07] bg-white/[0.02].5 p-4 space-y-3">
+          <div className="rounded-xl border border-white/07 bg-white/[0.02].5 p-4 space-y-3">
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/25 flex items-center gap-1.5">
               <Building2 size={10} /> Bank Details
             </p>
@@ -183,7 +183,7 @@ function WithdrawalDrawer({ withdrawal, onClose, onApprove, onReject, approving 
           </div>
 
           {/* Transaction details */}
-          <div className="rounded-xl border border-white/[0.07] bg-white/[0.02].5 p-4 space-y-3">
+          <div className="rounded-xl border border-white/07 bg-white/[0.02].5 p-4 space-y-3">
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/25">Transaction</p>
             {[
               ["Reference",   withdrawal.reference],
@@ -218,7 +218,7 @@ function WithdrawalDrawer({ withdrawal, onClose, onApprove, onReject, approving 
 
         {/* Action buttons */}
         {(canApprove || canReject) && (
-          <div className="p-6 border-t border-white/[0.07] space-y-2 sticky bottom-0 bg-[#0D1F1A]">
+          <div className="p-6 border-t border-white/07 space-y-2 sticky bottom-0 bg-[#0D1F1A]">
             {canApprove && (
               <button
                 onClick={() => onApprove(withdrawal)}
@@ -254,7 +254,7 @@ function WithdrawalDrawer({ withdrawal, onClose, onApprove, onReject, approving 
 /* ─── Stat card ─────────────────────────────────────────────────────────── */
 function StatCard({ label, value, sub, accent, icon }) {
   return (
-    <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02].5 p-5 relative overflow-hidden group hover:border-white/[0.12] transition-all">
+    <div className="rounded-2xl border border-white/07 bg-white/[0.02].5 p-5 relative overflow-hidden group hover:border-white/12 transition-all">
       <div className="absolute -top-6 -right-6 w-20 h-20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
         style={{ background: `radial-gradient(circle, ${accent}25, transparent 70%)` }} />
       <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3"
@@ -385,7 +385,7 @@ export default function AdminWithdrawalsPage() {
               style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
               Withdrawals
             </h1>
-            <p className="hover:border-white/[0.35] text-sm mt-1">{pagination.total} total requests</p>
+            <p className="hover:border-white/35 text-sm mt-1">{pagination.total} total requests</p>
           </div>
 
           {/* Approve all button */}
@@ -437,7 +437,7 @@ export default function AdminWithdrawalsPage() {
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
                   filterStatus === v
                     ? "bg-white/[0.01]0 text-white"
-                    : "hover:border-white/[0.35] hover:text-white/60"
+                    : "hover:border-white/35 hover:text-white/60"
                 }`}>
                 {l}
               </button>
@@ -445,7 +445,7 @@ export default function AdminWithdrawalsPage() {
           </div>
 
           <button onClick={fetchWithdrawals}
-            className="w-10 h-10 rounded-xl border border-white/10 bg-white/5 flex items-center justify-center hover:border-white/[0.35] hover:text-white hover:border-white/20 transition-all">
+            className="w-10 h-10 rounded-xl border border-white/10 bg-white/5 flex items-center justify-center hover:border-white/35 hover:text-white hover:border-white/20 transition-all">
             <RefreshCw size={14} />
           </button>
         </div>
@@ -456,15 +456,15 @@ export default function AdminWithdrawalsPage() {
             <div className="w-8 h-8 border-2 border-amber-500/30 border-t-amber-500 rounded-full animate-spin" />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-20 rounded-2xl border border-white/[0.07] bg-white/[0.01].5">
+          <div className="text-center py-20 rounded-2xl border border-white/07 bg-white/[0.01].5">
             <TrendingDown size={36} className="mx-auto text-white/10 mb-3" />
             <p className="text-white/25 text-sm">No withdrawals found</p>
           </div>
         ) : (
           <>
             {/* Desktop table */}
-            <div className="hidden md:block rounded-2xl border border-white/[0.07] bg-white/[0.02] overflow-hidden mb-5">
-              <div className="grid grid-cols-[1.8fr_1.2fr_1fr_1fr_120px_80px] gap-4 px-5 py-3 border-b border-white/6 bg-white/[0.02]">
+            <div className="hidden md:block rounded-2xl border border-white/07 bg-white/02 overflow-hidden mb-5">
+              <div className="grid grid-cols-[1.8fr_1.2fr_1fr_1fr_120px_80px] gap-4 px-5 py-3 border-b border-white/6 bg-white/02">
                 {["User", "Amount", "Reference", "Requested", "Status", ""].map((h) => (
                   <span key={h} className="text-[9px] font-black uppercase tracking-[0.22em] text-white/20">{h}</span>
                 ))}
@@ -472,7 +472,7 @@ export default function AdminWithdrawalsPage() {
 
               {filtered.map((w, i) => (
                 <div key={w.id}
-                  className={`grid grid-cols-[1.8fr_1.2fr_1fr_1fr_120px_80px] gap-4 px-5 py-4 items-center hover:bg-white/[0.02] cursor-pointer transition-colors ${
+                  className={`grid grid-cols-[1.8fr_1.2fr_1fr_1fr_120px_80px] gap-4 px-5 py-4 items-center hover:bg-white/02 cursor-pointer transition-colors ${
                     i < filtered.length - 1 ? "border-b border-white/4" : ""
                   }`}
                   onClick={() => setDrawerItem(w)}>
@@ -534,7 +534,7 @@ export default function AdminWithdrawalsPage() {
             <div className="md:hidden space-y-3 mb-5">
               {filtered.map((w) => (
                 <div key={w.id}
-                  className="rounded-2xl border border-white/[0.07] bg-white/[0.02].5 p-4 cursor-pointer hover:border-white/[0.12] transition-all"
+                  className="rounded-2xl border border-white/07 bg-white/[0.02].5 p-4 cursor-pointer hover:border-white/12 transition-all"
                   onClick={() => setDrawerItem(w)}>
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div className="min-w-0">

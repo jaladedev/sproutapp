@@ -56,7 +56,7 @@ export default function SupportWidget() {
             }}
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3.5 border-b border-white/[0.08]"
+            <div className="flex items-center justify-between px-4 py-3.5 border-b border-white/8"
               style={{ background: "linear-gradient(135deg, rgba(200,135,58,0.15), rgba(232,168,80,0.08))" }}>
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl flex items-center justify-center"
@@ -73,19 +73,19 @@ export default function SupportWidget() {
               </div>
               <div className="flex items-center gap-1">
                 <Link href="/support" onClick={() => setOpen(false)}
-                  className="w-7 h-7 flex items-center justify-center rounded-lg text-white/55 hover:text-white hover:bg-white/[0.08] transition-all"
+                  className="w-7 h-7 flex items-center justify-center rounded-lg text-white/55 hover:text-white hover:bg-white/08 transition-all"
                   title="Open full support page">
                   <ExternalLink size={13} />
                 </Link>
                 <button onClick={() => setOpen(false)}
-                  className="w-7 h-7 flex items-center justify-center rounded-lg text-white/55 hover:text-white hover:bg-white/[0.08] transition-all">
+                  className="w-7 h-7 flex items-center justify-center rounded-lg text-white/55 hover:text-white hover:bg-white/08 transition-all">
                   <X size={14} />
                 </button>
               </div>
             </div>
 
             {/* Tabs */}
-            <div className="flex border-b border-white/[0.08]">
+            <div className="flex border-b border-white/8">
               {[
                 { id: "chat",   icon: <Bot size={13} />,      label: "AI Chat"  },
                 { id: "faq",    icon: <HelpCircle size={13} />, label: "FAQ"    },

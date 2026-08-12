@@ -26,7 +26,7 @@
                       <CheckCircle size={15} className="text-emerald-400 shrink-0 mt-0.5" />
                       <div>
                         <p className="text-sm font-bold text-white">{title}</p>
-                        <p className="text-xs hover:border-white/[0.35] mt-0.5 leading-relaxed">{desc}</p>
+                        <p className="text-xs hover:border-white/35 mt-0.5 leading-relaxed">{desc}</p>
                       </div>
                     </li>
                   ))}
@@ -193,7 +193,7 @@
                     {c.icon}
                   </div>
                   <h3 className="text-sm font-bold text-white mb-1">{c.title}</h3>
-                  <p className="text-xs hover:border-white/[0.35] leading-relaxed">{c.desc}</p>
+                  <p className="text-xs hover:border-white/35 leading-relaxed">{c.desc}</p>
                 </div>
               ))}
             </div>

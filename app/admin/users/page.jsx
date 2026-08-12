@@ -204,7 +204,7 @@ export default function AdminUsersPage() {
         </div>
 
         {showFilters && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5 p-4 rounded-xl border border-white/10 bg-white/[0.03]">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5 p-4 rounded-xl border border-white/10 bg-white/03">
             {[
               { label: "Status", key: "suspended",  options: [["","All Users"],["true","Suspended"],["false","Active"]] },
               { label: "Role",   key: "is_admin",   options: [["","All Roles"],["true","Admins Only"],["false","Regular Users"]] },

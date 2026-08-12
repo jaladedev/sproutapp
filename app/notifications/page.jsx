@@ -153,7 +153,7 @@ export default function NotificationsPage() {
                 <div key={n.id}
                   onClick={() => unread && handleMarkAsRead(n.id)}
                   className={`px-5 py-4 border-b border-white/5 last:border-0 transition-colors ${
-                    unread ? "cursor-pointer hover:bg-white/6" : "hover:bg-white/[0.03]"
+                    unread ? "cursor-pointer hover:bg-white/6" : "hover:bg-white/03"
                   }`}
                   style={unread ? { borderLeft: "2px solid rgba(200,135,58,0.6)" } : {}}
                 >

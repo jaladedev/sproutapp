@@ -71,7 +71,7 @@ function Section({ title, icon, children, defaultOpen = true, accent = "amber" }
   const a = accentMap[accent] || accentMap.amber;
 
   return (
-    <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] overflow-hidden">
+    <div className="rounded-2xl border border-white/07 bg-white/[0.025] overflow-hidden">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -165,8 +165,8 @@ function PromoPriceTable({ land }) {
   if (rows.length <= 1) return null;
 
   return (
-    <div className="mb-10 rounded-2xl border border-white/[0.07] overflow-hidden">
-      <div className="px-5 py-4 border-b border-white/5 bg-white/[0.03]">
+    <div className="mb-10 rounded-2xl border border-white/07 overflow-hidden">
+      <div className="px-5 py-4 border-b border-white/5 bg-white/03">
         <p className="text-[10px] font-black uppercase tracking-[0.22em] text-white/60">
           Price Journey
         </p>
@@ -189,7 +189,7 @@ function PromoPriceTable({ land }) {
           </div>
         ))}
       </div>
-      <div className="px-5 py-3 bg-white/[0.02] border-t border-white/5">
+      <div className="px-5 py-3 bg-white/02 border-t border-white/5">
         <p className="text-[10px] text-white/20">
           Promotional prices are for reference only. Purchase price is the current price.
         </p>
@@ -956,7 +956,7 @@ export default function LandDetails() {
               </div>
               <div className="space-y-1.5">
                 {neighbouringTx.map((tx, i) => (
-                  <div key={i} className="grid grid-cols-4 gap-2 items-center px-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/5">
+                  <div key={i} className="grid grid-cols-4 gap-2 items-center px-3 py-2.5 rounded-xl bg-white/03 border border-white/5">
                     <span className="text-xs text-white/60">
                       {tx.plot_size ? `${Number(tx.plot_size).toLocaleString()} m²` : "—"}
                     </span>

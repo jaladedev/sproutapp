@@ -65,7 +65,7 @@ export default function GuestSupportBubble() {
           style={{ background: "#0b1e17", border: "1px solid rgba(255,255,255,0.1)", maxHeight: "min(520px, calc(100vh - 100px))" }}>
 
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3.5 border-b border-white/[0.08]"
+          <div className="flex items-center justify-between px-4 py-3.5 border-b border-white/8"
             style={{ background: "linear-gradient(135deg, rgba(200,135,58,0.15), rgba(232,168,80,0.08))" }}>
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl flex items-center justify-center"
@@ -78,7 +78,7 @@ export default function GuestSupportBubble() {
               </div>
             </div>
             <button onClick={() => setOpen(false)}
-              className="w-7 h-7 flex items-center justify-center rounded-lg text-white/55 hover:text-white hover:bg-white/[0.08] transition-all">
+              className="w-7 h-7 flex items-center justify-center rounded-lg text-white/55 hover:text-white hover:bg-white/8 transition-all">
               <X size={14} />
             </button>
           </div>

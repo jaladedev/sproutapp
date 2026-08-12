@@ -586,7 +586,7 @@ export default function LivenessCheck({ onCapture, captured, onRetake, fullHeigh
           <div className="absolute top-3 left-3 flex items-center gap-2">
             {/* Fixed the same malformed arbitrary-value typo documented in
                 Button.tsx (#9) and FormComponents.tsx: stray trailing digit
-                turned "bg-white/[0.02]" into a dead "[0.02]0" class. Three
+                turned "bg-white/02" into a dead "[0.02]0" class. Three
                 instances fixed in this file during the TS conversion. */}
             {prompts.map((_, i) => (
               <div key={i} className={`w-3 h-3 rounded-full border-2 transition-all duration-300 ${

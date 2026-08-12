@@ -156,7 +156,7 @@ const isLoggedIn = !!user;
             style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
             Ready to start investing in Nigerian land?
           </p>
-          <p className="text-xs hover:border-white/[0.35] mb-4">
+          <p className="text-xs hover:border-white/35 mb-4">
             Join thousands of investors already on the platform.
           </p>
           <Link href="/register"

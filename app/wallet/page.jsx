@@ -358,7 +358,7 @@ export default function WalletPage() {
                           className={`relative flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-all ${
                             active
                               ? "border-amber-500/50 bg-amber-500/10"
-                              : "border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/[0.08]"
+                              : "border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/08"
                           }`}
                         >
                           {active && (
@@ -565,7 +565,7 @@ export default function WalletPage() {
                   return (
                     <div
                       key={t.reference ?? i}
-                      className="rounded-xl border border-white/[0.07] bg-white/[0.03] hover:border-white/[0.12] hover:bg-white/5 transition-all p-3 sm:p-4"
+                      className="rounded-xl border border-white/07 bg-white/03 hover:border-white/12 hover:bg-white/5 transition-all p-3 sm:p-4"
                     >
                       <div className="flex items-start gap-3">
                         {/* Gateway badge */}

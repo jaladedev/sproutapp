@@ -45,9 +45,9 @@ function StatusBadge({ status, large }) {
 function Panel({ title, icon, children, defaultOpen = true }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] overflow-hidden">
+    <div className="rounded-2xl border border-white/07 bg-white/[0.025] overflow-hidden">
       <button type="button" onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between px-5 py-4 hover:bg-white/[0.03] transition-colors">
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-white/03 transition-colors">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500">{icon}</div>
           <span className="text-xs font-black uppercase tracking-[0.2em] text-white/50">{title}</span>
@@ -194,7 +194,7 @@ function OfferForm({ listing, onSuccess }) {
       {/* Total preview */}
       {totalNaira !== null && (
         <div className="flex justify-between items-center rounded-lg bg-amber-500/5 border border-amber-500/15 px-3 py-2">
-          <span className="text-xs hover:border-white/[0.35]">Total offer</span>
+          <span className="text-xs hover:border-white/35">Total offer</span>
           <span className="text-sm font-bold text-amber-400">
             ₦{totalNaira.toLocaleString("en-NG", { minimumFractionDigits: 2 })}
           </span>
@@ -258,11 +258,11 @@ function OffersList({ listing, onUpdate }) {
   return (
     <div className="space-y-3">
       {offers.map((offer) => (
-        <div key={offer.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <div key={offer.id} className="rounded-xl border border-white/10 bg-white/03 p-4">
           <div className="flex items-start justify-between gap-3 mb-2">
             <div>
               <p className="text-sm font-bold text-white">{offer.buyer?.name}</p>
-              <p className="text-xs hover:border-white/[0.35] mt-0.5">
+              <p className="text-xs hover:border-white/35 mt-0.5">
                 {offer.units} units @ ₦{(offer.offer_price_kobo / 100).toLocaleString("en-NG")} / unit
               </p>
               <p className="text-xs font-bold text-amber-400 mt-0.5">
@@ -384,7 +384,7 @@ function ChatPanel({ listing, currentUser }) {
                 <div className={`max-w-[78%] rounded-2xl px-3.5 py-2.5 ${
                   isMe
                     ? "bg-amber-500/20 text-white"
-                    : "bg-white/[0.06] text-white/75"
+                    : "bg-white/06 text-white/75"
                 } ${m._optimistic ? "opacity-60" : ""}`}>
                   {!isMe && (
                     <p className="text-[10px] font-bold text-white/55 mb-0.5">
@@ -474,7 +474,7 @@ function EscrowPanel({ escrow, currentUser, onUpdate }) {
           ["Total",        `₦${(escrow.total_kobo / 100).toLocaleString("en-NG", { minimumFractionDigits: 2 })}`],
           ["Platform Fee", `₦${(escrow.platform_fee_kobo / 100).toLocaleString("en-NG", { minimumFractionDigits: 2 })}`],
         ].map(([label, val]) => (
-          <div key={label} className="rounded-xl bg-white/[0.03] border border-white/5 px-3 py-2.5">
+          <div key={label} className="rounded-xl bg-white/03 border border-white/5 px-3 py-2.5">
             <p className="text-[10px] text-white/25 uppercase tracking-widest">{label}</p>
             <p className="text-sm font-bold text-white mt-0.5">{val}</p>
           </div>
@@ -605,7 +605,7 @@ export default function ListingDetailPage() {
           <div className="space-y-5">
 
             {/* Property card */}
-            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] overflow-hidden">
+            <div className="rounded-2xl border border-white/07 bg-white/[0.025] overflow-hidden">
               {image && (
                 <div className="relative h-48 overflow-hidden">
                   <img src={image} alt={land?.title} className="w-full h-full object-cover" />
@@ -624,7 +624,7 @@ export default function ListingDetailPage() {
                 <p className="text-xs text-amber-500/70 font-bold uppercase tracking-widest mb-1">
                   {land?.title}
                 </p>
-                <div className="flex items-center gap-1.5 hover:border-white/[0.35] text-xs mb-4">
+                <div className="flex items-center gap-1.5 hover:border-white/35 text-xs mb-4">
                   <MapPin size={11} /> {land?.location}
                 </div>
 
@@ -721,7 +721,7 @@ export default function ListingDetailPage() {
                           <p className="text-sm font-bold text-white">
                             {offer.units} units @ {formatNaira(offer.offer_price_kobo)}
                           </p>
-                          <p className="text-xs hover:border-white/[0.35] mt-0.5">
+                          <p className="text-xs hover:border-white/35 mt-0.5">
                             Total: ₦{((offer.offer_price_kobo * offer.units) / 100).toLocaleString("en-NG", { minimumFractionDigits: 2 })}
                           </p>
                         </div>
@@ -761,7 +761,7 @@ export default function ListingDetailPage() {
             )}
 
             {/* Platform info */}
-            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5 space-y-3">
+            <div className="rounded-2xl border border-white/07 bg-white/[0.025] p-5 space-y-3">
               <p className="text-xs font-black uppercase tracking-[0.2em] text-white/55">How It Works</p>
               {[
                 [TrendingUp,   "Make an offer at your price"],
@@ -772,7 +772,7 @@ export default function ListingDetailPage() {
               ].map(([Icon, text]) => (
                 <div key={text} className="flex items-center gap-2.5">
                   <Icon size={12} className="text-amber-500/60 shrink-0" />
-                  <p className="text-xs hover:border-white/[0.35]">{text}</p>
+                  <p className="text-xs hover:border-white/35">{text}</p>
                 </div>
               ))}
               <p className="text-[10px] text-white/20 border-t border-white/5 pt-3">

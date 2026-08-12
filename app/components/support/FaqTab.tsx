@@ -39,7 +39,7 @@ export default function FaqTab() {
   return (
     <div className="flex-1 overflow-y-auto px-3 py-3 space-y-1.5">
       {allFaqs.map((f, i) => (
-        <div key={f.id ?? i} className="rounded-xl border border-white/[0.08] overflow-hidden bg-white/[0.03]">
+        <div key={f.id ?? i} className="rounded-xl border border-white/8 overflow-hidden bg-white/03">
           <button onClick={() => setExpanded(expanded === i ? null : i)}
             className="w-full flex items-center justify-between px-3.5 py-3 text-left gap-2">
             <span className="text-xs font-semibold text-white/70 leading-snug">{f.question}</span>

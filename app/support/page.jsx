@@ -34,7 +34,7 @@ const grad = `linear-gradient(135deg, ${AMBER} 0%, ${AMBER2} 100%)`;
 
 /* ── Shared styles ─────────────────────────────────────────────────────────── */
 const inp =
-  `w-full bg-white/[0.04] border border-white/[0.08] hover:border-white/[0.16] text-white ` +
+  `w-full bg-white/04 border border-white/8 hover:border-white/16 text-white ` +
   `placeholder-white/20 rounded-2xl px-4 py-3.5 text-sm focus:outline-none ` +
   `focus:border-amber-500/60 focus:ring-2 focus:ring-amber-500/15 transition-all duration-200`;
 
@@ -63,9 +63,9 @@ const statusCfg = (s = "") => ({
 
 const priorityCfg = (p = "") => ({
   high:   { cls: "text-red-400 bg-red-500/10 border-red-500/20",      label: "High"   },
-  normal: { cls: "hover:border-white/[0.35] bg-white/[0.04] border-white/10",     label: "Normal" },
-  low:    { cls: "text-white/20 bg-white/[0.02] border-white/[0.06]", label: "Low"    },
-}[p] || { cls: "hover:border-white/[0.35] bg-white/[0.04] border-white/10", label: "Normal" });
+  normal: { cls: "hover:border-white/35 bg-white/04 border-white/10",     label: "Normal" },
+  low:    { cls: "text-white/20 bg-white/02 border-white/06", label: "Low"    },
+}[p] || { cls: "hover:border-white/35 bg-white/04 border-white/10", label: "Normal" });
 
 const fmtDate = (d) =>
   d ? new Date(d).toLocaleString("en-NG", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
@@ -99,7 +99,7 @@ function Pill({ active, onClick, children, "data-tab": dataTab }) {
       onClick={onClick}
       data-tab={dataTab}
       className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${
-        active ? "text-[#0A1A13] shadow-lg" : "border border-white/[0.08] text-white/60 hover:text-white hover:bg-white/[0.08]"
+        active ? "text-[#0A1A13] shadow-lg" : "border border-white/8 text-white/60 hover:text-white hover:bg-white/08"
       }`}
       style={active ? { background: grad } : {}}
     >
@@ -856,7 +856,7 @@ function FaqView({ onContact }) {
             return (
               <button key={c} onClick={() => { setActiveTab(c); setExpanded(null); }}
                 className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold capitalize border transition-all duration-200 ${
-                  isActive ? cfg.color : "bg-white/4 border-white/[0.08] hover:border-white/[0.35] hover:text-white"
+                  isActive ? cfg.color : "bg-white/4 border-white/8 hover:border-white/35 hover:text-white"
                 }`}>
                 {c !== "all" && <span>{cfg.icon}</span>}
                 {c === "all" ? "All Topics" : c}
@@ -887,7 +887,7 @@ function FaqView({ onContact }) {
                 className="rounded-2xl overflow-hidden transition-all duration-200"
                 style={{ background: SURFACE, border: `1px solid ${isOpen ? "rgba(200,135,58,0.25)" : BORDER}` }}>
                 <button onClick={() => setExpanded(isOpen ? null : i)}
-                  className="w-full flex items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-white/[0.03]">
+                  className="w-full flex items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-white/03">
                   <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border ${cfg.color}`}>
                     {cfg.icon}
                   </div>

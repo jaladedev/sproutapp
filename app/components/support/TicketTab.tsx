@@ -99,7 +99,7 @@ export default function TicketTab({ user }: TicketTabProps) {
             Attachment <span className="normal-case font-normal">(optional, max 5MB)</span>
           </label>
           <button type="button" onClick={() => fileRef.current?.click()}
-            className="w-full flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-dashed border-white/15 hover:border-amber-500/30 text-white/55 hover:text-amber-400 text-xs transition-all bg-white/[0.02]">
+            className="w-full flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-dashed border-white/15 hover:border-amber-500/30 text-white/55 hover:text-amber-400 text-xs transition-all bg-white/02">
             <Paperclip size={12} />
             {file ? file.name : "Attach screenshot or file"}
           </button>

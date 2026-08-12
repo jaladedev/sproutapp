@@ -85,7 +85,7 @@ export default function Header() {
                       aria-current={active ? "page" : undefined}
                       className={`relative px-3 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
                         active
-                          ? "text-white bg-white/[0.08]"
+                          ? "text-white bg-white/08"
                           : "text-white/60 hover:text-white/80 hover:bg-white/5"
                       }`}
                     >
@@ -151,7 +151,7 @@ export default function Header() {
               borderLeft: "1px solid rgba(255,255,255,0.07)",
             }}
           >
-            <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.08] shrink-0">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/8 shrink-0">
               <Link
                 href={user ? "/dashboard" : "/"}
                 onClick={() => setMenuOpen(false)}
@@ -184,7 +184,7 @@ export default function Header() {
                     aria-current={active ? "page" : undefined}
                     className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                       active
-                        ? "bg-white/[0.08] text-white"
+                        ? "bg-white/08 text-white"
                         : "text-white/60 hover:bg-white/5 hover:text-white/70"
                     }`}
                   >
@@ -203,7 +203,7 @@ export default function Header() {
             </nav>
 
             <div
-              className="shrink-0 px-3 py-4 border-t border-white/[0.08] flex items-center justify-between"
+              className="shrink-0 px-3 py-4 border-t border-white/8 flex items-center justify-between"
               style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}
             >
               <NotificationBell />

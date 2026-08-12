@@ -243,7 +243,7 @@ export default function FileDropZone({
             className={`border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer select-none transition-all touch-manipulation ${
               drag
                 ? "border-amber-500/60 bg-amber-500/5"
-                : "border-white/15 hover:border-white/25 bg-white/[0.03] hover:bg-white/5"
+                : "border-white/15 hover:border-white/25 bg-white/03 hover:bg-white/5"
             }`}
             style={{ height: "clamp(110px, 26vw, 148px)" }}
           >

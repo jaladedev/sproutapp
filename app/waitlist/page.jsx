@@ -186,7 +186,7 @@ function CheckPositionPanel({ onClose }) {
                 <Sparkles size={15} className="text-amber-400 shrink-0 mt-0.5" />
                 <div>
                   <p className="text-sm font-bold text-white/80">Still on the list</p>
-                  <p className="text-xs hover:border-white/[0.35] mt-0.5 leading-relaxed">
+                  <p className="text-xs hover:border-white/35 mt-0.5 leading-relaxed">
                     Access opens in batches. Refer friends below to move up and get in sooner.
                   </p>
                 </div>
@@ -780,14 +780,14 @@ export default function WaitlistPage() {
               </p>
             </form>
 
-            <div className="mt-5 pt-5 border-t border-white/[0.08]">
+            <div className="mt-5 pt-5 border-t border-white/8">
               <AvatarStack />
             </div>
           </div>
         </div>
 
         {/* Bottom strip */}
-        <div className="mt-16 sm:mt-24 pt-8 border-t border-white/[0.08] flex flex-wrap items-center justify-between gap-4">
+        <div className="mt-16 sm:mt-24 pt-8 border-t border-white/8 flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap gap-4 text-xs text-white/20">
             {[
               [CheckCircle, "Verified land titles"],

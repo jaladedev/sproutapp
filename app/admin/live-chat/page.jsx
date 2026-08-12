@@ -106,7 +106,7 @@ function QueueItem({ ticket, isActive, onClick }) {
     <button
       onClick={onClick}
       className={`w-full text-left px-4 py-3.5 border-b border-white/4 transition-all relative group ${
-        isActive ? "bg-white/6" : "hover:bg-white/[0.03]"
+        isActive ? "bg-white/6" : "hover:bg-white/03"
       }`}
     >
       {isActive && (
@@ -165,7 +165,7 @@ function MessageBubble({ message, isAgent }) {
           className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
             isAgent
               ? "rounded-tr-md text-[#0D1F1A] font-medium"
-              : "rounded-tl-md bg-white/[0.07] text-white/80 border border-white/6"
+              : "rounded-tl-md bg-white/07 text-white/80 border border-white/6"
           }`}
           style={isAgent ? { background: "linear-gradient(135deg, #C8873A, #E8A850)" } : {}}
         >
@@ -184,7 +184,7 @@ function TypingIndicator({ name }) {
       <div className="w-7 h-7 rounded-xl bg-white/[0.01]0 flex items-center justify-center text-xs font-bold text-white/60">
         {name?.[0] || "U"}
       </div>
-      <div className="px-4 py-3 rounded-2xl rounded-tl-md bg-white/[0.07] border border-white/6 flex items-center gap-1">
+      <div className="px-4 py-3 rounded-2xl rounded-tl-md bg-white/07 border border-white/6 flex items-center gap-1">
         {[0, 1, 2].map((i) => (
           <span key={i}
             className="w-1.5 h-1.5 rounded-full bg-white/[0.03]0 animate-bounce"
@@ -639,7 +639,7 @@ export default function AgentChatPage() {
 
               {/* Input */}
               <div className="px-3 sm:px-5 py-3 sm:py-4 border-t border-white/6 bg-[#0D1F1A] shrink-0">
-                <div className="flex items-end gap-2 sm:gap-3 bg-white/4 border border-white/[0.08] hover:border-white/[0.14] focus-within:border-amber-500/30 focus-within:ring-2 focus-within:ring-amber-500/10 rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 transition-all">
+                <div className="flex items-end gap-2 sm:gap-3 bg-white/4 border border-white/8 hover:border-white/14 focus-within:border-amber-500/30 focus-within:ring-2 focus-within:ring-amber-500/10 rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 transition-all">
                   <textarea
                     value={draft}
                     onChange={(e) => handleDraftChange(e.target.value)}

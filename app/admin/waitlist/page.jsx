@@ -257,7 +257,7 @@ export default function AdminWaitlistPage() {
         </div>
 
         {showFilters && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5 p-4 rounded-xl border border-white/10 bg-white/[0.03]">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5 p-4 rounded-xl border border-white/10 bg-white/03">
             {[
               { label: "City",    key: "filterCity",    val: filterCity,    set: setFilterCity,    opts: [["", "All Cities"], ...Object.entries(CITY_LABELS)] },
               { label: "Budget",  key: "filterBudget",  val: filterBudget,  set: setFilterBudget,  opts: [["", "All Budgets"], ...Object.entries(BUDGET_LABELS)] },
@@ -296,7 +296,7 @@ export default function AdminWaitlistPage() {
               {filtered.map((entry, i) => (
                 <div key={entry.id}
                   className={`grid grid-cols-[40px_2fr_1.5fr_1fr_1fr_1fr_1fr_120px] gap-3 px-5 py-3.5 items-center hover:bg-white/[0.025] transition-colors ${
-                    i < filtered.length - 1 ? "border-b border-white/[0.04]" : ""
+                    i < filtered.length - 1 ? "border-b border-white/04" : ""
                   }`}
                 >
                   <span className="text-xs font-bold text-amber-500/60 tabular-nums">#{entry.position}</span>

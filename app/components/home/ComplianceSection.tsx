@@ -32,7 +32,7 @@ export default function ComplianceSection({ appname }: ComplianceSectionProps) {
                 {c.icon}
               </div>
               <h3 className="text-sm font-bold text-white mb-1">{c.title}</h3>
-              <p className="text-xs hover:border-white/[0.35] leading-relaxed">{c.desc}</p>
+              <p className="text-xs hover:border-white/35 leading-relaxed">{c.desc}</p>
             </div>
           ))}
         </div>

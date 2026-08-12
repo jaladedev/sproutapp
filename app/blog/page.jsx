@@ -20,7 +20,7 @@ async function apiFetch(path) {
 function PostCard({ post }) {
   return (
     <Link href={`/blog/${post.slug}`} className="group block">
-      <article className="rounded-2xl border border-white/[0.07] bg-white/[0.02].5 overflow-hidden hover:border-white/[0.14] hover:bg-white/4 transition-all duration-300 h-full flex flex-col">
+      <article className="rounded-2xl border border-white/07 bg-white/[0.02].5 overflow-hidden hover:border-white/14 hover:bg-white/4 transition-all duration-300 h-full flex flex-col">
 
         {/* Cover image */}
         {post.cover_image_url ? (
@@ -85,7 +85,7 @@ function PostCard({ post }) {
 /* ─── Skeleton card ─────────────────────────────────────────────────────── */
 function SkeletonCard() {
   return (
-    <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02].5 overflow-hidden animate-pulse">
+    <div className="rounded-2xl border border-white/07 bg-white/[0.02].5 overflow-hidden animate-pulse">
       <div className="h-44 bg-white/5" />
       <div className="p-5 space-y-3">
         <div className="h-2.5 bg-white/5 rounded w-1/4" />
@@ -225,7 +225,7 @@ export default function BlogPage() {
                 className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold border transition-all ${
                   activeTag === t.slug
                     ? "border-amber-500/40 bg-amber-500/8 text-amber-400"
-                    : "border-white/[0.07] bg-transparent text-white/25 hover:border-white/15 hover:text-white/60"
+                    : "border-white/07 bg-transparent text-white/25 hover:border-white/15 hover:text-white/60"
                 }`}>
                 <Tag size={8} /> {t.name}
               </button>

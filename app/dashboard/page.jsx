@@ -501,7 +501,7 @@ function TransactionsSection({ transactions, loading, error, onRetry }) {
           >
             No transactions yet
           </p>
-          <p className="text-xs text-[#8ab9a9] mb-5 max-w-[12rem] leading-relaxed">
+          <p className="text-xs text-[#8ab9a9] mb-5 max-w-48 leading-relaxed">
             Invest in verified land to see activity here.
           </p>
           {/* Solid color button — was linear-gradient, caused layer promotion */}

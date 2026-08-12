@@ -59,8 +59,8 @@ export function ProgressRail({ current }: { current: number }) {
             </div>
             {i < STEPS.length - 1 && (
               // Fixed the same malformed arbitrary-value typo documented in
-              // Button.tsx (#9): "bg-white/[0.01]0" → "bg-white/[0.02]".
-              <div className="flex-1 h-px mx-2 mb-5 bg-white/[0.02] rounded-full overflow-hidden">
+              // Button.tsx (#9): "bg-white/[0.01]0" → "bg-white/02".
+              <div className="flex-1 h-px mx-2 mb-5 bg-white/02 rounded-full overflow-hidden">
                 <motion.div
                   className="h-full rounded-full"
                   style={{ background: "linear-gradient(90deg, #C8873A, #E8A850)" }}
