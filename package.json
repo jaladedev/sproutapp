@@ -6,10 +6,20 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@hookform/resolvers": "^3.10.0",
+    "@tanstack/react-query": "^5.90.5",
+    "@tiptap/extension-link": "^3.27.3",
+    "@tiptap/extension-placeholder": "^3.27.3",
+    "@tiptap/pm": "^3.27.3",
+    "@tiptap/react": "^3.27.3",
+    "@tiptap/starter-kit": "^3.27.3",
     "axios": "^1.13.5",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
     "critters": "^0.0.23",
     "framer-motion": "^12.34.3",
     "laravel-echo": "^2.3.4",
@@ -21,17 +31,23 @@
     "pusher-js": "^8.5.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "react-hook-form": "^7.65.0",
     "react-hot-toast": "^2.6.0",
     "react-leaflet": "^5.0.0",
     "react-leaflet-cluster": "^4.0.0",
-    "yet-another-react-lightbox": "^3.29.1"
+    "tailwind-merge": "^2.6.0",
+    "yet-another-react-lightbox": "^3.29.1",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@tanstack/react-query-devtools": "^5.90.5",
     "@types/node": "25.9.2",
+    "@types/react-dom": "^19",
     "@types/react": "19.2.17",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
-    "tailwindcss": "^4"
+    "tailwindcss": "^4",
+    "typescript": "^5"
   }
 }

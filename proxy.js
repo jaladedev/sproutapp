@@ -1,23 +1,5 @@
 import { NextResponse } from "next/server";
-
-const PUBLIC_ROUTES = [
-  "/",
-  "/r",
-  "/login",
-  "/lands",
-  "/register",
-  "/verify-email",
-  "/email-verified",
-  "/forgot-password",
-  "/reset-verify",
-  "/set-new-password",
-  "/support",
-  "/terms",
-  "/privacy",
-  "/waitlist",
-  "/blog",
-  "/verify",
-];
+import { PUBLIC_ROUTES, isPublicRoute } from "./utils/routes";
 
 const ADMIN_ROUTES = ["/admin"];
 
@@ -29,11 +11,7 @@ export function proxy(request) {
 
   const normalizedPath = pathname.replace(/\/+$/, "") || "/";
 
-  const isPublicRoute = PUBLIC_ROUTES.some((route) => {
-    if (route === "/") return normalizedPath === "/";
-    if (route === "/lands") return normalizedPath === "/lands";
-    return normalizedPath === route || normalizedPath.startsWith(route + "/");
-  });
+  const isPublic = isPublicRoute(normalizedPath, PUBLIC_ROUTES);
 
   const isAdminRoute = ADMIN_ROUTES.some((route) =>
     normalizedPath.startsWith(route)
@@ -52,7 +30,7 @@ export function proxy(request) {
   }
 
   // Not logged in, trying to access a protected route
-  if (!token && !isPublicRoute) {
+  if (!token && !isPublic) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(loginUrl);

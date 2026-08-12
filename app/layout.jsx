@@ -4,6 +4,7 @@ import ToasterProvider from "./components/ToasterProvider";
 import ConditionalHeader from "./components/ConditionalHeader";
 import ConditionalFooter from "./components/ConditionalFooter";
 import { AuthProvider } from "../context/AuthContext";
+import QueryProvider from "./providers/QueryProvider";
 import "./globals.css";
 import WhatsAppButton from "./components/WhatsAppButton";
 
@@ -35,13 +36,15 @@ export default function RootLayout({ children }) {
       className={`${dmSans.variable} ${playfairDisplay.variable} ${greatVibes.variable}`}
     >
       <body>
-        <AuthProvider>
-          <ConditionalHeader />
-          {children}
-          <WhatsAppButton />
-          <ConditionalFooter />
-          <ToasterProvider />
-        </AuthProvider>
+        <QueryProvider>
+          <AuthProvider>
+            <ConditionalHeader />
+            {children}
+            <WhatsAppButton />
+            <ConditionalFooter />
+            <ToasterProvider />
+          </AuthProvider>
+        </QueryProvider>
       </body>
     </html>
   );

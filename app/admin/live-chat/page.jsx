@@ -33,12 +33,18 @@ const CATEGORY_COLORS = {
   other:      "#6B7280",
 };
 
-/* ─── Token helper (reads from cookie) ─────────────────────────────────── */
-function getToken() {
-  const match = document.cookie
-    .split("; ")
-    .find((row) => row.startsWith("token="));
-  return match ? decodeURIComponent(match.split("=")[1]) : null;
+/* ─── Broadcasting auth — routed through our axios instance so the
+   httpOnly session cookie is sent automatically (withCredentials), instead
+   of trying to read the (now-inaccessible) token out of document.cookie. ─── */
+function broadcastAuthorizer(channel) {
+  return {
+    authorize: (socketId, callback) => {
+      api
+        .post("/broadcasting/auth", { socket_id: socketId, channel_name: channel.name })
+        .then((res) => callback(false, res.data))
+        .catch((err) => callback(true, err));
+    },
+  };
 }
 
 /* ─── Echo hook — waits for dynamic imports before resolving ────────────── */
@@ -72,12 +78,7 @@ function useEcho() {
       forceTLS:          process.env.NEXT_PUBLIC_REVERB_SCHEME === "https",
       enabledTransports: ["ws", "wss"],
       disableStats:      true,
-      authEndpoint:      `${process.env.NEXT_PUBLIC_API_URL}/broadcasting/auth`,
-      auth: {
-        headers: {
-          Authorization: `Bearer ${getToken()}`,
-        },
-      },
+      authorizer:        broadcastAuthorizer,
     });
       readyRef.current = true;
       resolveReady.current(echoRef.current); // ← unblocks any awaiting subscribers

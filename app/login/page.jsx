@@ -35,11 +35,6 @@ function LoginForm() {
     if (error) setError("");
   };
 
-  const setCookie = (name, value) => {
-    const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toUTCString();
-    document.cookie = `${name}=${value}; path=/; expires=${expires}; SameSite=Lax`;
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -47,11 +42,7 @@ function LoginForm() {
     setFieldErrors({});
 
     try {
-      const user = await login(form.email, form.password);
-
-      // Set user_role cookie (from file 1)
-      const isAdmin = user?.is_admin === true || user?.data?.is_admin === true;
-      setCookie("user_role", isAdmin ? "admin" : "user");
+      await login(form.email, form.password);
 
       // Safer redirect logic (from file 2)
       const paramRedirect = searchParams.get("redirect");

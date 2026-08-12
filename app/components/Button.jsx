@@ -1,3 +1,5 @@
+import { cn } from "../../utils/cn";
+
 /**
  * Button
  *
@@ -31,7 +33,10 @@ export default function Button({
     primary:   "text-[#0D1F1A] hover:scale-[1.02] active:scale-[0.98]",
     secondary: "text-amber-500 border border-amber-500/40 hover:border-amber-500/70 hover:bg-amber-500/10",
     danger:    "text-red-400 border border-red-500/30 hover:border-red-500/60 hover:bg-red-500/10",
-    ghost:     "text-white/50 hover:text-white hover:bg-white/[0.01]0",
+    // Fixed a malformed arbitrary-value class here: "hover:bg-white/[0.01]0"
+    // had a stray trailing "0" that made it an invalid Tailwind class (JIT
+    // silently generates nothing for it, so the hover state never applied).
+    ghost:     "text-white/50 hover:text-white hover:bg-white/[0.02]",
   };
 
   const primaryStyle =
@@ -45,17 +50,18 @@ export default function Button({
       onClick={onClick}
       disabled={disabled || loading}
       style={primaryStyle}
-      className={`${base} ${sizes[size] ?? sizes.md} ${variants[variant] ?? variants.ghost} ${className}`}
+      className={cn(base, sizes[size] ?? sizes.md, variants[variant] ?? variants.ghost, className)}
       {...props}
     >
       {loading ? (
         <>
           <div
-            className={`w-4 h-4 border-2 rounded-full animate-spin ${
+            className={cn(
+              "w-4 h-4 border-2 rounded-full animate-spin",
               variant === "primary"
                 ? "border-[#0D1F1A]/30 border-t-[#0D1F1A]"
                 : "border-white/20 border-t-white/70"
-            }`}
+            )}
           />
           Loading...
         </>

@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "../../context/AuthContext";
 import toast from "react-hot-toast";
 import api from "../../utils/api";
+import { useQuery } from "@tanstack/react-query";
+import { queryKeys } from "../../utils/queryKeys";
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import {
   TrendingUp, Wallet, MapPin, Activity,
@@ -78,21 +80,19 @@ function useCountUp(target, duration = 1100, enabled = true) {
   return value;
 }
 
+// React Query reference implementation — see utils/queryKeys.ts for the
+// key convention. This replaces what used to be ~80 lines of manual
+// useState/useEffect/AbortController/timeout plumbing (see git history if
+// you need to compare). Other pages doing similar manual fetching
+// (wallet, marketplace, portfolio, etc.) can follow this same pattern —
+// see todo doc item #4.
 function useDashboardData(enabled) {
-  const [stats, setStats]               = useState(null);
-  const [statsError, setStatsError]     = useState(false);
-  const [transactions, setTransactions] = useState([]);
-  const [txError, setTxError]           = useState(false);
-  const [loadingStats, setLoadingStats] = useState(true);
-  const [loadingTx, setLoadingTx]       = useState(true);
-
-  const fetchStats = useCallback(async (signal) => {
-    setLoadingStats(true);
-    setStatsError(false);
-    try {
-      const res = await api.get("/user/stats", { signal });
+  const statsQuery = useQuery({
+    queryKey: queryKeys.userStats(),
+    queryFn: async ({ signal }) => {
+      const res = await api.get("/user/stats", { signal, timeout: 8_000 });
       const s   = res.data?.data ?? {};
-      setStats({
+      return {
         balance:                 (s.balance_kobo                ?? 0) / 100,
         current_portfolio_value: (s.current_portfolio_value_kobo ?? 0) / 100,
         total_invested:          (s.total_invested_kobo           ?? 0) / 100,
@@ -100,64 +100,42 @@ function useDashboardData(enabled) {
         units_owned:              s.units_owned                  ?? 0,
         total_withdrawn:         (s.total_withdrawn_kobo          ?? 0) / 100,
         pending_withdrawals:      s.pending_withdrawals,
-      });
-    } catch (err) {
-      if (err.name === "CanceledError" || err.name === "AbortError") return;
-      if (err.response?.status !== 401) setStatsError(true);
-    } finally {
-      setLoadingStats(false);
-    }
-  }, []);
+      };
+    },
+    enabled,
+  });
 
-  const fetchTransactions = useCallback(async (signal) => {
-    setLoadingTx(true);
-    setTxError(false);
-    try {
-      const res    = await api.get("/transactions/user", { signal });
+  const txQuery = useQuery({
+    queryKey: queryKeys.transactions(),
+    queryFn: async ({ signal }) => {
+      const res    = await api.get("/transactions/user", { signal, timeout: 8_000 });
       const txList = res.data?.data ?? [];
-      setTransactions(Array.isArray(txList) ? txList : []);
-    } catch (err) {
-      if (err.name === "CanceledError" || err.name === "AbortError") return;
-      if (err.response?.status !== 401) setTxError(true);
-    } finally {
-      setLoadingTx(false);
-    }
+      return Array.isArray(txList) ? txList : [];
+    },
+    enabled,
+  });
+
+  // 401s are already handled globally by the axios refresh/redirect
+  // interceptor — don't also surface them as an inline "stats failed to
+  // load" error state here.
+  const isRealError = (query) =>
+    query.isError && query.error?.response?.status !== 401;
+
+  const refetch = useCallback(() => {
+    statsQuery.refetch();
+    txQuery.refetch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const cleanupRef = useRef(() => {});
-
-  const loadData = useCallback(() => {
-    if (!enabled) return () => {};
-
-    cleanupRef.current();
-
-    const statsCtrl  = new AbortController();
-    const txCtrl     = new AbortController();
-    const statsTimer = setTimeout(() => statsCtrl.abort(), 8_000);
-    const txTimer    = setTimeout(() => txCtrl.abort(),    8_000);
-
-    const cleanup = () => {
-      clearTimeout(statsTimer);
-      clearTimeout(txTimer);
-      statsCtrl.abort();
-      txCtrl.abort();
-    };
-    cleanupRef.current = cleanup;
-
-    fetchStats(statsCtrl.signal);
-    fetchTransactions(txCtrl.signal);
-
-    return cleanup;
-  }, [enabled, fetchStats, fetchTransactions]);
-
-  useEffect(() => {
-    const cleanup = loadData();
-    return cleanup;
-  }, [loadData]);
-
-  const refetch = useCallback(() => { loadData(); }, [loadData]);
-
-  return { stats, statsError, transactions, txError, loadingStats, loadingTx, refetch };
+  return {
+    stats:        statsQuery.data ?? null,
+    statsError:   isRealError(statsQuery),
+    loadingStats: statsQuery.isFetching,
+    transactions: txQuery.data ?? [],
+    txError:      isRealError(txQuery),
+    loadingTx:    txQuery.isFetching,
+    refetch,
+  };
 }
 
 export default function Dashboard() {

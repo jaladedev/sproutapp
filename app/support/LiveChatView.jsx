@@ -27,11 +27,18 @@ const inp =
   `placeholder-white/20 rounded-2xl px-4 py-3.5 text-sm focus:outline-none ` +
   `focus:border-amber-500/60 focus:ring-2 focus:ring-amber-500/15 transition-all duration-200`;
 
-function getToken() {
-  const match = document.cookie
-    .split("; ")
-    .find(row => row.startsWith("token="));
-  return match ? match.split("=")[1] : null;
+/* ── Broadcasting auth — routed through our axios instance so the httpOnly
+   session cookie is sent automatically (withCredentials), instead of
+   reading the (now-inaccessible) token out of document.cookie. ── */
+function broadcastAuthorizer(channel) {
+  return {
+    authorize: (socketId, callback) => {
+      api
+        .post("/broadcasting/auth", { socket_id: socketId, channel_name: channel.name })
+        .then((res) => callback(false, res.data))
+        .catch((err) => callback(true, err));
+    },
+  };
 }
 
 /* ── Pusher singleton ─────────────────────────────────────────────────────── */
@@ -50,12 +57,7 @@ function getPusher() {
       forceTLS:          process.env.NEXT_PUBLIC_REVERB_SCHEME === "https",
       enabledTransports: ["ws", "wss"],
       disableStats:      true,
-      authEndpoint:      `${process.env.NEXT_PUBLIC_API_URL}/broadcasting/auth`,
-      auth: {
-        headers: {
-          Authorization: `Bearer ${getToken()}`,
-        },
-      },
+      authorizer:        broadcastAuthorizer,
     });
   }
   return pusherInstance;

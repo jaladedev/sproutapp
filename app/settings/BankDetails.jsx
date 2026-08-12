@@ -1,20 +1,53 @@
 "use client";
 
-import { useState, useEffect, useRef} from "react";
+import { useState, useEffect, useRef } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import api from "../../utils/api";
 import toast from "react-hot-toast";
 import { Landmark, Lock, CheckCircle, AlertCircle, ChevronDown } from "lucide-react";
 
+// Reference RHF + Zod conversion — see todo doc item #6. Other manual-
+// validation forms (register, KYC, PIN flows) can follow this pattern.
+const bankDetailsSchema = z.object({
+  bank_code: z.string().min(1, "Select a bank"),
+  bank_name: z.string().min(1, "Select a bank"),
+  account_number: z
+    .string()
+    .length(10, "Account number must be exactly 10 digits")
+    .regex(/^\d+$/, "Account number must be digits only"),
+  // account_name is populated by the auto-verify effect below, not typed
+  // directly — this just guards against submitting before verification.
+  account_name: z.string().min(1, "Verify your account before saving"),
+});
+
 export default function BankDetails() {
-  const [bankName, setBankName] = useState("");
-  const [bankCode, setBankCode] = useState("");
-  const [accountNumber, setAccountNumber] = useState("");
-  const [accountName, setAccountName] = useState("");
   const [banks, setBanks] = useState([]);
   const [isLocked, setIsLocked] = useState(false);
   const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const isLockedRef = useRef(false);
+
+  const {
+    control,
+    handleSubmit,
+    watch,
+    setValue,
+    formState: { errors },
+  } = useForm({
+    resolver: zodResolver(bankDetailsSchema),
+    defaultValues: {
+      bank_code: "",
+      bank_name: "",
+      account_number: "",
+      account_name: "",
+    },
+  });
+
+  const bankCode = watch("bank_code");
+  const accountNumber = watch("account_number");
+  const accountName = watch("account_name");
 
   /* ── Fetch existing details ── */
   useEffect(() => {
@@ -25,17 +58,18 @@ export default function BankDetails() {
         const bank = data.bank_name?.trim() || "";
         const number = data.account_number?.trim() || "";
         const name = data.account_name?.trim() || "";
-        setBankName(bank);
-        setAccountNumber(number);
-        setAccountName(name);
+        setValue("bank_name", bank);
+        setValue("account_number", number);
+        setValue("account_name", name);
         if (bank && number && name) {
-          isLockedRef.current = true; 
+          isLockedRef.current = true;
           setIsLocked(true);
         }
       } catch {
         toast.error("Unable to load your bank details.");
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   /* ── Fetch bank list ── */
@@ -46,13 +80,13 @@ export default function BankDetails() {
         setBanks(res.data.banks || []);
       } catch {
         toast.error("Unable to load bank list.");
-      }   
+      }
     })();
   }, []);
 
   /* ── Auto-verify account ── */
   useEffect(() => {
-    if (isLockedRef.current) return; 
+    if (isLockedRef.current) return;
     if (!bankCode || accountNumber.length !== 10) return;
     const verify = async () => {
       setVerifying(true);
@@ -63,35 +97,32 @@ export default function BankDetails() {
         });
         const name = res.data.account_name || res.data.data?.account_name || "";
         if (name) {
-          setAccountName(name);
+          setValue("account_name", name, { shouldValidate: true });
           toast.success("Account verified!");
         } else {
-          setAccountName("");
+          setValue("account_name", "", { shouldValidate: true });
           toast.error("Unable to verify account.");
         }
       } catch {
-        setAccountName("");
+        setValue("account_name", "", { shouldValidate: true });
         toast.error("Account verification failed.");
       } finally {
         setVerifying(false);
       }
     };
     verify();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bankCode, accountNumber]);
 
   /* ── Submit ── */
-  const handleUpdate = async (e) => {
-    e.preventDefault();
-    if (!bankName || !accountNumber || !accountName) {
-      return toast.error("Please fill in all fields and verify your account.");
-    }
+  const onSubmit = async (values) => {
     setLoading(true);
     try {
       const res = await api.put("/user/bank-details", {
-        bank_code: bankCode,
-        bank_name: bankName,
-        account_number: accountNumber,
-        account_name: accountName,
+        bank_code: values.bank_code,
+        bank_name: values.bank_name,
+        account_number: values.account_number,
+        account_name: values.account_name,
       });
       isLockedRef.current = true;
       setIsLocked(true);
@@ -106,9 +137,9 @@ export default function BankDetails() {
   if (isLocked) {
     return (
       <div className="space-y-4">
-        <ReadonlyField label="Bank Name" value={bankName} />
-        <ReadonlyField label="Account Number" value={accountNumber} />
-        <ReadonlyField label="Account Name" value={accountName} />
+        <ReadonlyField label="Bank Name" value={watch("bank_name")} />
+        <ReadonlyField label="Account Number" value={watch("account_number")} />
+        <ReadonlyField label="Account Name" value={watch("account_name")} />
 
         <div className="flex items-start gap-2.5 rounded-xl border border-white/10 bg-white/5 p-3.5 mt-2">
           <Lock size={13} className="text-amber-500 shrink-0 mt-0.5" />
@@ -121,42 +152,54 @@ export default function BankDetails() {
   }
 
   return (
-    <form onSubmit={handleUpdate} className="space-y-5">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
 
       {/* Bank selector */}
-      <Field label="Bank Name">
+      <Field label="Bank Name" error={errors.bank_code?.message}>
         <div className="relative">
           <Landmark className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20 pointer-events-none" size={14} />
-          <select
-            value={bankCode}
-            onChange={(e) => {
-              const code = e.target.value;
-              const bank = banks.find((b) => b.code === code);
-              setBankCode(code);
-              setBankName(bank?.name || "");
-            }}
-            className="w-full bg-white/5 border border-white/10 hover:border-white/20 focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 text-white pl-11 pr-10 py-3 rounded-xl text-sm outline-none transition-all appearance-none cursor-pointer"
-          >
-            <option value="" className="bg-[#0D1F1A]">Select Bank</option>
-            {banks.map((bank, i) => (
-              <option key={`${bank.code}-${i}`} value={bank.code} className="bg-[#0D1F1A]">
-                {bank.name}
-              </option>
-            ))}
-          </select>
+          <Controller
+            name="bank_code"
+            control={control}
+            render={({ field }) => (
+              <select
+                {...field}
+                onChange={(e) => {
+                  const code = e.target.value;
+                  const bank = banks.find((b) => b.code === code);
+                  field.onChange(code);
+                  setValue("bank_name", bank?.name || "");
+                }}
+                className="w-full bg-white/5 border border-white/10 hover:border-white/20 focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 text-white pl-11 pr-10 py-3 rounded-xl text-sm outline-none transition-all appearance-none cursor-pointer"
+              >
+                <option value="" className="bg-[#0D1F1A]">Select Bank</option>
+                {banks.map((bank, i) => (
+                  <option key={`${bank.code}-${i}`} value={bank.code} className="bg-[#0D1F1A]">
+                    {bank.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          />
           <ChevronDown size={13} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/20 pointer-events-none" />
         </div>
       </Field>
 
       {/* Account number */}
-      <Field label="Account Number">
-        <input
-          type="text"
-          value={accountNumber}
-          onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, ""))}
-          maxLength={10}
-          placeholder="Enter 10-digit account number"
-          className="w-full bg-white/5 border border-white/10 hover:border-white/20 focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 text-white placeholder-white/20 px-4 py-3 rounded-xl text-sm outline-none transition-all tracking-widest"
+      <Field label="Account Number" error={errors.account_number?.message}>
+        <Controller
+          name="account_number"
+          control={control}
+          render={({ field }) => (
+            <input
+              {...field}
+              type="text"
+              onChange={(e) => field.onChange(e.target.value.replace(/\D/g, ""))}
+              maxLength={10}
+              placeholder="Enter 10-digit account number"
+              className="w-full bg-white/5 border border-white/10 hover:border-white/20 focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 text-white placeholder-white/20 px-4 py-3 rounded-xl text-sm outline-none transition-all tracking-widest"
+            />
+          )}
         />
         {/* Verifying indicator */}
         {verifying && (
@@ -198,11 +241,17 @@ export default function BankDetails() {
 }
 
 /* ── Sub-components ── */
-function Field({ label, children }) {
+function Field({ label, children, error }) {
   return (
     <div>
       <label className="block text-xs font-bold uppercase tracking-widest text-white/55 mb-2">{label}</label>
       {children}
+      {error && (
+        <div className="flex items-center gap-1.5 mt-1.5 text-xs text-red-400">
+          <AlertCircle size={11} />
+          {error}
+        </div>
+      )}
     </div>
   );
 }

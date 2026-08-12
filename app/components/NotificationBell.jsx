@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Bell, CheckCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { formatTimeAgo } from "../../utils/date";
 import {
   fetchNotifications,
   fetchUnreadNotifications,
@@ -154,13 +155,7 @@ export default function NotificationBell() {
                     </p>
 
                     <p className="text-[11px] text-white/25 mt-1">
-                      {new Date(n.created_at).toLocaleString(
-                        "en-NG",
-                        {
-                          dateStyle: "medium",
-                          timeStyle: "short",
-                        }
-                      )}
+                      {formatTimeAgo(n.created_at)}
                     </p>
                   </div>
                 ))

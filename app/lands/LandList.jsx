@@ -11,7 +11,7 @@ import {
   MapPin, Maximize2, Flame, X, Lock, ShieldCheck,
   TrendingUp, BadgeCheck, ArrowRight, Search,
 } from "lucide-react";
-import { getToken } from "../../utils/tokenStore";
+import { isAuthed } from "../../utils/tokenStore";
 import Image from "next/image";
 
 // ─── Dynamic map (no SSR) ─────────────────────────────────────────────────────
@@ -280,8 +280,7 @@ export default function LandList() {
 
   // ── Fetch auth + account status ────────────────────────────────────────────
   useEffect(() => {
-    const token = getToken();
-    if (!token) {
+    if (!isAuthed()) {
       setUser(null);
       setAuthLoaded(true);
       return;
