@@ -1,4 +1,12 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, type ChangeEvent, type KeyboardEvent } from "react";
+
+type PinInputProps = {
+  value?: string[];
+  onChange: (value: string[]) => void;
+  touched?: boolean;
+  setTouched?: (touched: boolean) => void;
+  disabled?: boolean;
+};
 
 export default function PinInput({
   value = ["", "", "", ""], // default fallback
@@ -6,10 +14,10 @@ export default function PinInput({
   touched,
   setTouched,
   disabled,
-}) {
-  const refs = useRef([]);
+}: PinInputProps) {
+  const refs = useRef<Array<HTMLInputElement | null>>([]);
 
-  const handleDigitChange = (idx, val) => {
+  const handleDigitChange = (idx: number, val: string) => {
     const digit = val.replace(/\D/g, "").slice(-1);
     const newPin = [...value];
     newPin[idx] = digit;
@@ -17,14 +25,14 @@ export default function PinInput({
 
     if (setTouched) setTouched(true);
 
-    if (digit && idx < 3) refs.current[idx + 1].focus();
+    if (digit && idx < 3) refs.current[idx + 1]?.focus();
   };
 
-  const handleKeyDown = (e, idx) => {
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>, idx: number) => {
     if (e.key === "Backspace") {
       const newPin = [...value];
       if (value[idx] === "" && idx > 0) {
-        refs.current[idx - 1].focus();
+        refs.current[idx - 1]?.focus();
         newPin[idx - 1] = "";
       } else {
         newPin[idx] = "";
@@ -46,13 +54,13 @@ export default function PinInput({
       {pinArray.map((digit, i) => (
         <input
           key={i}
-          ref={(el) => (refs.current[i] = el)}
+          ref={(el) => { refs.current[i] = el; }}
           type="password"
           inputMode="numeric"
           maxLength={1}
           disabled={disabled}
           value={digit}
-          onChange={(e) => handleDigitChange(i, e.target.value)}
+          onChange={(e: ChangeEvent<HTMLInputElement>) => handleDigitChange(i, e.target.value)}
           onKeyDown={(e) => handleKeyDown(e, i)}
           className={`w-12 h-12 text-center text-xl border rounded-lg transition-all 
             ${isIncomplete && !digit

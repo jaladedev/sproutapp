@@ -11,7 +11,13 @@ import Button from "./components/Button";
  * of the crashed subtree; it does NOT catch errors in event handlers,
  * async code outside render, or server components rendered above it.
  */
-export default function ErrorBoundary({ error, reset }) {
+export default function ErrorBoundary({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
   useEffect(() => {
     // TODO: wire up to an error-reporting service (Sentry, etc.) once one
     // is added. For now, at least keep it visible in the console with the

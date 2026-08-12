@@ -1,16 +1,28 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, type ChangeEvent, type ComponentProps } from "react";
 import Cropper from "react-easy-crop";
 import { X, ZoomIn, Check, RectangleHorizontal, Square } from "lucide-react";
+
+// react-easy-crop's `Area`/`Point` types live at "react-easy-crop/types", but
+// the package's `exports` map only exposes the root entry point under
+// "bundler" module resolution — that subpath isn't resolvable. Derive the
+// same shapes structurally off Cropper's own public prop types instead.
+type CropperComponentProps = ComponentProps<typeof Cropper>;
+type Point = CropperComponentProps["crop"];
+type Area = NonNullable<Parameters<NonNullable<CropperComponentProps["onCropComplete"]>>[0]>;
 
 const ID_CARD_ASPECT = 1.586; // standard ID card ratio (85.6mm × 54mm)
 
 /**
  * Reads a crop area (in source-image pixels) off an <img> and returns a Blob.
  */
-async function getCroppedBlob(imageSrc, cropPixels, mimeType) {
-  const image = await new Promise((resolve, reject) => {
+async function getCroppedBlob(
+  imageSrc: string,
+  cropPixels: Area,
+  mimeType: string
+): Promise<Blob> {
+  const image = await new Promise<HTMLImageElement>((resolve, reject) => {
     const img = new Image();
     img.onload = () => resolve(img);
     img.onerror = reject;
@@ -22,6 +34,7 @@ async function getCroppedBlob(imageSrc, cropPixels, mimeType) {
   canvas.width = cropPixels.width;
   canvas.height = cropPixels.height;
   const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas context unavailable");
 
   ctx.drawImage(
     image,
@@ -35,7 +48,7 @@ async function getCroppedBlob(imageSrc, cropPixels, mimeType) {
     cropPixels.height
   );
 
-  return new Promise((resolve, reject) => {
+  return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
       (blob) => (blob ? resolve(blob) : reject(new Error("Crop failed"))),
       mimeType,
@@ -44,24 +57,28 @@ async function getCroppedBlob(imageSrc, cropPixels, mimeType) {
   });
 }
 
+type CropModalProps = {
+  /** the raw File the user just picked/captured */
+  file: File;
+  /** user backed out — go back to the drop zone empty-handed */
+  onCancel: () => void;
+  /** user is happy with the crop */
+  onConfirm: (croppedFile: File) => void;
+};
+
 /**
  * Full-screen crop step shown between file selection and compression.
- *
- * props:
- *  - file: the raw File the user just picked/captured
- *  - onCancel(): user backed out — go back to the drop zone empty-handed
- *  - onConfirm(croppedFile): user is happy with the crop
  */
-export default function CropModal({ file, onCancel, onConfirm }) {
+export default function CropModal({ file, onCancel, onConfirm }: CropModalProps) {
   const imageSrc = useMemo(() => URL.createObjectURL(file), [file]);
 
-  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [crop, setCrop] = useState<Point>({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [freeform, setFreeform] = useState(false);
-  const [croppedPixels, setCroppedPixels] = useState(null);
+  const [croppedPixels, setCroppedPixels] = useState<Area | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const onCropComplete = useCallback((_area, areaPixels) => {
+  const onCropComplete = useCallback((_area: Area, areaPixels: Area) => {
     setCroppedPixels(areaPixels);
   }, []);
 
@@ -158,7 +175,7 @@ export default function CropModal({ file, onCancel, onConfirm }) {
             max={3}
             step={0.01}
             value={zoom}
-            onChange={(e) => setZoom(Number(e.target.value))}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setZoom(Number(e.target.value))}
             className="w-full accent-amber-500 touch-manipulation"
           />
         </div>

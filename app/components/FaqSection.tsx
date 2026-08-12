@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 
-const faqs = [
+const faqs: { q: string; a: string }[] = [
   {
     q: "What is REU.ng?",
     a: "REU.ng is a digital real estate platform operated by SproutVest GSE Ltd. that enables users to acquire, hold, trade, and eventually convert fractional real estate units into physical land ownership.",
@@ -40,7 +40,7 @@ const faqs = [
 ];
 
 export default function FaqSection() {
-  const [open, setOpen] = useState(null);
+  const [open, setOpen] = useState<number | null>(null);
 
   return (
     <div>

@@ -2,9 +2,32 @@
 
 import { motion } from "framer-motion";
 import { CheckCircle, Clock, XCircle, RefreshCw } from "lucide-react";
+import type { ReactNode } from "react";
 
-export default function StatusBanner({ kyc, onResubmit }) {
-  const cfg = {
+type KycStatus = "pending" | "approved" | "rejected" | "resubmit";
+
+type KycInfo = {
+  status: KycStatus | string;
+  rejection_reason?: string | null;
+  submission_date?: string | null;
+  [key: string]: unknown;
+};
+
+type StatusBannerProps = {
+  kyc: KycInfo;
+  onResubmit?: () => void;
+};
+
+type StatusConfig = {
+  icon: ReactNode;
+  title: string;
+  body: string | null;
+  cls: string;
+  dot: string;
+};
+
+export default function StatusBanner({ kyc, onResubmit }: StatusBannerProps) {
+  const cfg: Record<KycStatus, StatusConfig> = {
     pending:  {
       icon: <Clock size={16} />,
       title: "Under Review",
@@ -35,7 +58,7 @@ export default function StatusBanner({ kyc, onResubmit }) {
     },
   };
 
-  const c = cfg[kyc.status];
+  const c = cfg[kyc.status as KycStatus];
   if (!c) return null;
 
   return (

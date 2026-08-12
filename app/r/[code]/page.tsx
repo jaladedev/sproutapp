@@ -8,8 +8,8 @@ const APP_URL  = process.env.NEXT_PUBLIC_APP_URL  || "reu.ng";
 
 // ─── OG Metadata ──────────────────────────────────────────────────────────────
 
-export async function generateMetadata({ params }) {
-  const { code = "" } = await params; 
+export async function generateMetadata({ params }: { params: Promise<{ code?: string }> }) {
+  const { code = "" } = await params;
 
   let referrerName = null;
   try {
@@ -61,8 +61,8 @@ export async function generateMetadata({ params }) {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default async function ReferralLanding({ params }) {
-  const { code = "" } = await params; 
+export default async function ReferralLanding({ params }: { params: Promise<{ code?: string }> }) {
+  const { code = "" } = await params;
 
   return (
     <Suspense fallback={null}>

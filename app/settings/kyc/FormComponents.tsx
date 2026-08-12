@@ -1,11 +1,19 @@
 "use client";
 
+import type { ReactNode, MouseEventHandler } from "react";
 import { motion } from "framer-motion";
 import { AlertCircle, CheckCircle, ChevronLeft, ChevronRight, Shield } from "lucide-react";
 import { STEPS } from "./constants";
 
 // ── Field wrapper ─────────────────────────────────────────────────────────────
-export function Field({ label, required, error, children }) {
+type FieldProps = {
+  label: string;
+  required?: boolean;
+  error?: string | null;
+  children?: ReactNode;
+};
+
+export function Field({ label, required, error, children }: FieldProps) {
   return (
     <div>
       <label className="block text-xs font-bold text-white/55 uppercase tracking-widest mb-2">
@@ -22,10 +30,10 @@ export function Field({ label, required, error, children }) {
 }
 
 // ── Progress rail (desktop) ───────────────────────────────────────────────────
-export function ProgressRail({ current }) {
+export function ProgressRail({ current }: { current: number }) {
   return (
     <div className="hidden sm:flex items-center mb-8">
-      {STEPS.map((step, i) => {
+      {STEPS.map((step: string, i: number) => {
         const done   = i < current;
         const active = i === current;
         return (
@@ -50,7 +58,9 @@ export function ProgressRail({ current }) {
               </span>
             </div>
             {i < STEPS.length - 1 && (
-              <div className="flex-1 h-px mx-2 mb-5 bg-white/[0.01]0 rounded-full overflow-hidden">
+              // Fixed the same malformed arbitrary-value typo documented in
+              // Button.tsx (#9): "bg-white/[0.01]0" → "bg-white/[0.02]".
+              <div className="flex-1 h-px mx-2 mb-5 bg-white/[0.02] rounded-full overflow-hidden">
                 <motion.div
                   className="h-full rounded-full"
                   style={{ background: "linear-gradient(90deg, #C8873A, #E8A850)" }}
@@ -67,7 +77,7 @@ export function ProgressRail({ current }) {
 }
 
 // ── Review row ────────────────────────────────────────────────────────────────
-export function ReviewRow({ label, value }) {
+export function ReviewRow({ label, value }: { label: string; value?: string | number | null }) {
   if (!value) return null;
   return (
     <div className="py-3 border-b border-white/5 last:border-0">
@@ -78,7 +88,16 @@ export function ReviewRow({ label, value }) {
 }
 
 // ── Nav buttons ───────────────────────────────────────────────────────────────
-export function NavButtons({ step, totalSteps, onNext, onSubmit, onBack, submitting }) {
+type NavButtonsProps = {
+  step: number;
+  totalSteps: number;
+  onNext?: MouseEventHandler<HTMLButtonElement>;
+  onSubmit?: MouseEventHandler<HTMLButtonElement>;
+  onBack?: MouseEventHandler<HTMLButtonElement>;
+  submitting?: boolean;
+};
+
+export function NavButtons({ step, totalSteps, onNext, onSubmit, onBack, submitting }: NavButtonsProps) {
   const isLast = step === totalSteps - 1;
   return (
     <div className="flex items-center justify-between mt-6 pt-5 border-t border-white/10">
@@ -109,7 +128,9 @@ export function NavButtons({ step, totalSteps, onNext, onSubmit, onBack, submitt
           type="button"
           onClick={onSubmit}
           disabled={submitting}
-          className="flex items-center justify-center gap-2 bg-white/[0.01]0 hover:bg-white/[0.01]5 border border-white/10 disabled:opacity-50 text-white font-bold text-sm py-3.5 px-6 rounded-xl transition-all active:scale-95 touch-manipulation"
+          // Same stray-digit typo as above: "bg-white/[0.01]0" / "[0.01]5"
+          // were malformed arbitrary-value classes generating nothing.
+          className="flex items-center justify-center gap-2 bg-white/10 hover:bg-white/15 border border-white/10 disabled:opacity-50 text-white font-bold text-sm py-3.5 px-6 rounded-xl transition-all active:scale-95 touch-manipulation"
         >
           {submitting ? (
             <>

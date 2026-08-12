@@ -1,9 +1,10 @@
+import type { Metadata } from "next";
 import LandList from "./LandList";
 
 const appname = process.env.NEXT_PUBLIC_APP_NAME || "REU.ng";
 const appurl  = process.env.NEXT_PUBLIC_APP_URL  || "https://reu.ng";
 
-export const metadata = {
+export const metadata: Metadata = {
   metadataBase: new URL(appurl),
   title: `Browse Verified Land for Investment in Nigeria | ${appname}`,
   description:
@@ -37,7 +38,7 @@ export const metadata = {
 };
 
 // JSON-LD for the listing page
-function JsonLd({ appname, appurl }) {
+function JsonLd({ appname, appurl }: { appname: string; appurl: string }) {
   const schema = {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
@@ -62,7 +63,7 @@ export default function LandsPage() {
   return (
     <>
       <JsonLd appname={appname} appurl={appurl} />
-      <LandList />   
+      <LandList />
     </>
   );
 }

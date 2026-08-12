@@ -9,8 +9,9 @@ export default function NavigationProgress() {
 
   useEffect(() => {
     // Start progress bar when navigation begins
-    const handleClick = (e) => {
-      const anchor = e.target.closest("a");
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const anchor = target.closest("a");
       if (!anchor) return;
       const href = anchor.getAttribute("href");
       if (!href || href.startsWith("#") || href.startsWith("http") || anchor.target === "_blank") return;
@@ -43,6 +44,7 @@ export default function NavigationProgress() {
       setProgress(0);
     }, 400);
     return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
   if (!visible) return null;

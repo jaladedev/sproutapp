@@ -1,22 +1,29 @@
 import { useEffect, useState } from "react";
 import api from "../../utils/api";
 
-function toRelativePath(url) {
+function toRelativePath(url: string): string {
   try {
-    const path = new URL(url).pathname; 
+    const path = new URL(url).pathname;
     return path.replace(/^\/api/, "");
   } catch {
     return url;
   }
 }
 
-export function AuthImage({ url, alt, className, onBlobReady }) {
-  const [src, setSrc] = useState(null);
+type AuthImageProps = {
+  url?: string;
+  alt?: string;
+  className?: string;
+  onBlobReady?: (objectUrl: string) => void;
+};
+
+export function AuthImage({ url, alt, className, onBlobReady }: AuthImageProps) {
+  const [src, setSrc] = useState<string | null>(null);
   const [error, setError] = useState(false);
 
   useEffect(() => {
     if (!url) return;
-    let objectUrl;
+    let objectUrl: string | undefined;
     let cancelled = false;
 
     setSrc(null);
@@ -31,7 +38,7 @@ export function AuthImage({ url, alt, className, onBlobReady }) {
       })
       .catch((err) => {
         if (!cancelled) {
-          console.error("AuthImage failed:", err.response?.status, url);
+          console.error("AuthImage failed:", err?.response?.status, url);
           setError(true);
         }
       });

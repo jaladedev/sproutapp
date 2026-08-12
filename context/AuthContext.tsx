@@ -65,7 +65,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   const router        = useRouter();
-  const pathname       = usePathname();
+  const pathname       = usePathname() ?? "/";
   const refreshTimer  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const queryClient   = useQueryClient();
 

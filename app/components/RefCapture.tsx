@@ -7,7 +7,7 @@ export default function RefCapture({ forceCode }: { forceCode?: string | null })
   const params = useSearchParams();
 
   useEffect(() => {
-    const code = forceCode ?? params.get("ref");
+    const code = forceCode ?? params?.get("ref");
     if (!code) return;
 
     const payload = {
