@@ -13,7 +13,7 @@ import {
 import {
   fetchTickets, fetchTicket, createTicket, createGuestTicket,
   replyToTicket, fetchFaqs, sendChatMessage,
-} from "../../services/supportService";
+} from "../../services/supportService.ts";
 import toast from "react-hot-toast";
 import { useAuth } from "../../context/AuthContext";
 import api from "../../utils/api";

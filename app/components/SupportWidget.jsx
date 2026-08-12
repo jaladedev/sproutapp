@@ -7,7 +7,7 @@ import {
   Ticket, Bot, User, Loader2, Sparkles, FileText,
   HelpCircle, ExternalLink, CheckCircle, AlertCircle,
 } from "lucide-react";
-import { sendChatMessage, createTicket, fetchFaqs } from "../../services/supportService";
+import { sendChatMessage, createTicket, fetchFaqs } from "../../services/supportService.ts";
 import Link from "next/link";
 import toast from "react-hot-toast";
 

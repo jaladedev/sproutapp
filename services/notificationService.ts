@@ -1,14 +1,22 @@
 import api from "../utils/api";
 
-let unreadCache = null;
-let allCache = null;
-let unreadPromise = null;
-let allPromise = null;
+export interface AppNotification {
+  id: string | number;
+  read_at: string | null;
+  created_at: string;
+  data?: { message?: string; [key: string]: unknown };
+  [key: string]: unknown;
+}
+
+let unreadCache: AppNotification[] | null = null;
+let allCache: AppNotification[] | null = null;
+let unreadPromise: Promise<AppNotification[]> | null = null;
+let allPromise: Promise<AppNotification[]> | null = null;
 
 /* ================================
-   Fetch ALL notifications 
+   Fetch ALL notifications
 ================================ */
-export function fetchNotifications(force = false) {
+export function fetchNotifications(force = false): Promise<AppNotification[]> {
   if (allCache && !force) return Promise.resolve(allCache);
   if (allPromise && !force) return allPromise;
 
@@ -34,7 +42,7 @@ export function fetchNotifications(force = false) {
 /* ================================
    Fetch UNREAD notifications
 ================================ */
-export function fetchUnreadNotifications(force = false) {
+export function fetchUnreadNotifications(force = false): Promise<AppNotification[]> {
   if (unreadCache && !force) return Promise.resolve(unreadCache);
   if (unreadPromise && !force) return unreadPromise;
 
@@ -59,7 +67,7 @@ export function fetchUnreadNotifications(force = false) {
 /* ================================
    Mark all read
 ================================ */
-export async function markAllNotificationsRead() {
+export async function markAllNotificationsRead(): Promise<true> {
   await api.post("/notifications/read");
   resetNotificationCache();
   return true;
@@ -68,7 +76,9 @@ export async function markAllNotificationsRead() {
 /* ================================
    Mark single read
 ================================ */
-export async function markNotificationRead(notificationId) {
+export async function markNotificationRead(
+  notificationId: string | number
+): Promise<true> {
   await api.post(`/notifications/${notificationId}/read`);
   resetNotificationCache();
   return true;
@@ -77,7 +87,7 @@ export async function markNotificationRead(notificationId) {
 /* ================================
    Reset cache
 ================================ */
-export function resetNotificationCache() {
+export function resetNotificationCache(): void {
   unreadCache = null;
   allCache = null;
   unreadPromise = null;

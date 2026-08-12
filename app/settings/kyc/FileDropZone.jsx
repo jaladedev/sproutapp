@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import { X, Camera, ImageIcon, Loader2 } from "lucide-react";
+import CropModal from "./CropModal";
 
 const MAX_MB        = 2;
 const MAX_BYTES     = MAX_MB * 1024 * 1024;
@@ -86,6 +87,7 @@ export default function FileDropZone({
   const [drag, setDrag]           = useState(false);
   const [compressing, setCompressing] = useState(false);
   const [sizeInfo, setSizeInfo]   = useState(null); // { original, compressed }
+  const [pendingFile, setPendingFile] = useState(null); // file awaiting crop confirmation
 
   const preview = useMemo(
     () => (value ? URL.createObjectURL(value) : null),
@@ -93,13 +95,18 @@ export default function FileDropZone({
   );
   useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
 
-  const processFile = async (file) => {
-    // Type check
+  // Entry point for a freshly picked/captured file — type-checks, then
+  // hands off to the crop modal before anything is compressed or stored.
+  const selectFile = (file) => {
     if (!ACCEPTED.includes(file.type)) {
       onError?.(name, `Only JPG, PNG, WebP or GIF images are allowed.`);
       return;
     }
+    setPendingFile(file);
+  };
 
+  // Runs on the cropped output — sizes it and compresses if needed.
+  const processFile = async (file) => {
     const originalMB = (file.size / 1024 / 1024).toFixed(2);
 
     // Already within limit — use as-is
@@ -139,12 +146,12 @@ export default function FileDropZone({
     e.preventDefault();
     setDrag(false);
     const file = e.dataTransfer.files[0];
-    if (file) processFile(file);
+    if (file) selectFile(file);
   };
 
   const handleFile = (e) => {
     const file = e.target.files?.[0];
-    if (file) processFile(file);
+    if (file) selectFile(file);
     e.target.value = "";
   };
 
@@ -254,12 +261,23 @@ export default function FileDropZone({
           <button
             type="button"
             onClick={() => cameraRef.current?.click()}
-            className="mt-2 w-full flex items-center justify-center gap-2 border border-white/10 bg-white/5 hover:bg-white/[0.01]0 text-white/50 hover:text-white/70 font-semibold text-sm rounded-xl py-3 transition-all touch-manipulation"
+            className="mt-2 w-full flex items-center justify-center gap-2 border border-white/10 bg-white/5 hover:bg-white/10 text-white/50 hover:text-white/70 font-semibold text-sm rounded-xl py-3 transition-all touch-manipulation"
           >
             <Camera size={13} className="text-amber-500" />
             Take photo with camera
           </button>
         </>
+      )}
+
+      {pendingFile && (
+        <CropModal
+          file={pendingFile}
+          onCancel={() => setPendingFile(null)}
+          onConfirm={(cropped) => {
+            setPendingFile(null);
+            processFile(cropped);
+          }}
+        />
       )}
     </div>
   );
