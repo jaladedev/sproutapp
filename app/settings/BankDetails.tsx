@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type ReactNode } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import type { AxiosError } from "axios";
 import api from "../../utils/api";
 import toast from "react-hot-toast";
 import { Landmark, Lock, CheckCircle, AlertCircle, ChevronDown } from "lucide-react";
@@ -22,8 +23,23 @@ const bankDetailsSchema = z.object({
   account_name: z.string().min(1, "Verify your account before saving"),
 });
 
+type BankDetailsFormValues = z.infer<typeof bankDetailsSchema>;
+
+interface Bank {
+  code: string;
+  name: string;
+  [key: string]: unknown;
+}
+
+// Mirrors the ApiErrorBody shape used in utils/handleApiError.ts, kept
+// local since this component doesn't route through that helper.
+interface ApiErrorBody {
+  message?: string;
+  error?: string;
+}
+
 export default function BankDetails() {
-  const [banks, setBanks] = useState([]);
+  const [banks, setBanks] = useState<Bank[]>([]);
   const [isLocked, setIsLocked] = useState(false);
   const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(false);
@@ -35,7 +51,7 @@ export default function BankDetails() {
     watch,
     setValue,
     formState: { errors },
-  } = useForm({
+  } = useForm<BankDetailsFormValues>({
     resolver: zodResolver(bankDetailsSchema),
     defaultValues: {
       bank_code: "",
@@ -54,10 +70,10 @@ export default function BankDetails() {
     (async () => {
       try {
         const res = await api.get("/me");
-        const data = res.data.user || res.data.data || res.data;
-        const bank = data.bank_name?.trim() || "";
-        const number = data.account_number?.trim() || "";
-        const name = data.account_name?.trim() || "";
+        const data: Record<string, any> = res.data.user || res.data.data || res.data;
+        const bank: string = data.bank_name?.trim() || "";
+        const number: string = data.account_number?.trim() || "";
+        const name: string = data.account_name?.trim() || "";
         setValue("bank_name", bank);
         setValue("account_number", number);
         setValue("account_name", name);
@@ -95,7 +111,7 @@ export default function BankDetails() {
           account_number: accountNumber,
           bank_code: bankCode,
         });
-        const name = res.data.account_name || res.data.data?.account_name || "";
+        const name: string = res.data.account_name || res.data.data?.account_name || "";
         if (name) {
           setValue("account_name", name, { shouldValidate: true });
           toast.success("Account verified!");
@@ -115,7 +131,7 @@ export default function BankDetails() {
   }, [bankCode, accountNumber]);
 
   /* ── Submit ── */
-  const onSubmit = async (values) => {
+  const onSubmit = async (values: BankDetailsFormValues) => {
     setLoading(true);
     try {
       const res = await api.put("/user/bank-details", {
@@ -128,7 +144,10 @@ export default function BankDetails() {
       setIsLocked(true);
       toast.success(res.data.message || "Bank details saved!");
     } catch (err) {
-      toast.error(err.response?.data?.message || err.response?.data?.error || "Failed to save bank details");
+      const axiosErr = err as AxiosError<ApiErrorBody>;
+      toast.error(
+        axiosErr.response?.data?.message || axiosErr.response?.data?.error || "Failed to save bank details"
+      );
     } finally {
       setLoading(false);
     }
@@ -166,7 +185,7 @@ export default function BankDetails() {
                 {...field}
                 onChange={(e) => {
                   const code = e.target.value;
-                  const bank = banks.find((b) => b.code === code);
+                  const bank = banks.find((b: Bank) => b.code === code);
                   field.onChange(code);
                   setValue("bank_name", bank?.name || "");
                 }}
@@ -216,7 +235,7 @@ export default function BankDetails() {
           <div className="relative">
             <input
               type="text" value={accountName} readOnly
-              className="w-full bg-white/[0.03] border border-emerald-500/20 text-emerald-400 px-4 py-3 rounded-xl text-sm cursor-not-allowed"
+              className="w-full bg-white/3 border border-emerald-500/20 text-emerald-400 px-4 py-3 rounded-xl text-sm cursor-not-allowed"
             />
             <CheckCircle size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-emerald-400" />
           </div>
@@ -241,7 +260,13 @@ export default function BankDetails() {
 }
 
 /* ── Sub-components ── */
-function Field({ label, children, error }) {
+interface FieldProps {
+  label: string;
+  children: ReactNode;
+  error?: string;
+}
+
+function Field({ label, children, error }: FieldProps) {
   return (
     <div>
       <label className="block text-xs font-bold uppercase tracking-widest text-white/55 mb-2">{label}</label>
@@ -256,12 +281,17 @@ function Field({ label, children, error }) {
   );
 }
 
-function ReadonlyField({ label, value }) {
+interface ReadonlyFieldProps {
+  label: string;
+  value: string;
+}
+
+function ReadonlyField({ label, value }: ReadonlyFieldProps) {
   return (
     <Field label={label}>
       <input
         type="text" value={value} readOnly
-        className="w-full bg-white/[0.03] border border-white/[0.08] text-white/50 px-4 py-3 rounded-xl text-sm cursor-not-allowed"
+        className="w-full bg-white/3 border border-white/8 text-white/50 px-4 py-3 rounded-xl text-sm cursor-not-allowed"
       />
     </Field>
   );

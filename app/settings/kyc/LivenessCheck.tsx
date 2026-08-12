@@ -23,10 +23,15 @@ import {
   COUNTDOWN_SECS,
   COUNTDOWN_BONUS,
   shuffle,
+  type LivenessPrompt,
 } from "./constants";
 
+type Phase =
+  | "idle" | "requesting" | "warmup" | "detecting"
+  | "retry_warning" | "stillness" | "success_flash" | "error";
+
 // ── Prompt icon ───────────────────────────────────────────────────────────────
-function PromptIcon({ icon, size = 18 }) {
+function PromptIcon({ icon, size = 18 }: { icon?: string; size?: number }) {
   const cls = "text-amber-500";
   if (icon === "left")  return <ArrowLeft size={size} className={cls} />;
   if (icon === "right") return <ArrowRight size={size} className={cls} />;
@@ -34,33 +39,40 @@ function PromptIcon({ icon, size = 18 }) {
   return null;
 }
 
+interface LivenessCheckProps {
+  onCapture: (file: File) => void;
+  captured: File | null | undefined;
+  onRetake: () => void;
+  fullHeight?: boolean;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
-export default function LivenessCheck({ onCapture, captured, onRetake, fullHeight = false }) {
-  const videoRef       = useRef(null);
-  const canvasRef      = useRef(null);
-  const sampleRef      = useRef(null);
-  const streamRef      = useRef(null);
-  const rafRef         = useRef(null);
-  const prevDataRef    = useRef(null);
+export default function LivenessCheck({ onCapture, captured, onRetake, fullHeight = false }: LivenessCheckProps) {
+  const videoRef       = useRef<HTMLVideoElement | null>(null);
+  const canvasRef      = useRef<HTMLCanvasElement | null>(null);
+  const sampleRef      = useRef<HTMLCanvasElement | null>(null);
+  const streamRef      = useRef<MediaStream | null>(null);
+  const rafRef         = useRef<number | undefined>(undefined);
+  const prevDataRef    = useRef<Uint8Array | null>(null);
   const emaRef         = useRef(0);
   const detectionOnRef = useRef(false);
   const tabHiddenRef   = useRef(false);
-  const timerRef       = useRef(null);
+  const timerRef       = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
   // Learned noise floor — measured once per camera session.
-  const idleBaselineRef = useRef(null);
+  const idleBaselineRef = useRef<number | null>(null);
 
-  const [phase, setPhase]             = useState("idle");
-  const [prompts, setPrompts]         = useState([]);
+  const [phase, setPhase]             = useState<Phase>("idle");
+  const [prompts, setPrompts]         = useState<LivenessPrompt[]>([]);
   const [promptIdx, setPromptIdx]     = useState(0);
   const [motionPct, setMotionPct]     = useState(0);
-  const [completedIdxs, setCompleted] = useState([]);
+  const [completedIdxs, setCompleted] = useState<number[]>([]);
   const [errorMsg, setErrorMsg]       = useState("");
   const [timeLeft, setTimeLeft]       = useState(0);
   const [retryCount, setRetryCount]   = useState(0);
   const [retryMsg, setRetryMsg]       = useState("");
 
   // ── Refs that mirror state so stable callbacks can read current values ──────
-  const promptsRef    = useRef([]);
+  const promptsRef    = useRef<LivenessPrompt[]>([]);
   const promptIdxRef  = useRef(0);
   const retryCountRef = useRef(0);
   const timeLeftRef   = useRef(0);
@@ -69,9 +81,9 @@ export default function LivenessCheck({ onCapture, captured, onRetake, fullHeigh
   useEffect(() => { promptIdxRef.current  = promptIdx;  }, [promptIdx]);
   useEffect(() => { retryCountRef.current = retryCount; }, [retryCount]);
 
-  const advancePromptRef           = useRef(null);
-  const startDetectionCountdownRef = useRef(null);
-  const handleTimeoutRef           = useRef(null);
+  const advancePromptRef           = useRef<((doneIdx: number) => void) | null>(null);
+  const startDetectionCountdownRef = useRef<((promptIcon: string | undefined, idx: number) => void) | null>(null);
+  const handleTimeoutRef           = useRef<((promptIndex: number) => void) | null>(null);
 
   // ── Full reset ──────────────────────────────────────────────────────────────
   const resetState = useCallback(() => {
@@ -87,7 +99,7 @@ export default function LivenessCheck({ onCapture, captured, onRetake, fullHeigh
   }, []);
 
   const stopStream = useCallback(() => {
-    cancelAnimationFrame(rafRef.current);
+    if (rafRef.current !== undefined) cancelAnimationFrame(rafRef.current);
     clearInterval(timerRef.current);
     streamRef.current?.getTracks().forEach(t => t.stop());
     streamRef.current      = null;
@@ -124,7 +136,7 @@ export default function LivenessCheck({ onCapture, captured, onRetake, fullHeigh
 
   // ── Screenshot prevention ───────────────────────────────────────────────────
   useEffect(() => {
-    const onKey = (e) => {
+    const onKey = (e: KeyboardEvent) => {
       if (e.key === "PrintScreen" || (e.metaKey && e.shiftKey && ["3","4","5"].includes(e.key))) {
         e.preventDefault();
         if (streamRef.current) {
@@ -144,6 +156,7 @@ export default function LivenessCheck({ onCapture, captured, onRetake, fullHeigh
     const canvas = sampleRef.current;
     if (!video || !canvas || video.readyState < 2) return 0;
     const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return 0;
 
     // Source crop: horizontal 20–80%, vertical 10–90% — keeps the face in frame
     const sw = video.videoWidth  || 640;
@@ -169,6 +182,7 @@ export default function LivenessCheck({ onCapture, captured, onRetake, fullHeigh
     const canvas = sampleRef.current;
     if (!video || !canvas || video.readyState < 2) return 255;
     const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return 255;
     ctx.drawImage(video, 0, 0, SAMPLE_W, SAMPLE_H);
     const { data } = ctx.getImageData(0, 0, SAMPLE_W, SAMPLE_H);
     let sum = 0;
@@ -188,6 +202,7 @@ export default function LivenessCheck({ onCapture, captured, onRetake, fullHeigh
     canvas.width  = video.videoWidth  || 640;
     canvas.height = video.videoHeight || 480;
     const ctx = canvas.getContext("2d");
+    if (!ctx) return;
     ctx.translate(canvas.width, 0);
     ctx.scale(-1, 1);
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -202,7 +217,7 @@ export default function LivenessCheck({ onCapture, captured, onRetake, fullHeigh
   const startStillnessCapture = useCallback(() => {
     setPhase("stillness");
     detectionOnRef.current = false;
-    cancelAnimationFrame(rafRef.current);
+    if (rafRef.current !== undefined) cancelAnimationFrame(rafRef.current);
     prevDataRef.current = null;
     emaRef.current      = 0;
     setTimeout(() => {
@@ -211,9 +226,9 @@ export default function LivenessCheck({ onCapture, captured, onRetake, fullHeigh
   }, [captureSelfie]);
 
   // ── Timeout → retry same prompt or hard-fail ──────────────────────────────
-  const handleTimeout = useCallback((promptIndex) => {
+  const handleTimeout = useCallback((promptIndex: number) => {
     detectionOnRef.current = false;
-    cancelAnimationFrame(rafRef.current);
+    if (rafRef.current !== undefined) cancelAnimationFrame(rafRef.current);
 
     const currentRetries = retryCountRef.current;
     if (currentRetries < MAX_RETRIES_PER_PROMPT) {
@@ -255,7 +270,7 @@ export default function LivenessCheck({ onCapture, captured, onRetake, fullHeigh
   handleTimeoutRef.current = handleTimeout;
 
   // ── Advance to next prompt on confirmed success ────────────────────────────
-  const advancePrompt = useCallback((doneIdx) => {
+  const advancePrompt = useCallback((doneIdx: number) => {
     setCompleted(prev => [...prev, doneIdx]);
     setRetryCount(0);  retryCountRef.current = 0;
     setRetryMsg("");
@@ -286,26 +301,28 @@ export default function LivenessCheck({ onCapture, captured, onRetake, fullHeigh
   advancePromptRef.current = advancePrompt;
 
   const isLastPromptRef = useRef(false);
-  const runAdvancePrompt = useCallback((doneIdx) => {
+  const runAdvancePrompt = useCallback((doneIdx: number) => {
     const currentPrompts = promptsRef.current;
     isLastPromptRef.current = doneIdx >= currentPrompts.length - 1;
     advancePromptRef.current?.(doneIdx);
   }, []);
 
   // ── Detection loop (adaptive baseline) ────────────────────────────────────
-  const startDetectionLoop = useCallback((promptIcon, promptIndex) => {
+  const startDetectionLoop = useCallback((promptIcon: string | undefined, promptIndex: number) => {
     detectionOnRef.current = true;
     prevDataRef.current    = null;
     emaRef.current         = 0;
 
     let detectedThisRound = false;
     let motionFrames      = 0;
-    let baselineSamples   = [];
-    let brightnessSamples = [];
+    let baselineSamples: number[]   = [];
+    let brightnessSamples: number[] = [];
 
     let baselineDone    = !!idleBaselineRef.current;
-    let multiplier      = ACTION_MULTIPLIER[promptIcon] ?? ACTION_MULTIPLIER._default;
-    let effectiveThresh = idleBaselineRef.current
+    let multiplier: number = promptIcon
+      ? (ACTION_MULTIPLIER[promptIcon] ?? ACTION_MULTIPLIER._default)
+      : ACTION_MULTIPLIER._default;
+    let effectiveThresh: number | null = idleBaselineRef.current
       ? idleBaselineRef.current * multiplier
       : null;
 
@@ -357,17 +374,17 @@ export default function LivenessCheck({ onCapture, captured, onRetake, fullHeigh
       // Use the lower DETECTION_EMA_ALPHA so the signal is less reactive to jolts.
       emaRef.current = DETECTION_EMA_ALPHA * raw + (1 - DETECTION_EMA_ALPHA) * emaRef.current;
 
-      const pct = Math.min(100, Math.round((emaRef.current / effectiveThresh) * 80));
+      const pct = Math.min(100, Math.round((emaRef.current / (effectiveThresh as number)) * 80));
       setMotionPct(pct);
 
-      if (emaRef.current >= effectiveThresh) {
+      if (emaRef.current >= (effectiveThresh as number)) {
         // Track consecutive run length and peak for jolt detection
         consecutiveFrames += 1;
         peakEma = Math.max(peakEma, emaRef.current);
         motionFrames = Math.min(motionFrames + 1, ACCUMULATOR_NEED * 1.5);
       } else {
         if (consecutiveFrames > 0 && consecutiveFrames < MIN_SUSTAIN_FRAMES) {
-          if (peakEma >= effectiveThresh * JOLT_PEAK_MULTIPLIER) {
+          if (peakEma >= (effectiveThresh as number) * JOLT_PEAK_MULTIPLIER) {
             motionFrames = 0;
           }
         }
@@ -392,7 +409,7 @@ export default function LivenessCheck({ onCapture, captured, onRetake, fullHeigh
   }, [measureMotion, measureBrightness, stopStream, runAdvancePrompt]);
 
   // ── Countdown — drift-proof via Date.now() snapshot ──────────────────────
-  const startDetectionCountdown = useCallback((promptIcon, idx) => {
+  const startDetectionCountdown = useCallback((promptIcon: string | undefined, idx: number) => {
     const totalSecs = COUNTDOWN_SECS + COUNTDOWN_BONUS;
     const deadline  = Date.now() + totalSecs * 1000;
     timeLeftRef.current = totalSecs;
@@ -413,7 +430,7 @@ export default function LivenessCheck({ onCapture, captured, onRetake, fullHeigh
 
   startDetectionCountdownRef.current = startDetectionCountdown;
 
-  const lastUsedIconsRef = useRef(new Set());
+  const lastUsedIconsRef = useRef<Set<string>>(new Set());
 
   // ── Start camera ───────────────────────────────────────────────────────────
   const startCamera = useCallback(async () => {
@@ -467,7 +484,7 @@ export default function LivenessCheck({ onCapture, captured, onRetake, fullHeigh
 
     } catch (err) {
       setErrorMsg(
-        err.name === "NotAllowedError"
+        err instanceof DOMException && err.name === "NotAllowedError"
           ? "Camera permission denied. Please allow camera access and try again."
           : "Could not access camera. Please ensure it is connected and try again."
       );
@@ -479,7 +496,7 @@ export default function LivenessCheck({ onCapture, captured, onRetake, fullHeigh
   const currentPrompt = prompts[promptIdx];
   const thresholdPct  = 65;
 
-  const capturedUrlRef = useRef(null);
+  const capturedUrlRef = useRef<string | null>(null);
   const capturedUrl = useMemo(() => {
     if (capturedUrlRef.current) {
       URL.revokeObjectURL(capturedUrlRef.current);
@@ -567,11 +584,15 @@ export default function LivenessCheck({ onCapture, captured, onRetake, fullHeigh
         {/* Progress dots */}
         {isLive && prompts.length > 0 && (
           <div className="absolute top-3 left-3 flex items-center gap-2">
+            {/* Fixed the same malformed arbitrary-value typo documented in
+                Button.tsx (#9) and FormComponents.tsx: stray trailing digit
+                turned "bg-white/[0.02]" into a dead "[0.02]0" class. Three
+                instances fixed in this file during the TS conversion. */}
             {prompts.map((_, i) => (
               <div key={i} className={`w-3 h-3 rounded-full border-2 transition-all duration-300 ${
                 completedIdxs.includes(i) ? "bg-emerald-400 border-emerald-200 scale-110"
                   : i === promptIdx       ? "bg-amber-400 border-amber-200 scale-125"
-                  : "bg-white/[0.02]0 border-white/40"
+                  : "bg-white/2 border-white/40"
               }`} />
             ))}
           </div>
@@ -608,7 +629,7 @@ export default function LivenessCheck({ onCapture, captured, onRetake, fullHeigh
               <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse inline-block" />
               Motion detected
             </p>
-            <div className="relative h-2 bg-white/[0.02]0 rounded-full overflow-hidden">
+            <div className="relative h-2 bg-white/2 rounded-full overflow-hidden">
               <div className="absolute top-0 bottom-0 w-0.5 bg-white/60 rounded-full z-10" style={{ left: `${thresholdPct}%` }} />
               <motion.div className="h-full rounded-full"
                 style={{
@@ -733,7 +754,7 @@ export default function LivenessCheck({ onCapture, captured, onRetake, fullHeigh
       )}
       {phase === "error" && (
         <button type="button" onClick={startCamera}
-          className="w-full flex items-center justify-center gap-2 bg-white/5 border border-white/10 hover:bg-white/[0.01]0 text-white font-bold text-sm px-5 py-4 rounded-xl transition-all touch-manipulation">
+          className="w-full flex items-center justify-center gap-2 bg-white/5 border border-white/10 hover:bg-white/2 text-white font-bold text-sm px-5 py-4 rounded-xl transition-all touch-manipulation">
           <RotateCcw size={13} /> Try Again
         </button>
       )}

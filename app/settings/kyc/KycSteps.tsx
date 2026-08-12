@@ -1,9 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { type ChangeEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AlertCircle, Camera, CreditCard, MapPin, Shield, User, XCircle } from "lucide-react";
-import { inputCls, selectCls, stepAnim, ID_TYPES, NIGERIAN_STATES, formatDateDisplay } from "./constants";
+import { inputCls, selectCls, stepAnim, ID_TYPES, NIGERIAN_STATES, formatDateDisplay, type IdTypeMeta, type KycForm, type KycFormErrors } from "./constants";
 import DobInput      from "./DobInput";
 import FileDropZone  from "./FileDropZone";
 import LivenessCheck from "./LivenessCheck";
@@ -14,6 +14,20 @@ const PEP_RELATIONSHIPS = [
   { value: "family",    label: "A close family member holds or has held a public position" },
   { value: "associate", label: "A close business associate holds or has held a public position" },
 ];
+
+interface KycStepsProps {
+  step: number;
+  form: KycForm;
+  errors: KycFormErrors;
+  submitError: string;
+  setField: (key: keyof KycForm, value: any) => void;
+  setFile: (key: keyof KycForm, file: File | null) => void;
+  setErrors: (updater: (prev: KycFormErrors) => KycFormErrors) => void;
+  handleIdTypeChange: (value: string) => void;
+  handleIdNumberChange: (e: ChangeEvent<HTMLInputElement>) => void;
+  selectedIdMeta: IdTypeMeta | undefined;
+  idTypeLabel: string;
+}
 
 export default function KycSteps({
   step,
@@ -27,24 +41,24 @@ export default function KycSteps({
   handleIdNumberChange,
   selectedIdMeta,
   idTypeLabel,
-}) {
-  const handleFileError = (fieldName, message) => {
+}: KycStepsProps) {
+  const handleFileError = (fieldName: string, message: string) => {
     setErrors(prev => ({ ...prev, [fieldName]: message }));
   };
 
-  const handleFileChange = (fieldName, file) => {
-    setFile(fieldName, file);
+  const handleFileChange = (fieldName: string, file: File | null) => {
+    setFile(fieldName as keyof KycForm, file);
     if (file) {
       setErrors(prev => {
         const next = { ...prev };
-        delete next[fieldName];
+        delete next[fieldName as keyof KycForm];
         return next;
       });
     }
   };
 
   // When is_pep is toggled off, clear all PEP sub-fields
-  const handlePepToggle = (value) => {
+  const handlePepToggle = (value: boolean) => {
     setField("is_pep", value);
     if (!value) {
       setField("pep_relationship", "");
@@ -244,7 +258,7 @@ export default function KycSteps({
             <Shield size={14} className="text-amber-500 mt-0.5 shrink-0" />
             <div className="space-y-1">
               <p className="text-white/70 text-xs font-semibold">What is a Politically Exposed Person (PEP)?</p>
-              <p className="hover:border-white/[0.35] text-xs leading-relaxed">
+              <p className="hover:border-white/35 text-xs leading-relaxed">
                 A PEP is someone who holds or has held a prominent public position — such as a government official,
                 senior executive of a state-owned enterprise, senior military officer, or a close family member
                 or associate of such a person. This is a standard regulatory requirement.
@@ -448,7 +462,7 @@ export default function KycSteps({
                 <p className="text-xs font-bold text-white/55 uppercase tracking-widest">{heading}</p>
               </div>
               <div className="px-4 divide-y divide-white/3">
-                {rows.map(([l, v]) => <ReviewRow key={l} label={l} value={v} />)}
+                {rows.map(([l, v]) => <ReviewRow key={l as string} label={l as string} value={v} />)}
               </div>
             </div>
           ))}

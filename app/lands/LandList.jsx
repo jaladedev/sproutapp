@@ -233,7 +233,7 @@ function SearchBar({ value, onChange }) {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="Search by title or location…"
-        className="w-full pl-10 pr-4 py-3 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/30 focus:outline-none focus:border-amber-500/40 focus:bg-white/[0.08] transition-all"
+        className="w-full pl-10 pr-4 py-3 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/30 focus:outline-none focus:border-amber-500/40 focus:bg-white/8 transition-all"
         style={{ fontFamily: "'DM Sans', sans-serif" }}
       />
     </div>

@@ -1,14 +1,15 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, type ChangeEvent } from "react";
 import { motion } from "framer-motion";
+import type { AxiosError } from "axios";
 import {
   CheckCircle, Camera, CreditCard, ImageIcon, MapPin, User, Shield
 } from "lucide-react";
 import api from "../../../utils/api";
 
-import { STEPS, ID_TYPES } from "./constants";
-import StatusBanner          from "./StatusBanner";
+import { STEPS, ID_TYPES, type KycForm, type KycFormErrors } from "./constants";
+import StatusBanner, { type KycInfo } from "./StatusBanner";
 import { ProgressRail, NavButtons } from "./FormComponents";
 import KycSteps              from "./KycSteps";
 
@@ -22,7 +23,7 @@ const STEP_META = [
   { icon: <CheckCircle size={16} />, title: "Review & Submit",      subtitle: "Confirm your details"           },
 ];
 
-const EMPTY_FORM = {
+const EMPTY_FORM: KycForm = {
   full_name: "", date_of_birth: "", phone_number: "",
   address: "", city: "", state: "", country: "Nigeria",
   id_type: "", id_number: "",
@@ -30,17 +31,27 @@ const EMPTY_FORM = {
   is_pep: false, pep_relationship: "", pep_role: "", pep_country: "", pep_details: "",
 };
 
-export default function KycPanel({ kycStatus: kycStatusProp, setKycStatus: setKycStatusProp }) {
-  const [kycStatus, _setKycStatus] = useState(null);
+interface ApiErrorBody {
+  message?: string;
+  errors?: Record<string, string | string[]>;
+}
+
+interface KycPanelProps {
+  kycStatus?: KycInfo | null;
+  setKycStatus?: (status: string | null) => void;
+}
+
+export default function KycPanel({ kycStatus: kycStatusProp, setKycStatus: setKycStatusProp }: KycPanelProps) {
+  const [kycStatus, _setKycStatus] = useState<KycInfo | null>(null);
   const [loading, setLoading]      = useState(true);
   const [showForm, setShowForm]    = useState(false);
   const [step, setStep]            = useState(0);
   const [submitting, setSubmitting]   = useState(false);
   const [submitError, setSubmitError] = useState("");
-  const [errors, setErrors]           = useState({});
-  const [form, setForm]               = useState(EMPTY_FORM);
+  const [errors, setErrors]           = useState<KycFormErrors>({});
+  const [form, setForm]               = useState<KycForm>(EMPTY_FORM);
 
-  const setKycStatus = useCallback((val) => {
+  const setKycStatus = useCallback((val: KycInfo | null) => {
     _setKycStatus(val);
     setKycStatusProp?.(val?.status ?? null);
   }, [setKycStatusProp]);
@@ -49,7 +60,7 @@ export default function KycPanel({ kycStatus: kycStatusProp, setKycStatus: setKy
     (async () => {
       try {
         const { data } = await api.get("/kyc/status");
-        const kycData  = data.data;
+        const kycData: KycInfo = data.data;
         setKycStatus(kycData);
         setShowForm(["not_submitted", "rejected", "resubmit"].includes(kycData.status));
       } catch {
@@ -59,15 +70,16 @@ export default function KycPanel({ kycStatus: kycStatusProp, setKycStatus: setKy
         setLoading(false);
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const setField = (k, v) => setForm(p => ({ ...p, [k]: v }));
-  const setFile  = (k, f) => setForm(p => ({ ...p, [k]: f }));
+  const setField = (k: keyof KycForm, v: any) => setForm(p => ({ ...p, [k]: v }));
+  const setFile  = (k: keyof KycForm, f: File | null) => setForm(p => ({ ...p, [k]: f }));
 
-  const handleIdTypeChange = (val) =>
+  const handleIdTypeChange = (val: string) =>
     setForm(p => ({ ...p, id_type: val, id_number: "" }));
 
-  const handleIdNumberChange = (e) => {
+  const handleIdNumberChange = (e: ChangeEvent<HTMLInputElement>) => {
     const meta = ID_TYPES.find(t => t.value === form.id_type);
     let val = e.target.value;
     if (meta?.numericOnly) val = val.replace(/\D/g, "");
@@ -79,14 +91,14 @@ export default function KycPanel({ kycStatus: kycStatusProp, setKycStatus: setKy
   const idTypeLabel    = selectedIdMeta?.label || "—";
 
   const validateStep = () => {
-    const e = {};
+    const e: KycFormErrors = {};
 
     if (step === 0) {
       if (!form.full_name.trim())    e.full_name     = "Full name is required";
       if (!form.date_of_birth) {
         e.date_of_birth = "Date of birth is required";
       } else {
-        const age = Math.floor((new Date() - new Date(form.date_of_birth)) / (1000 * 60 * 60 * 24 * 365.25));
+        const age = Math.floor((new Date().getTime() - new Date(form.date_of_birth).getTime()) / (1000 * 60 * 60 * 24 * 365.25));
         if (age < 18)  e.date_of_birth = "You must be at least 18 years old";
         if (age > 120) e.date_of_birth = "Please enter a valid date of birth";
       }
@@ -185,7 +197,7 @@ export default function KycPanel({ kycStatus: kycStatusProp, setKycStatus: setKy
       }
       setShowForm(false);
     } catch (err) {
-      const resData = err.response?.data;
+      const resData = (err as AxiosError<ApiErrorBody>).response?.data;
       setSubmitError(
         resData?.message  ? resData.message
           : resData?.errors ? Object.values(resData.errors).flat().join(" ")
@@ -257,7 +269,10 @@ export default function KycPanel({ kycStatus: kycStatusProp, setKycStatus: setKy
             </span>
           </div>
 
-          <div className="sm:hidden h-0.5 bg-white/[0.01]0 rounded-full mb-5 overflow-hidden">
+          {/* Fixed the same malformed arbitrary-value typo documented in
+              Button.tsx (#9), FormComponents.tsx, and LivenessCheck.tsx:
+              stray trailing digit turned "bg-white/[0.01]" into dead "[0.01]0". */}
+          <div className="sm:hidden h-0.5 bg-white/1 rounded-full mb-5 overflow-hidden">
             <motion.div
               className="h-full rounded-full"
               style={{ background: "linear-gradient(90deg, #C8873A, #E8A850)" }}

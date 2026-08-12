@@ -4,9 +4,9 @@ import { motion } from "framer-motion";
 import { CheckCircle, Clock, XCircle, RefreshCw } from "lucide-react";
 import type { ReactNode } from "react";
 
-type KycStatus = "pending" | "approved" | "rejected" | "resubmit";
+export type KycStatus = "pending" | "approved" | "rejected" | "resubmit";
 
-type KycInfo = {
+export type KycInfo = {
   status: KycStatus | string;
   rejection_reason?: string | null;
   submission_date?: string | null;

@@ -1,8 +1,39 @@
+// ─── Shared KYC form shape ────────────────────────────────────────────────────
+// Used by KycPanel.tsx (owns the state) and KycSteps.tsx (renders it).
+export interface KycForm {
+  full_name: string;
+  date_of_birth: string;
+  phone_number: string;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  id_type: string;
+  id_number: string;
+  id_front: File | null;
+  id_back: File | null;
+  selfie: File | null;
+  is_pep: boolean | null;
+  pep_relationship: string;
+  pep_role: string;
+  pep_country: string;
+  pep_details: string;
+}
+
+export type KycFormErrors = Partial<Record<keyof KycForm, string>>;
+
 // ─── Step labels ──────────────────────────────────────────────────────────────
 export const STEPS = ["Personal", "Address", "Identity", "Docs", "Liveness", "PEP", "Review"];
 
 // ─── ID types ─────────────────────────────────────────────────────────────────
-export const ID_TYPES = [
+export interface IdTypeMeta {
+  value: string;
+  label: string;
+  numericOnly: boolean;
+  maxLen: number;
+}
+
+export const ID_TYPES: IdTypeMeta[] = [
   { value: "nin",             label: "National Identity Number (NIN)", numericOnly: true,  maxLen: 11 },
   { value: "drivers_license", label: "Driver's License",               numericOnly: false, maxLen: 20 },
   { value: "voters_card",     label: "Voter's Card",                   numericOnly: false, maxLen: 20 },
@@ -20,7 +51,13 @@ export const NIGERIAN_STATES = [
 ];
 
 // ─── Liveness prompts ─────────────────────────────────────────────────────────
-export const LIVENESS_PROMPTS = [
+export interface LivenessPrompt {
+  text: string;
+  icon: string;
+  duration: number;
+}
+
+export const LIVENESS_PROMPTS: LivenessPrompt[] = [
   { text: "Turn your head left",  icon: "left",  duration: 8 },
   { text: "Turn your head right", icon: "right", duration: 8 },
   { text: "Nod your head gently", icon: "nod",   duration: 8 },
@@ -60,7 +97,7 @@ export const BASELINE_FRAMES        = 40;
 
 // Multiplier over the idle baseline that counts as a "deliberate action".
 // Keyed by prompt icon; _default used when no specific entry exists.
-export const ACTION_MULTIPLIER      = {
+export const ACTION_MULTIPLIER: Record<string, number> = {
   left: 2.8, right: 2.8, nod: 2.4, _default: 2.5,
 };
 
@@ -93,7 +130,7 @@ export const stepAnim = {
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-export function shuffle(arr) {
+export function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -102,7 +139,7 @@ export function shuffle(arr) {
   return a;
 }
 
-export const formatDateDisplay = (iso) => {
+export const formatDateDisplay = (iso?: string | null): string => {
   if (!iso) return "";
   const [y, m, d] = iso.split("-");
   return `${d}/${m}/${y}`;
