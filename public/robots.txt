@@ -7,7 +7,9 @@ Allow: /
 Disallow: /login
 Disallow: /register
 Disallow: /forgot-password
-Disallow: /reset-password
+Disallow: /reset-verify
+Disallow: /verify
+Disallow: /verify-email
 
 # Authenticated app pages
 Disallow: /dashboard
@@ -15,6 +17,7 @@ Disallow: /wallet
 Disallow: /portfolio
 Disallow: /settings
 Disallow: /profile
+Disallow: /notifications
 
 # Next.js internals
 Disallow: /_next/
