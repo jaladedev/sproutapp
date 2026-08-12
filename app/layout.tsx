@@ -1,4 +1,5 @@
-// app/layout.jsx
+// app/layout.tsx
+import type { ReactNode } from "react";
 import { DM_Sans, Playfair_Display, Great_Vibes } from "next/font/google";
 import ToasterProvider from "./components/ToasterProvider";
 import ConditionalHeader from "./components/ConditionalHeader";
@@ -29,7 +30,7 @@ const greatVibes = Great_Vibes({
   display: "swap",
 });
 
-export default function RootLayout({ children }) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html
       lang="en"

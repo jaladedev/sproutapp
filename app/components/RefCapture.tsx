@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 
-export default function RefCapture({ forceCode }) {
+export default function RefCapture({ forceCode }: { forceCode?: string | null }) {
   const params = useSearchParams();
 
   useEffect(() => {
@@ -25,7 +25,7 @@ export default function RefCapture({ forceCode }) {
   return null;
 }
 
-export function getSavedReferralCode() {
+export function getSavedReferralCode(): string | null {
   try {
     const raw = localStorage.getItem("referral_code");
     if (!raw) return null;
@@ -40,7 +40,7 @@ export function getSavedReferralCode() {
   }
 }
 
-export function clearSavedReferralCode() {
+export function clearSavedReferralCode(): void {
   try {
     localStorage.removeItem("referral_code");
   } catch {}

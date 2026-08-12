@@ -1,13 +1,31 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
+type BadgeColor = "emerald" | "amber" | "red" | "cyan";
+
+type CardBadge = {
+  label: string;
+  color?: BadgeColor;
+};
+
+type CardProps = {
+  title: string;
+  description?: string;
+  image?: string;
+  location?: string;
+  price?: string | number;
+  units?: number;
+  href?: string;
+  badge?: CardBadge;
+};
+
 /**
  * Card - land/investment card matching the platform dark design system.
  * Props: title, description, image, location, price, units, href, badge
  * badge: { label, color } where color is emerald|amber|red|cyan
  */
-export function Card({ title, description, image, location, price, units, href, badge }) {
-  const badgeColors = {
+export function Card({ title, description, image, location, price, units, href, badge }: CardProps) {
+  const badgeColors: Record<BadgeColor, string> = {
     emerald: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
     amber:   "text-amber-400  bg-amber-500/10  border-amber-500/20",
     red:     "text-red-400    bg-red-500/10    border-red-500/20",
@@ -22,7 +40,7 @@ export function Card({ title, description, image, location, price, units, href, 
           <img src={image} alt={title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"/>
           <div className="absolute inset-0 bg-gradient-to-t from-[#0D1F1A]/80 to-transparent"/>
           {badge && (
-            <span className={"absolute top-3 right-3 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border " + (badgeColors[badge.color]||badgeColors.emerald)}>
+            <span className={"absolute top-3 right-3 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border " + (badgeColors[badge.color ?? "emerald"] || badgeColors.emerald)}>
               {badge.label}
             </span>
           )}
@@ -41,7 +59,7 @@ export function Card({ title, description, image, location, price, units, href, 
         <div className="flex items-center justify-between">
           <div>
             {price && <p className="text-sm font-bold text-amber-400">{price} <span className="font-normal text-white/55 text-xs">/ unit</span></p>}
-            {units!==undefined && <p className="text-xs text-white/55 mt-0.5">{units.toLocaleString()} units available</p>}
+            {units !== undefined && <p className="text-xs text-white/55 mt-0.5">{units.toLocaleString()} units available</p>}
           </div>
           {href && (
             <div className="w-8 h-8 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500 group-hover:bg-amber-500 group-hover:text-[#0D1F1A] transition-all">

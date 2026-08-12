@@ -7,6 +7,7 @@ import {
   useContext,
   useCallback,
   useRef,
+  type ReactNode,
 } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -15,7 +16,33 @@ import { isAuthed, clearAuthedFlag } from "../utils/tokenStore";
 import { resetNotificationCache } from "../services/notificationService";
 import { PUBLIC_ROUTES, isPublicRoute } from "../utils/routes";
 
-export const AuthContext = createContext(null);
+// ── Types ─────────────────────────────────────────────────────────────────
+//
+// The backend response shape isn't formalized anywhere yet (no OpenAPI/DTO
+// source of truth), so this stays a loose, permissive shape rather than a
+// tight interface — better than `any`, but an index signature keeps every
+// existing consumer (user.email, user.kyc_verification, etc.) compiling
+// without needing to know every field up front. Tighten this once the API
+// contract is documented.
+
+export interface AuthUser {
+  id?: string | number;
+  email?: string;
+  name?: string;
+  role?: string;
+  kyc_verification?: unknown;
+  [key: string]: unknown;
+}
+
+interface AuthContextValue {
+  user: AuthUser | null;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<AuthUser | null>;
+  logout: () => Promise<void>;
+  checkAuth: () => Promise<void>;
+}
+
+export const AuthContext = createContext<AuthContextValue | null>(null);
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -33,14 +60,14 @@ const MIN_REFRESH_DELAY_MS = 5 * 1000;   // avoid rapid-fire refresh loops
 // can still be scheduled without decoding a JWT client-side. See
 // utils/tokenStore.ts for the full backend contract this depends on.
 
-export const AuthProvider = ({ children }) => {
-  const [user, setUser]       = useState(null);
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const [user, setUser]       = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const router       = useRouter();
-  const pathname      = usePathname();
-  const refreshTimer = useRef(null);
-  const queryClient  = useQueryClient();
+  const router        = useRouter();
+  const pathname       = usePathname();
+  const refreshTimer  = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const queryClient   = useQueryClient();
 
   const clearRefreshTimer = useCallback(() => {
     if (refreshTimer.current) {
@@ -55,7 +82,7 @@ export const AuthProvider = ({ children }) => {
   // off mid-flow waiting for a reactive 401 refresh.
 
   const scheduleProactiveRefresh = useCallback(
-    (expiresAtMs) => {
+    (expiresAtMs: number | null | undefined) => {
       clearRefreshTimer();
 
       if (!expiresAtMs) return; // API didn't tell us an expiry — skip
@@ -90,7 +117,7 @@ export const AuthProvider = ({ children }) => {
   // ── applySession ────────────────────────────────────────────────────────
 
   const applySession = useCallback(
-    (userData, expiresAtMs) => {
+    (userData: AuthUser | null, expiresAtMs: number | null | undefined) => {
       setUser(userData);
       scheduleProactiveRefresh(expiresAtMs);
     },
@@ -110,8 +137,8 @@ export const AuthProvider = ({ children }) => {
       const userData  = res.data?.data ?? res.data?.user ?? res.data;
       const expiresAt = res.data?.expires_at ?? null;
       applySession(userData, expiresAt);
-    } catch (err) {
-      const status = err.response?.status;
+    } catch (err: any) {
+      const status = err?.response?.status;
 
       if (status === 401) {
         // Definitively invalid — wipe session and redirect.
@@ -123,7 +150,7 @@ export const AuthProvider = ({ children }) => {
           sessionStorage.setItem("redirectAfterLogin", pathname);
           router.replace("/login");
         }
-      } else if (!err.response) {
+      } else if (!err?.response) {
         // Network timeout / offline — keep the session flag, surface
         // nothing to the user. The dashboard's own auth timeout fallback
         // handles this gracefully.
@@ -145,11 +172,11 @@ export const AuthProvider = ({ children }) => {
 
   // ── login ────────────────────────────────────────────────────────────────
 
-  const login = async (email, password) => {
+  const login = async (email: string, password: string): Promise<AuthUser | null> => {
     const res       = await api.post("/login", { email, password });
     const expiresAt = res.data?.expires_at ?? null;
 
-    let userData;
+    let userData: AuthUser | null;
     try {
       const meRes = await api.get("/me"); // cookie already set by /login's response
       userData    = meRes.data?.data ?? meRes.data?.user ?? meRes.data;
@@ -168,7 +195,7 @@ export const AuthProvider = ({ children }) => {
   // right after on a shared device. queryClient.clear() avoids that while
   // still avoiding the full-page reload's loss of client state.
 
-  const logout = async () => {
+  const logout = async (): Promise<void> => {
     try {
       await api.post("/logout"); // awaited — clears the httpOnly cookies server-side
     } catch {
@@ -190,4 +217,4 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = (): AuthContextValue | null => useContext(AuthContext);

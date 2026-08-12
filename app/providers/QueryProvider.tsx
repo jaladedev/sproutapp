@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 
-export default function QueryProvider({ children }) {
+export default function QueryProvider({ children }: { children: ReactNode }) {
   // One QueryClient per component instance (not module scope), so it isn't
   // shared across requests during SSR. useState's lazy initializer means
   // it's only constructed once per mount on the client.

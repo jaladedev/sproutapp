@@ -1,4 +1,9 @@
-export default function FormError({ error, message }) {
+type FormErrorProps = {
+  error?: string | string[] | null;
+  message?: string | string[] | null;
+};
+
+export default function FormError({ error, message }: FormErrorProps) {
   const text = error || message;
   if (!text) return null;
 

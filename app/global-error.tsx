@@ -10,7 +10,13 @@ import { useEffect } from "react";
  * just inline styles, to keep it working even if the rest of the app is
  * broken.
  */
-export default function GlobalError({ error, reset }) {
+export default function GlobalError({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
   useEffect(() => {
     console.error("Root layout error boundary caught:", error);
   }, [error]);

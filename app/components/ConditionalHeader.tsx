@@ -8,7 +8,7 @@ export default function ConditionalHeader() {
   const pathname = usePathname();
 
   const hideNav = NAV_HIDDEN_ROUTES.some(
-    (route) => pathname === route || pathname.startsWith(route + "/")
+    (route: string) => pathname === route || pathname.startsWith(route + "/")
   );
 
   if (hideNav) return null;

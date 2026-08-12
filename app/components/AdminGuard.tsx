@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../context/AuthContext";
 
-export default function AdminGuard({ children }) {
+type Status = "loading" | "authorized" | "unauthorized";
+
+export default function AdminGuard({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const { user, loading } = useAuth();
-  const [status, setStatus] = useState("loading");
+  const { user, loading } = useAuth() ?? {};
+  const [status, setStatus] = useState<Status>("loading");
 
   useEffect(() => {
     if (loading) return;
