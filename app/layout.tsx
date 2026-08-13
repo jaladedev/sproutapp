@@ -9,6 +9,7 @@ import QueryProvider from "./providers/QueryProvider";
 import "./globals.css";
 import WhatsAppButton from "./components/WhatsAppButton";
 import SupportWidget from "./components/SupportWidget";
+import ConfirmDialog from "./components/ConfirmDialog";
 
 const dmSans = DM_Sans({
   subsets: ["latin"],
@@ -46,6 +47,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <SupportWidget />
             <ConditionalFooter />
             <ToasterProvider />
+            <ConfirmDialog />
           </AuthProvider>
         </QueryProvider>
       </body>

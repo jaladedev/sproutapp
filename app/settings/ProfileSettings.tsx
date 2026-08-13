@@ -1,16 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ChangeEvent, type FormEvent, type ReactNode, type FocusEvent } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { User, Mail, Lock, Eye, EyeOff, CheckCircle, Shield } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import type { AxiosError } from "axios";
 import api from "../../utils/api";
 import toast from "react-hot-toast";
 
-export default function ProfileSettings() {
-  const { user } = useAuth();
+interface PasswordFormData {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
 
-  const [formData, setFormData] = useState({
+interface ApiErrorBody {
+  message?: string;
+  error?: string;
+}
+
+export default function ProfileSettings() {
+  const { user } = useAuth() ?? {};
+
+  const [formData, setFormData] = useState<PasswordFormData>({
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
@@ -37,12 +49,12 @@ export default function ProfileSettings() {
   const passwordsMatch = formData.newPassword && formData.confirmPassword && formData.newPassword === formData.confirmPassword;
   const passwordsDontMatch = formData.confirmPassword && !passwordsMatch;
 
-  const handleChange = (e) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     if (error) setError("");
   };
 
-  const handlePasswordChange = async (e) => {
+  const handlePasswordChange = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (formData.newPassword !== formData.confirmPassword) return (setError("Passwords do not match"), toast.error("Passwords do not match"));
     if (passedChecks < passwordChecks.length) return (setError("Please meet all password requirements"), toast.error("Please meet all password requirements"));
@@ -58,7 +70,8 @@ export default function ProfileSettings() {
       toast.success("Password changed successfully!");
       setFormData({ currentPassword: "", newPassword: "", confirmPassword: "" });
     } catch (err) {
-      const msg = err.response?.data?.message || err.response?.data?.error || "Failed to change password";
+      const axiosErr = err as AxiosError<ApiErrorBody>;
+      const msg = axiosErr.response?.data?.message || axiosErr.response?.data?.error || "Failed to change password";
       setError(msg);
       toast.error(msg);
     } finally {
@@ -97,7 +110,7 @@ export default function ProfileSettings() {
                 className="w-full bg-white/3 border border-white/8 text-white/60 pl-10 pr-4 py-3 rounded-xl text-sm cursor-not-allowed"
               />
             </div>
-            {user?.email_verified_at && (
+            {Boolean(user?.email_verified_at) && (
               <div className="flex items-center gap-1.5 mt-1.5 text-emerald-400 text-xs">
                 <CheckCircle size={12} /> Verified
               </div>
@@ -218,7 +231,12 @@ export default function ProfileSettings() {
 }
 
 /* ── Sub-components ── */
-function Field({ label, children }) {
+interface FieldProps {
+  label: string;
+  children: ReactNode;
+}
+
+function Field({ label, children }: FieldProps) {
   return (
     <div>
       <label className="block text-xs font-bold uppercase tracking-widest text-white/55 mb-2">{label}</label>
@@ -227,7 +245,20 @@ function Field({ label, children }) {
   );
 }
 
-function PasswordInput({ id, name, value, onChange, show, onToggle, placeholder, onFocus, onBlur, error }) {
+interface PasswordInputProps {
+  id: string;
+  name: string;
+  value: string;
+  onChange: (e: ChangeEvent<HTMLInputElement>) => void;
+  show: boolean;
+  onToggle: () => void;
+  placeholder: string;
+  onFocus?: (e: FocusEvent<HTMLInputElement>) => void;
+  onBlur?: (e: FocusEvent<HTMLInputElement>) => void;
+  error?: boolean | string;
+}
+
+function PasswordInput({ id, name, value, onChange, show, onToggle, placeholder, onFocus, onBlur, error }: PasswordInputProps) {
   return (
     <div className="relative">
       <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={14} />

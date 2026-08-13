@@ -8,16 +8,17 @@ import {
   fetchNotifications,
   fetchUnreadNotifications,
   markAllNotificationsRead,
+  AppNotification,
 } from "../../services/notificationService";
 
 export default function NotificationBell() {
-  const [notifications, setNotifications] = useState([]);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const dropdownRef = useRef(null);
-  const buttonRef = useRef(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const router = useRouter();
 
   const loadNotifications = async () => {
@@ -57,12 +58,12 @@ export default function NotificationBell() {
   };
 
   useEffect(() => {
-    const handleClickOutside = (e) => {
+    const handleClickOutside = (e: globalThis.MouseEvent) => {
       if (
         dropdownRef.current &&
-        !dropdownRef.current.contains(e.target) &&
+        !dropdownRef.current.contains(e.target as Node) &&
         buttonRef.current &&
-        !buttonRef.current.contains(e.target)
+        !buttonRef.current.contains(e.target as Node)
       ) {
         setOpen(false);
       }

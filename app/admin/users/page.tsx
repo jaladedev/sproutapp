@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, ReactNode } from "react";
 import Link from "next/link";
 import api from "../../../utils/api";
 import toast from "react-hot-toast";
+import { useConfirm } from "../../../stores/useUIStore";
 import {
   Users, Search, ShieldX,
   ArrowLeft, Eye, MoreVertical,
@@ -11,7 +12,42 @@ import {
   ChevronLeft, ChevronRight, Filter, X, AlertCircle,
 } from "lucide-react";
 
-const KYC_CONFIG = {
+type KycStatus = "approved" | "pending" | "rejected" | "resubmit" | "not_submitted";
+
+type ActionType = "suspend" | "unsuspend" | "makeAdmin" | "removeAdmin" | "delete";
+
+interface AdminUser {
+  id: string | number;
+  uid: string;
+  name: string;
+  email: string;
+  is_admin: boolean;
+  is_suspended: boolean;
+  balance_kobo?: number;
+  rewards_balance_kobo?: number;
+  total_lands?: number;
+  total_units_owned?: number;
+  kyc_status?: KycStatus;
+  kyc_verification?: { status?: KycStatus } | null;
+  created_at: string;
+  bank_name?: string;
+  account_number?: string;
+  [key: string]: unknown;
+}
+
+interface Filters {
+  suspended: string;
+  is_admin: string;
+  kyc_status: string;
+}
+
+interface Pagination {
+  current_page: number;
+  last_page: number;
+  total: number;
+}
+
+const KYC_CONFIG: Record<KycStatus, { label: string; color: string; bg: string }> = {
   approved:      { label: "Verified",     color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/20" },
   pending:       { label: "Pending",      color: "text-amber-400",   bg: "bg-amber-500/10  border-amber-500/20"   },
   rejected:      { label: "Rejected",     color: "text-red-400",     bg: "bg-red-500/10    border-red-500/20"     },
@@ -19,21 +55,21 @@ const KYC_CONFIG = {
   not_submitted: { label: "Not Submitted",color: "text-white/55",    bg: "bg-white/5       border-white/10"       },
 };
 
-const fmt = (n) => `₦${((n ?? 0) / 100).toLocaleString("en-NG")}`;
+const fmt = (n?: number) => `₦${((n ?? 0) / 100).toLocaleString("en-NG")}`;
 
-const fmtShort = (kobo) => {
+const fmtShort = (kobo?: number) => {
   const n = (kobo ?? 0) / 100;
   if (n >= 1_000_000) return `₦${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000)     return `₦${(n / 1_000).toFixed(1)}K`;
   return `₦${n.toLocaleString("en-NG")}`;
 };
 
-const fmtDate = (d) => {
+const fmtDate = (d: string) => {
   const dt = new Date(d);
   return `${String(dt.getDate()).padStart(2,"0")}/${String(dt.getMonth()+1).padStart(2,"0")}/${dt.getFullYear()}`;
 };
 
-function KycBadge({ status }) {
+function KycBadge({ status }: { status: KycStatus }) {
   const cfg = KYC_CONFIG[status] || KYC_CONFIG.not_submitted;
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${cfg.color} ${cfg.bg}`}>
@@ -42,7 +78,15 @@ function KycBadge({ status }) {
   );
 }
 
-function ActionBtn({ onClick, loading, icon, label, cls = "" }) {
+function ActionBtn({
+  onClick, loading, icon, label, cls = "",
+}: {
+  onClick: () => void;
+  loading?: boolean;
+  icon: ReactNode;
+  label: string;
+  cls?: string;
+}) {
   return (
     <button onClick={onClick} disabled={!!loading}
       className={`flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white border transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${cls}`}>
@@ -52,8 +96,15 @@ function ActionBtn({ onClick, loading, icon, label, cls = "" }) {
   );
 }
 
-function UserMenuItems({ user, onView, onAction, onClose }) {
-  const item = (cb, icon, label, color = "text-white/70") => (
+function UserMenuItems({
+  user, onView, onAction, onClose,
+}: {
+  user: AdminUser;
+  onView: () => void;
+  onAction: (action: ActionType, user: AdminUser, confirmMsg?: string) => void;
+  onClose: () => void;
+}) {
+  const item = (cb: () => void, icon: ReactNode, label: string, color = "text-white/70") => (
     <button key={label}
       onClick={() => { cb(); onClose(); }}
       className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-sm ${color} hover:bg-white/5 transition-colors text-left`}>
@@ -77,20 +128,23 @@ function UserMenuItems({ user, onView, onAction, onClose }) {
   );
 }
 
+const DANGER_ACTIONS = new Set<ActionType>(["suspend", "delete", "removeAdmin"]);
+
 export default function AdminUsersPage() {
-  const [users, setUsers]           = useState([]);
+  const [users, setUsers]           = useState<AdminUser[]>([]);
   const [loading, setLoading]       = useState(true);
   const [search, setSearch]         = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [filters, setFilters]       = useState({ suspended: "", is_admin: "", kyc_status: "" });
+  const [filters, setFilters]       = useState<Filters>({ suspended: "", is_admin: "", kyc_status: "" });
   const [showFilters, setShowFilters] = useState(false);
-  const [pagination, setPagination] = useState({ current_page: 1, last_page: 1, total: 0 });
+  const [pagination, setPagination] = useState<Pagination>({ current_page: 1, last_page: 1, total: 0 });
   const [page, setPage]             = useState(1);
-  const [selectedUser, setSelectedUser] = useState(null);
+  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [showModal, setShowModal]   = useState(false);
-  const [actionLoading, setActionLoading] = useState(null);
-  const [menuOpen, setMenuOpen]     = useState(null);
-  const menuRef                     = useRef(null);
+  const [actionLoading, setActionLoading] = useState<ActionType | null>(null);
+  const [menuOpen, setMenuOpen]     = useState<string | number | null>(null);
+  const menuRef                     = useRef<HTMLDivElement>(null);
+  const confirm                     = useConfirm();
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 400);
@@ -101,8 +155,8 @@ export default function AdminUsersPage() {
   useEffect(() => { fetchUsers(); }, [page, debouncedSearch, filters]);
 
   useEffect(() => {
-    const handler = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(null);
+    const handler = (e: globalThis.MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(null);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -111,7 +165,7 @@ export default function AdminUsersPage() {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ page, per_page: 20 });
+      const params = new URLSearchParams({ page: String(page), per_page: "20" });
       if (debouncedSearch)    params.set("search",     debouncedSearch);
       if (filters.suspended)  params.set("suspended",  filters.suspended);
       if (filters.is_admin)   params.set("is_admin",   filters.is_admin);
@@ -124,7 +178,7 @@ export default function AdminUsersPage() {
     finally  { setLoading(false); }
   };
 
-  const viewUser = async (userId) => {
+  const viewUser = async (userId: string | number) => {
     setMenuOpen(null);
     try {
       const res = await api.get(`/admin/users/${userId}`);
@@ -135,11 +189,18 @@ export default function AdminUsersPage() {
 
   const closeModal = () => { setShowModal(false); setSelectedUser(null); };
 
-  const doAction = async (action, user, confirmMsg) => {
-    if (confirmMsg && !window.confirm(confirmMsg)) return;
+  const doAction = async (action: ActionType, user: AdminUser, confirmMsg?: string) => {
+    if (confirmMsg) {
+      const ok = await confirm({
+        message: confirmMsg,
+        danger: DANGER_ACTIONS.has(action),
+        confirmLabel: action === "delete" ? "Delete" : "Confirm",
+      });
+      if (!ok) return;
+    }
     setActionLoading(action);
     try {
-      const map = {
+      const map: Record<ActionType, [ "patch" | "delete", string ]> = {
         suspend:     ["patch",  `/admin/users/${user.id}/suspend`],
         unsuspend:   ["patch",  `/admin/users/${user.id}/unsuspend`],
         makeAdmin:   ["patch",  `/admin/users/${user.id}/make-admin`],
@@ -152,7 +213,7 @@ export default function AdminUsersPage() {
       setMenuOpen(null);
       if (showModal) closeModal();
       fetchUsers();
-    } catch (err) {
+    } catch (err: any) {
       toast.error(err.response?.data?.message || "Action failed");
     } finally { setActionLoading(null); }
   };
@@ -212,7 +273,7 @@ export default function AdminUsersPage() {
             ].map((f) => (
               <div key={f.key}>
                 <label className="block text-xs font-bold uppercase tracking-widest text-white/55 mb-2">{f.label}</label>
-                <select value={filters[f.key]} onChange={(e) => setFilters({ ...filters, [f.key]: e.target.value })}
+                <select value={filters[f.key as keyof Filters]} onChange={(e) => setFilters({ ...filters, [f.key]: e.target.value })}
                   className="w-full bg-white/5 border border-white/10 text-white rounded-xl px-3 py-2.5 text-sm outline-none focus:border-cyan-500/40">
                   {f.options.map(([val, lbl]) => <option key={val} value={val} className="bg-[#0D1F1A]">{lbl}</option>)}
                 </select>

@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { MapPin, ArrowRight, ChevronLeft, ChevronRight, Home } from "lucide-react";
+import { getLandImage } from "../../utils/images";
 
 export default function FeaturedProperties({ lands }) {
   const [current, setCurrent] = useState(0);
@@ -40,8 +42,7 @@ export default function FeaturedProperties({ lands }) {
       {/* Main slide */}
       <div className="relative overflow-hidden rounded-3xl h-130 md:h-145">
         {lands.map((land, i) => {
-          const imageUrl =
-            land.images?.length > 0 ? land.images[0].image_url : "/no-image.jpeg";
+          const imageUrl = getLandImage(land);
           const pricePerUnit = (land.current_price_per_unit_kobo || 0) / 100;
 
           return (
@@ -51,10 +52,13 @@ export default function FeaturedProperties({ lands }) {
               style={{ opacity: i === current ? 1 : 0, pointerEvents: i === current ? "auto" : "none" }}
             >
               {/* Background image */}
-              <img
+              <Image
                 src={imageUrl}
                 alt={land.title}
-                className="w-full h-full object-cover"
+                fill
+                sizes="100vw"
+                priority={i === 0}
+                className="object-cover"
               />
 
               {/* Gradient overlay */}

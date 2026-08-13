@@ -155,7 +155,7 @@ function WithdrawalDrawer({ withdrawal, onClose, onApprove, onReject, approving 
           </div>
 
           {/* User info */}
-          <div className="rounded-xl border border-white/7 bg-white/[2.5%] p-4 space-y-3">
+          <div className="rounded-xl border border-white/7 bg-white/2.5 p-4 space-y-3">
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/25 flex items-center gap-1.5">
               <User size={10} /> User
             </p>
@@ -166,7 +166,7 @@ function WithdrawalDrawer({ withdrawal, onClose, onApprove, onReject, approving 
           </div>
 
           {/* Bank details */}
-          <div className="rounded-xl border border-white/7 bg-white/[2.5%] p-4 space-y-3">
+          <div className="rounded-xl border border-white/7 bg-white/2.5 p-4 space-y-3">
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/25 flex items-center gap-1.5">
               <Building2 size={10} /> Bank Details
             </p>
@@ -183,7 +183,7 @@ function WithdrawalDrawer({ withdrawal, onClose, onApprove, onReject, approving 
           </div>
 
           {/* Transaction details */}
-          <div className="rounded-xl border border-white/7 bg-white/[2.5%] p-4 space-y-3">
+          <div className="rounded-xl border border-white/7 bg-white/2.5 p-4 space-y-3">
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/25">Transaction</p>
             {[
               ["Reference",   withdrawal.reference],
@@ -254,7 +254,7 @@ function WithdrawalDrawer({ withdrawal, onClose, onApprove, onReject, approving 
 /* ─── Stat card ─────────────────────────────────────────────────────────── */
 function StatCard({ label, value, sub, accent, icon }) {
   return (
-    <div className="rounded-2xl border border-white/7 bg-white/[2.5%] p-5 relative overflow-hidden group hover:border-white/12 transition-all">
+    <div className="rounded-2xl border border-white/7 bg-white/2.5 p-5 relative overflow-hidden group hover:border-white/12 transition-all">
       <div className="absolute -top-6 -right-6 w-20 h-20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
         style={{ background: `radial-gradient(circle, ${accent}25, transparent 70%)` }} />
       <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3"
@@ -456,7 +456,7 @@ export default function AdminWithdrawalsPage() {
             <div className="w-8 h-8 border-2 border-amber-500/30 border-t-amber-500 rounded-full animate-spin" />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-20 rounded-2xl border border-white/7 bg-white/[1.5%]">
+          <div className="text-center py-20 rounded-2xl border border-white/7 bg-white/1.5">
             <TrendingDown size={36} className="mx-auto text-white/10 mb-3" />
             <p className="text-white/25 text-sm">No withdrawals found</p>
           </div>
@@ -534,7 +534,7 @@ export default function AdminWithdrawalsPage() {
             <div className="md:hidden space-y-3 mb-5">
               {filtered.map((w) => (
                 <div key={w.id}
-                  className="rounded-2xl border border-white/7 bg-white/[2.5%] p-4 cursor-pointer hover:border-white/12 transition-all"
+                  className="rounded-2xl border border-white/7 bg-white/2.5 p-4 cursor-pointer hover:border-white/12 transition-all"
                   onClick={() => setDrawerItem(w)}>
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div className="min-w-0">
