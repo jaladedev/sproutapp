@@ -23,7 +23,7 @@ const DIMMED    = "rgba(255,255,255,0.18)";
 const grad      = `linear-gradient(135deg, ${AMBER} 0%, ${AMBER2} 100%)`;
 
 const inp =
-  `w-full bg-white/04 border border-white/8 hover:border-white/16 text-white ` +
+  `w-full bg-white/4 border border-white/8 hover:border-white/16 text-white ` +
   `placeholder-white/20 rounded-2xl px-4 py-3.5 text-sm focus:outline-none ` +
   `focus:border-amber-500/60 focus:ring-2 focus:ring-amber-500/15 transition-all duration-200`;
 

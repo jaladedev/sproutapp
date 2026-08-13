@@ -262,7 +262,7 @@ export default function CreateListingPage() {
             </div>
 
             {/* Platform fee note */}
-            <div className="flex items-start gap-2.5 rounded-xl border border-white/5 bg-white/03 px-4 py-3">
+            <div className="flex items-start gap-2.5 rounded-xl border border-white/5 bg-white/3 px-4 py-3">
               <AlertCircle size={13} className="text-white/20 shrink-0 mt-0.5" />
               <p className="text-xs text-white/25 leading-relaxed">
                 A <span className="text-white/60 font-semibold">1% platform fee</span> is deducted from the

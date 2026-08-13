@@ -45,9 +45,9 @@ function StatusBadge({ status, large }) {
 function Panel({ title, icon, children, defaultOpen = true }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="rounded-2xl border border-white/07 bg-white/[0.025] overflow-hidden">
+    <div className="rounded-2xl border border-white/7 bg-white/2.5 overflow-hidden">
       <button type="button" onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between px-5 py-4 hover:bg-white/03 transition-colors">
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-white/3 transition-colors">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500">{icon}</div>
           <span className="text-xs font-black uppercase tracking-[0.2em] text-white/50">{title}</span>
@@ -76,7 +76,7 @@ function UnitsStepper({ value, onChange, max, placeholder }) {
         type="button"
         onClick={() => step(-1)}
         disabled={numVal <= 1 || !value}
-        className="w-8 h-8 shrink-0 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/[0.01]0 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+        className="w-8 h-8 shrink-0 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
         aria-label="Decrease units"
       >
         <Minus size={12} />
@@ -109,7 +109,7 @@ function UnitsStepper({ value, onChange, max, placeholder }) {
         type="button"
         onClick={() => step(1)}
         disabled={max > 0 && numVal >= max}
-        className="w-8 h-8 shrink-0 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/[0.01]0 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+        className="w-8 h-8 shrink-0 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
         aria-label="Increase units"
       >
         <Plus size={12} />
@@ -258,7 +258,7 @@ function OffersList({ listing, onUpdate }) {
   return (
     <div className="space-y-3">
       {offers.map((offer) => (
-        <div key={offer.id} className="rounded-xl border border-white/10 bg-white/03 p-4">
+        <div key={offer.id} className="rounded-xl border border-white/10 bg-white/3 p-4">
           <div className="flex items-start justify-between gap-3 mb-2">
             <div>
               <p className="text-sm font-bold text-white">{offer.buyer?.name}</p>
@@ -384,14 +384,14 @@ function ChatPanel({ listing, currentUser }) {
                 <div className={`max-w-[78%] rounded-2xl px-3.5 py-2.5 ${
                   isMe
                     ? "bg-amber-500/20 text-white"
-                    : "bg-white/06 text-white/75"
+                    : "bg-white/6 text-white/75"
                 } ${m._optimistic ? "opacity-60" : ""}`}>
                   {!isMe && (
                     <p className="text-[10px] font-bold text-white/55 mb-0.5">
                       {m.sender?.name ?? "Seller"}
                     </p>
                   )}
-                  <p className="text-sm leading-relaxed break-words">{m.body}</p>
+                  <p className="text-sm leading-relaxed wrap-break-word">{m.body}</p>
                   <p className="text-[10px] text-white/20 mt-1 text-right">
                     {m._optimistic
                       ? "Sending…"
@@ -474,7 +474,7 @@ function EscrowPanel({ escrow, currentUser, onUpdate }) {
           ["Total",        `₦${(escrow.total_kobo / 100).toLocaleString("en-NG", { minimumFractionDigits: 2 })}`],
           ["Platform Fee", `₦${(escrow.platform_fee_kobo / 100).toLocaleString("en-NG", { minimumFractionDigits: 2 })}`],
         ].map(([label, val]) => (
-          <div key={label} className="rounded-xl bg-white/03 border border-white/5 px-3 py-2.5">
+          <div key={label} className="rounded-xl bg-white/3 border border-white/5 px-3 py-2.5">
             <p className="text-[10px] text-white/25 uppercase tracking-widest">{label}</p>
             <p className="text-sm font-bold text-white mt-0.5">{val}</p>
           </div>
@@ -605,11 +605,11 @@ export default function ListingDetailPage() {
           <div className="space-y-5">
 
             {/* Property card */}
-            <div className="rounded-2xl border border-white/07 bg-white/[0.025] overflow-hidden">
+            <div className="rounded-2xl border border-white/7 bg-white/2.5 overflow-hidden">
               {image && (
                 <div className="relative h-48 overflow-hidden">
                   <img src={image} alt={land?.title} className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#0D1F1A]/60 to-transparent" />
+                  <div className="absolute inset-0 bg-linear-to-t from-[#0D1F1A]/60 to-transparent" />
                   <div className="absolute bottom-3 left-4">
                     <StatusBadge status={listing.status} large />
                   </div>
@@ -761,7 +761,7 @@ export default function ListingDetailPage() {
             )}
 
             {/* Platform info */}
-            <div className="rounded-2xl border border-white/07 bg-white/[0.025] p-5 space-y-3">
+            <div className="rounded-2xl border border-white/7 bg-white/2.5 p-5 space-y-3">
               <p className="text-xs font-black uppercase tracking-[0.2em] text-white/55">How It Works</p>
               {[
                 [TrendingUp,   "Make an offer at your price"],

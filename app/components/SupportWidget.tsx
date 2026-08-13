@@ -73,12 +73,12 @@ export default function SupportWidget() {
               </div>
               <div className="flex items-center gap-1">
                 <Link href="/support" onClick={() => setOpen(false)}
-                  className="w-7 h-7 flex items-center justify-center rounded-lg text-white/55 hover:text-white hover:bg-white/08 transition-all"
+                  className="w-7 h-7 flex items-center justify-center rounded-lg text-white/55 hover:text-white hover:bg-white/8 transition-all"
                   title="Open full support page">
                   <ExternalLink size={13} />
                 </Link>
                 <button onClick={() => setOpen(false)}
-                  className="w-7 h-7 flex items-center justify-center rounded-lg text-white/55 hover:text-white hover:bg-white/08 transition-all">
+                  className="w-7 h-7 flex items-center justify-center rounded-lg text-white/55 hover:text-white hover:bg-white/8 transition-all">
                   <X size={14} />
                 </button>
               </div>

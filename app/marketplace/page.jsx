@@ -32,7 +32,7 @@ function ListingCard({ listing }) {
 
   return (
     <Link href={`/marketplace/${listing.id}`}
-      className="group block rounded-2xl border border-white/07 bg-white/03 overflow-hidden hover:border-amber-500/30 hover:bg-white/05 transition-all hover:-translate-y-0.5">
+      className="group block rounded-2xl border border-white/7 bg-white/3 overflow-hidden hover:border-amber-500/30 hover:bg-white/5 transition-all hover:-translate-y-0.5">
 
       {/* Image */}
       <div className="relative h-40 overflow-hidden bg-white/5">
@@ -231,7 +231,7 @@ export default function MarketplacePage() {
             {loading ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {[...Array(6)].map((_, i) => (
-                  <div key={i} className="rounded-2xl border border-white/5 bg-white/03 h-64 animate-pulse" />
+                  <div key={i} className="rounded-2xl border border-white/5 bg-white/3 h-64 animate-pulse" />
                 ))}
               </div>
             ) : filtered.length === 0 ? (

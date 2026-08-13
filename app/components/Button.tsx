@@ -44,10 +44,10 @@ export default function Button({
     primary:   "text-[#0D1F1A] hover:scale-[1.02] active:scale-[0.98]",
     secondary: "text-amber-500 border border-amber-500/40 hover:border-amber-500/70 hover:bg-amber-500/10",
     danger:    "text-red-400 border border-red-500/30 hover:border-red-500/60 hover:bg-red-500/10",
-    // Fixed a malformed arbitrary-value class here: "hover:bg-white/[0.01]0"
+    // Fixed a malformed arbitrary-value class here: "hover:bg-white/10"
     // had a stray trailing "0" that made it an invalid Tailwind class (JIT
     // silently generates nothing for it, so the hover state never applied).
-    ghost:     "text-white/50 hover:text-white hover:bg-white/02",
+    ghost:     "text-white/50 hover:text-white hover:bg-white/2",
   };
 
   const primaryStyle =

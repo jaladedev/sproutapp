@@ -160,7 +160,7 @@ function CheckPositionPanel({ onClose }) {
         </div>
         <button
           onClick={onClose}
-          className="w-7 h-7 rounded-lg flex items-center justify-center text-white/55 hover:text-white hover:bg-white/[0.01]0 transition-all"
+          className="w-7 h-7 rounded-lg flex items-center justify-center text-white/55 hover:text-white hover:bg-white/10 transition-all"
           aria-label="Close"
         >
           <X size={14} />
@@ -247,7 +247,7 @@ function CheckPositionPanel({ onClose }) {
                     <span>Priority access at 3 referrals</span>
                     <span>{Math.min(result.referrals_count ?? 0, 3)}/3</span>
                   </div>
-                  <div className="h-1.5 rounded-full bg-white/[0.01]0 overflow-hidden">
+                  <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
                     <div
                       className="h-full rounded-full transition-all duration-700"
                       style={{

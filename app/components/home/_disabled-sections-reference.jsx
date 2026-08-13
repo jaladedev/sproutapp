@@ -272,7 +272,7 @@
                 Start Investing <ArrowRight size={15} className="group-hover:translate-x-1 transition-transform" />
               </Link>
               <Link href="/lands"
-                className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl font-semibold text-white border border-white/20 hover:bg-white/[0.01]0 transition-all text-sm sm:text-base">
+                className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl font-semibold text-white border border-white/20 hover:bg-white/10 transition-all text-sm sm:text-base">
                 Browse Properties
               </Link>
             </div>

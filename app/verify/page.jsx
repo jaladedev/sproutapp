@@ -262,7 +262,7 @@ function VerifyCertPageInner() {
 
         {/* Input form — hidden once result is shown */}
         {!result && (
-          <div className="rounded-2xl border border-white/8 bg-white/[0.02].5 p-6 mb-5">
+          <div className="rounded-2xl border border-white/8 bg-white/[2.5%] p-6 mb-5">
             <label className="block text-[10px] font-black uppercase tracking-[0.22em] hover:border-white/35 mb-2">
               Certificate Number
             </label>

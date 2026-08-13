@@ -68,7 +68,7 @@ export default function ChatTab({ user, onEscalate }: ChatTabProps) {
       <div className="px-3 pt-2.5 pb-1 flex gap-1.5 flex-wrap border-b border-white/5">
         {FAQ_PREVIEWS.map(q => (
           <button key={q} onClick={() => send(q)}
-            className="text-[10px] px-2.5 py-1 rounded-lg border border-white/10 text-white/60 hover:text-amber-400 hover:border-amber-500/30 transition-all bg-white/03">
+            className="text-[10px] px-2.5 py-1 rounded-lg border border-white/10 text-white/60 hover:text-amber-400 hover:border-amber-500/30 transition-all bg-white/3">
             {q}
           </button>
         ))}
@@ -82,7 +82,7 @@ export default function ChatTab({ user, onEscalate }: ChatTabProps) {
             <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
               m.role === "user"
                 ? "text-[#0D1F1A]"
-                : "bg-white/08 border border-white/10 text-amber-500"
+                : "bg-white/8 border border-white/10 text-amber-500"
             }`} style={m.role === "user" ? { background: "linear-gradient(135deg,#C8873A,#E8A850)" } : {}}>
               {m.role === "user" ? <User size={11} /> : <Bot size={11} />}
             </div>
@@ -92,7 +92,7 @@ export default function ChatTab({ user, onEscalate }: ChatTabProps) {
                 ? "text-[#0D1F1A] rounded-tr-sm"
                 : m.isError
                   ? "bg-red-500/10 border border-red-500/20 text-red-400 rounded-tl-sm"
-                  : "bg-white/08 border border-white/8 text-white/80 rounded-tl-sm"
+                  : "bg-white/8 border border-white/8 text-white/80 rounded-tl-sm"
             }`} style={m.role === "user" ? { background: "linear-gradient(135deg,#C8873A,#E8A850)" } : {}}>
               {m.content}
               {m.isError && (
@@ -107,10 +107,10 @@ export default function ChatTab({ user, onEscalate }: ChatTabProps) {
 
         {loading && (
           <div className="flex gap-2">
-            <div className="w-6 h-6 rounded-lg bg-white/08 border border-white/10 flex items-center justify-center text-amber-500">
+            <div className="w-6 h-6 rounded-lg bg-white/8 border border-white/10 flex items-center justify-center text-amber-500">
               <Bot size={11} />
             </div>
-            <div className="bg-white/08 border border-white/8 rounded-2xl rounded-tl-sm px-3 py-2.5 flex gap-1 items-center">
+            <div className="bg-white/8 border border-white/8 rounded-2xl rounded-tl-sm px-3 py-2.5 flex gap-1 items-center">
               {[0,1,2].map(i => (
                 <span key={i} className="w-1.5 h-1.5 rounded-full bg-amber-500/60 animate-bounce"
                   style={{ animationDelay: `${i * 0.15}s` }} />

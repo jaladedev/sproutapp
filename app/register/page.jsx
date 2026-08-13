@@ -408,7 +408,7 @@ function RegisterForm() {
                         <motion.ul
                           initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
                           transition={{ duration: 0.2 }}
-                          className="mt-3 space-y-1.5 rounded-2xl border border-white/7 bg-white/03 p-3.5"
+                          className="mt-3 space-y-1.5 rounded-2xl border border-white/7 bg-white/3 p-3.5"
                         >
                           {PASSWORD_CHECKS.map((check, i) => {
                             const passed = check.test.test(form.password);

@@ -85,7 +85,7 @@ export default function Header() {
                       aria-current={active ? "page" : undefined}
                       className={`relative px-3 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
                         active
-                          ? "text-white bg-white/08"
+                          ? "text-white bg-white/8"
                           : "text-white/60 hover:text-white/80 hover:bg-white/5"
                       }`}
                     >
@@ -116,7 +116,7 @@ export default function Header() {
               <div className="lg:hidden flex items-center gap-2 shrink-0">
                 <NotificationBell />
                 <button
-                  className="w-9 h-9 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/[0.01]0 text-white/50 hover:text-white transition-all"
+                  className="w-9 h-9 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-all"
                   onClick={() => setMenuOpen(!menuOpen)}
                   aria-label={menuOpen ? "Close menu" : "Open menu"}
                   aria-expanded={menuOpen}
@@ -168,7 +168,7 @@ export default function Header() {
               </Link>
               <button
                 onClick={() => setMenuOpen(false)}
-                className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/[0.01]0 text-white/60 hover:text-white transition-all"
+                className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all"
               >
                 <X size={14} />
               </button>
@@ -184,7 +184,7 @@ export default function Header() {
                     aria-current={active ? "page" : undefined}
                     className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                       active
-                        ? "bg-white/08 text-white"
+                        ? "bg-white/8 text-white"
                         : "text-white/60 hover:bg-white/5 hover:text-white/70"
                     }`}
                   >

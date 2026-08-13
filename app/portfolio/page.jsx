@@ -300,18 +300,6 @@ export default function Portfolio() {
   const formatDate = (d) =>
     new Date(d).toLocaleString("en-NG", { dateStyle: "medium", timeStyle: "short" });
 
-  // ── Loading screen ─────────────────────────────────────────────────────────
-  if (loading) {
-    return (
-      <div className="min-h-screen gpu-layer flex items-center justify-center bg-[#0D1F1A]" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-        <div className="text-center">
-          <div className="w-12 h-12 border-2 border-amber-500/30 border-t-amber-500 rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-white/60 text-sm tracking-widest uppercase">Loading portfolio</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen gpu-layer bg-[#0D1F1A] relative" style={{ fontFamily: "var(--font-dm-sans), 'Helvetica Neue', sans-serif" }}>
       <div className="fixed inset-0 opacity-[0.03] pointer-events-none z-0"
@@ -328,7 +316,11 @@ export default function Portfolio() {
         </div>
 
         {/* Summary Cards */}
-        {summary && (
+        {loading ? (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map((i) => <SummaryCardSkeleton key={i} />)}
+          </div>
+        ) : summary && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <SummaryCard title="Portfolio Value"    value={`₦${formatNaira(summary.current_portfolio_value)}`} />
             <SummaryCard title="Current Investment" value={`₦${formatNaira(summary.total_invested)}`} />
@@ -344,7 +336,11 @@ export default function Portfolio() {
         )}
 
         {/* Land Holdings */}
-        {lands.length === 0 ? (
+        {loading ? (
+          <div className="grid md:grid-cols-2 gap-5">
+            {[1, 2].map((i) => <LandCardSkeleton key={i} />)}
+          </div>
+        ) : lands.length === 0 ? (
           <div className="rounded-2xl border border-white/10 bg-white/5 p-10 text-center">
             <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-4">
               <Layers size={22} className="text-white/55" />
@@ -376,7 +372,7 @@ export default function Portfolio() {
                     Buy More
                   </button>
                   <button onClick={() => openModal("sell", land)}
-                    className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white border border-white/20 bg-white/5 hover:bg-white/[0.01]0 transition-all hover:scale-[1.02] active:scale-[0.98]">
+                    className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white border border-white/20 bg-white/5 hover:bg-white/10 transition-all hover:scale-[1.02] active:scale-[0.98]">
                     Sell
                   </button>
                 </div>
@@ -407,7 +403,11 @@ export default function Portfolio() {
           </div>
 
           <div className="p-5">
-            {transactions.length === 0 ? (
+            {loading ? (
+              <div className="space-y-3">
+                {[1, 2, 3, 4].map((i) => <TransactionRowSkeleton key={i} />)}
+              </div>
+            ) : transactions.length === 0 ? (
               <p className="text-center text-white/55 py-8 text-sm">No transactions yet</p>
             ) : (
               <>
@@ -416,7 +416,7 @@ export default function Portfolio() {
                     const isPurchase = t.type === "Purchase";
                     return (
                       <div key={t.reference ?? `${t.type}-${t.date}-${i}`}
-                        className="flex justify-between items-center rounded-xl border border-white/8 bg-white/03 px-4 py-3 hover:border-white/15 transition-all">
+                        className="flex justify-between items-center rounded-xl border border-white/8 bg-white/3 px-4 py-3 hover:border-white/15 transition-all">
                         <div className="flex items-center gap-3">
                           <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
                             isPurchase ? "bg-emerald-500/10" : "bg-red-500/10"}`}>
@@ -447,7 +447,7 @@ export default function Portfolio() {
                 {totalPages > 1 && (
                   <div className="flex items-center justify-center gap-2 mt-6">
                     <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1}
-                      className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/[0.01]0 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+                      className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
                       <ChevronLeft size={14} />
                     </button>
                     {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
@@ -455,14 +455,14 @@ export default function Portfolio() {
                         className={`w-8 h-8 rounded-lg text-sm font-bold transition-all ${
                           currentPage === page
                             ? "text-[#0D1F1A]"
-                            : "bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/[0.01]0"
+                            : "bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10"
                         }`}
                         style={currentPage === page ? { background: "linear-gradient(135deg, #C8873A 0%, #E8A850 100%)" } : {}}>
                         {page}
                       </button>
                     ))}
                     <button onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
-                      className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/[0.01]0 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+                      className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
                       <ChevronRight size={14} />
                     </button>
                   </div>
@@ -487,7 +487,7 @@ export default function Portfolio() {
                 </h2>
               </div>
               <button onClick={closeModal}
-                className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/[0.01]0 flex items-center justify-center text-white/60 hover:text-white transition-all">
+                className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/60 hover:text-white transition-all">
                 <X size={14} />
               </button>
             </div>
@@ -509,7 +509,7 @@ export default function Portfolio() {
                     type="button"
                     onClick={stepDown}
                     disabled={!modal.units || Number(modal.units) <= 1}
-                    className="w-10 h-10 shrink-0 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/[0.01]0 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                    className="w-10 h-10 shrink-0 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                     aria-label="Decrease units"
                   >
                     <Minus size={14} />
@@ -543,7 +543,7 @@ export default function Portfolio() {
                     type="button"
                     onClick={stepUp}
                     disabled={maxUnits > 0 && Number(modal.units) >= maxUnits}
-                    className="w-10 h-10 shrink-0 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/[0.01]0 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                    className="w-10 h-10 shrink-0 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                     aria-label="Increase units"
                   >
                     <Plus size={14} />
@@ -662,7 +662,7 @@ export default function Portfolio() {
 
               <div className="flex gap-3 pt-1">
                 <button type="button" onClick={closeModal}
-                  className="flex-1 py-3 rounded-xl bg-white/5 border border-white/10 text-white/60 hover:bg-white/[0.01]0 text-sm font-semibold transition-all">
+                  className="flex-1 py-3 rounded-xl bg-white/5 border border-white/10 text-white/60 hover:bg-white/10 text-sm font-semibold transition-all">
                   Cancel
                 </button>
                 <button
@@ -702,6 +702,55 @@ function SummaryCard({ title, value, positive, signed, prefix }) {
     <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
       <p className="text-xs font-bold uppercase tracking-widest text-white/55 mb-1">{title}</p>
       <p className={`text-xl font-bold ${color}`}>{prefix}{value}</p>
+    </div>
+  );
+}
+
+// ── Loading skeletons ─────────────────────────────────────────────────────────
+// Mirror the real card/row shapes above so the layout doesn't jump once data
+// arrives. animate-pulse on each bar rather than the whole card, so nothing
+// pulses in lockstep across the grid.
+
+function SummaryCardSkeleton() {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+      <div className="h-3 w-20 rounded bg-white/10 animate-pulse mb-3" />
+      <div className="h-6 w-24 rounded bg-white/10 animate-pulse" />
+    </div>
+  );
+}
+
+function LandCardSkeleton() {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+      <div className="h-5 w-40 rounded bg-white/10 animate-pulse mb-4" />
+      <div className="space-y-3 mb-5">
+        <div className="h-3.5 w-full rounded bg-white/5 animate-pulse" />
+        <div className="h-3.5 w-full rounded bg-white/5 animate-pulse" />
+        <div className="h-3.5 w-full rounded bg-white/5 animate-pulse" />
+      </div>
+      <div className="flex gap-3">
+        <div className="flex-1 h-10 rounded-xl bg-white/5 animate-pulse" />
+        <div className="flex-1 h-10 rounded-xl bg-white/5 animate-pulse" />
+      </div>
+    </div>
+  );
+}
+
+function TransactionRowSkeleton() {
+  return (
+    <div className="flex justify-between items-center rounded-xl border border-white/8 bg-white/3 px-4 py-3">
+      <div className="flex items-center gap-3">
+        <div className="w-8 h-8 rounded-lg bg-white/10 animate-pulse shrink-0" />
+        <div>
+          <div className="h-3.5 w-32 rounded bg-white/10 animate-pulse mb-2" />
+          <div className="h-3 w-24 rounded bg-white/5 animate-pulse" />
+        </div>
+      </div>
+      <div className="text-right">
+        <div className="h-3.5 w-16 rounded bg-white/10 animate-pulse mb-2 ml-auto" />
+        <div className="h-3 w-12 rounded bg-white/5 animate-pulse ml-auto" />
+      </div>
     </div>
   );
 }

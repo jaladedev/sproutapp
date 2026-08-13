@@ -210,7 +210,7 @@ export default function AdminWaitlistPage() {
                   <div key={city} className="flex items-center justify-between">
                     <span className="text-xs text-white/50 capitalize">{CITY_LABELS[city] || city}</span>
                     <div className="flex items-center gap-2">
-                      <div className="h-1 rounded-full w-16 bg-white/[0.01]0 overflow-hidden">
+                      <div className="h-1 rounded-full w-16 bg-white/10 overflow-hidden">
                         <div className="h-full rounded-full transition-all"
                           style={{ width: `${Math.round((count / stats.total) * 100)}%`, background: CITY_COLORS[city] || "#C8873A" }} />
                       </div>
@@ -257,7 +257,7 @@ export default function AdminWaitlistPage() {
         </div>
 
         {showFilters && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5 p-4 rounded-xl border border-white/10 bg-white/03">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5 p-4 rounded-xl border border-white/10 bg-white/3">
             {[
               { label: "City",    key: "filterCity",    val: filterCity,    set: setFilterCity,    opts: [["", "All Cities"], ...Object.entries(CITY_LABELS)] },
               { label: "Budget",  key: "filterBudget",  val: filterBudget,  set: setFilterBudget,  opts: [["", "All Budgets"], ...Object.entries(BUDGET_LABELS)] },
@@ -295,8 +295,8 @@ export default function AdminWaitlistPage() {
               </div>
               {filtered.map((entry, i) => (
                 <div key={entry.id}
-                  className={`grid grid-cols-[40px_2fr_1.5fr_1fr_1fr_1fr_1fr_120px] gap-3 px-5 py-3.5 items-center hover:bg-white/[0.025] transition-colors ${
-                    i < filtered.length - 1 ? "border-b border-white/04" : ""
+                  className={`grid grid-cols-[40px_2fr_1.5fr_1fr_1fr_1fr_1fr_120px] gap-3 px-5 py-3.5 items-center hover:bg-white/[2.5%] transition-colors ${
+                    i < filtered.length - 1 ? "border-b border-white/4" : ""
                   }`}
                 >
                   <span className="text-xs font-bold text-amber-500/60 tabular-nums">#{entry.position}</span>
@@ -400,11 +400,11 @@ export default function AdminWaitlistPage() {
                 <p className="text-xs text-white/55">Page {pagination.current_page} of {pagination.last_page}</p>
                 <div className="flex gap-2">
                   <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={pagination.current_page === 1}
-                    className="w-9 h-9 rounded-xl border border-white/10 bg-white/5 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/[0.01]0 transition-all disabled:opacity-30">
+                    className="w-9 h-9 rounded-xl border border-white/10 bg-white/5 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-all disabled:opacity-30">
                     <ChevronLeft size={15} />
                   </button>
                   <button onClick={() => setPage(p => Math.min(pagination.last_page, p + 1))} disabled={pagination.current_page === pagination.last_page}
-                    className="w-9 h-9 rounded-xl border border-white/10 bg-white/5 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/[0.01]0 transition-all disabled:opacity-30">
+                    className="w-9 h-9 rounded-xl border border-white/10 bg-white/5 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-all disabled:opacity-30">
                     <ChevronRight size={15} />
                   </button>
                 </div>
