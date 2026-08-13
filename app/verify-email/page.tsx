@@ -1,18 +1,24 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type ChangeEvent, type ClipboardEvent, type FormEvent, type KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import { MailCheck, Loader2 } from "lucide-react";
+import type { AxiosError } from "axios";
 import api from "../../utils/api";
 import toast from "react-hot-toast";
 
+interface ApiErrorBody {
+  message?: string;
+  error?: string;
+}
+
 export default function VerifyEmail() {
-  const [otp, setOtp] = useState(Array(6).fill(""));
+  const [otp, setOtp] = useState<string[]>(Array(6).fill(""));
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [cooldown, setCooldown] = useState(0);
-  const inputRefs = useRef([]);
+  const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
   const router = useRouter();
 
   const email = typeof window !== "undefined"
@@ -26,35 +32,35 @@ export default function VerifyEmail() {
     }
   }, [cooldown]);
 
-  const handleChange = (e, idx) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement>, idx: number) => {
     const val = e.target.value;
     if (/^\d?$/.test(val)) {
       const newOtp = [...otp];
       newOtp[idx] = val;
       setOtp(newOtp);
-      if (val && idx < 5) inputRefs.current[idx + 1].focus();
+      if (val && idx < 5) inputRefs.current[idx + 1]?.focus();
     }
   };
 
-  const handleKeyDown = (e, idx) => {
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>, idx: number) => {
     if (e.key === "Backspace" && !otp[idx] && idx > 0) {
-      inputRefs.current[idx - 1].focus();
+      inputRefs.current[idx - 1]?.focus();
     }
   };
 
-  const handlePaste = (e) => {
+  const handlePaste = (e: ClipboardEvent<HTMLDivElement>) => {
     e.preventDefault();
     const pasted = e.clipboardData.getData("text").trim();
     if (/^\d{6}$/.test(pasted)) {
       setOtp(pasted.split(""));
-      inputRefs.current[5].focus();
+      inputRefs.current[5]?.focus();
       toast.success("Code pasted!");
     } else {
       toast.error("Please paste a valid 6-digit code");
     }
   };
 
-  const handleVerify = async (e) => {
+  const handleVerify = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const code = otp.join("");
     if (code.length !== 6) {
@@ -69,7 +75,8 @@ export default function VerifyEmail() {
       localStorage.removeItem("pending_email");
       setTimeout(() => router.push("/email-verified"), 1500);
     } catch (err) {
-      const msg = err.response?.data?.message || err.response?.data?.error || "Invalid or expired code.";
+      const axiosErr = err as AxiosError<ApiErrorBody>;
+      const msg = axiosErr.response?.data?.message || axiosErr.response?.data?.error || "Invalid or expired code.";
       setError(msg); toast.error(msg);
     } finally {
       setLoading(false);
@@ -87,7 +94,8 @@ export default function VerifyEmail() {
       setOtp(Array(6).fill(""));
       inputRefs.current[0]?.focus();
     } catch (err) {
-      const msg = err.response?.data?.message || "Failed to resend code.";
+      const axiosErr = err as AxiosError<ApiErrorBody>;
+      const msg = axiosErr.response?.data?.message || "Failed to resend code.";
       setError(msg); toast.error(msg);
     } finally {
       setLoading(false);
@@ -165,7 +173,7 @@ export default function VerifyEmail() {
                   value={digit}
                   onChange={(e) => handleChange(e, idx)}
                   onKeyDown={(e) => handleKeyDown(e, idx)}
-                  ref={(el) => (inputRefs.current[idx] = el)}
+                  ref={(el) => { inputRefs.current[idx] = el; }}
                   autoFocus={idx === 0}
                   className={`
                     w-10 h-12 sm:w-12 sm:h-14

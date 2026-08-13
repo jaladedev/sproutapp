@@ -1,15 +1,29 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, Suspense, type ChangeEvent, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
+import type { AxiosError } from "axios";
 import { useAuth } from "../../context/AuthContext";
 import FormError from "../components/FormError";
 import { Eye, EyeOff, Mail, Lock, ArrowRight, AlertCircle } from "lucide-react";
 import Image from "next/image";
 
 const appname = process.env.NEXT_PUBLIC_APP_NAME || "REU.ng";
+
+interface LoginFormValues {
+  email: string;
+  password: string;
+}
+
+type FieldErrors = Partial<Record<keyof LoginFormValues, string>>;
+
+interface ApiErrorBody {
+  message?: string;
+  error?: string;
+  errors?: Record<string, string | string[]>;
+}
 
 export default function Login() {
   return (
@@ -20,23 +34,24 @@ export default function Login() {
 }
 
 function LoginForm() {
-  const [form, setForm]               = useState({ email: "", password: "" });
+  const [form, setForm]               = useState<LoginFormValues>({ email: "", password: "" });
   const [error, setError]             = useState("");
-  const [fieldErrors, setFieldErrors] = useState({});
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [loading, setLoading]         = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   const searchParams = useSearchParams();
-  const { login }    = useAuth();
+  const { login }    = useAuth() ?? {};
 
-  const handleChange = (e) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
     setFieldErrors({ ...fieldErrors, [e.target.name]: "" });
     if (error) setError("");
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!login) return;
     setLoading(true);
     setError("");
     setFieldErrors({});
@@ -63,8 +78,9 @@ function LoginForm() {
       // Full reload so middleware sees cookies
       window.location.href = destination;
     } catch (err) {
-      if (err.response?.status === 422) {
-        const errors = err.response.data?.errors;
+      const axiosErr = err as AxiosError<ApiErrorBody>;
+      if (axiosErr.response?.status === 422) {
+        const errors = axiosErr.response.data?.errors;
         if (errors) {
           setFieldErrors(
             Object.fromEntries(
@@ -72,14 +88,14 @@ function LoginForm() {
             )
           );
         } else {
-          const msg = err.response.data?.message || "Validation failed.";
+          const msg = axiosErr.response.data?.message || "Validation failed.";
           setError(msg);
           toast.error(msg);
         }
       } else {
         const msg =
-          err.response?.data?.message ||
-          err.response?.data?.error ||
+          axiosErr.response?.data?.message ||
+          axiosErr.response?.data?.error ||
           "Login failed. Please try again.";
         setError(msg);
         toast.error(msg, { duration: 5000, position: "top-center" });

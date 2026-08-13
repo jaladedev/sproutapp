@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ComponentType } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   KeyRound, RotateCcw, UserCircle, Landmark, ShieldCheck,
@@ -13,7 +13,14 @@ import BankDetails from "./BankDetails";
 import KycPanel from "./kyc/KycPanel";
 import api from "../../utils/api";
 
-const NAV = [
+interface NavItemData {
+  id: string;
+  label: string;
+  icon: ComponentType<{ size?: number; className?: string }>;
+  desc: string;
+}
+
+const NAV: NavItemData[] = [
   { id: "profile", label: "Profile",         icon: UserCircle,  desc: "Name, email & password"  },
   { id: "pin",     label: "Transaction PIN", icon: KeyRound,    desc: "Set or update your PIN"  },
   { id: "reset",   label: "Reset PIN",       icon: RotateCcw,   desc: "Forgot your PIN?"        },
@@ -21,10 +28,10 @@ const NAV = [
   { id: "kyc",     label: "Identity (KYC)",  icon: ShieldCheck, desc: "Verify your identity"    },
 ];
 
-function KycBadge({ status }) {
+function KycBadge({ status }: { status: string | null }) {
   if (!status || status === "none") return null;
 
-  const map = {
+  const map: Record<string, { label: string; cls: string }> = {
     pending:  { label: "Pending",  cls: "bg-amber-500/20 text-amber-400 border-amber-500/30"   },
     approved: { label: "Verified", cls: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" },
     rejected: { label: "Rejected", cls: "bg-red-500/20 text-red-400 border-red-500/30"         },
@@ -41,7 +48,15 @@ function KycBadge({ status }) {
   );
 }
 
-function NavItem({ item, active, kycStatus, pinIsSet, onClick }) {
+interface NavItemProps {
+  item: NavItemData;
+  active: boolean;
+  kycStatus: string | null;
+  pinIsSet: boolean | null;
+  onClick: () => void;
+}
+
+function NavItem({ item, active, kycStatus, pinIsSet, onClick }: NavItemProps) {
   const Icon = item.icon;
 
   // Show a dot on the PIN nav item if PIN is not set
@@ -81,7 +96,7 @@ function NavItem({ item, active, kycStatus, pinIsSet, onClick }) {
   );
 }
 
-function PanelHeader({ item }) {
+function PanelHeader({ item }: { item: NavItemData }) {
   const Icon = item.icon;
   return (
     <div className="mb-7 pb-5 border-b border-white/10">
@@ -117,8 +132,8 @@ export default function Settings() {
   const [activeTab, setActiveTab]   = useState("profile");
   const [mobilePanel, setMobilePanel] = useState(false);
 
-  const [kycStatus, setKycStatus]   = useState(null);  
-  const [pinIsSet, setPinIsSet]     = useState(null);  
+  const [kycStatus, setKycStatus]   = useState<string | null>(null);
+  const [pinIsSet, setPinIsSet]     = useState<boolean | null>(null);
   const activeNav = NAV.find((n) => n.id === activeTab);
 
   // Load KYC + PIN status on mount
@@ -153,7 +168,7 @@ export default function Settings() {
     }
   }, []);
 
-  const selectTab = (id) => { setActiveTab(id); setMobilePanel(true); };
+  const selectTab = (id: string) => { setActiveTab(id); setMobilePanel(true); };
 
   const renderPanel = () => {
     switch (activeTab) {

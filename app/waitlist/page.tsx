@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ChangeEvent, type FormEvent } from "react";
 import Link from "next/link";
 import {
   ArrowRight, CheckCircle, MapPin,
@@ -45,7 +45,7 @@ function getOrigin() {
 }
 
 /** Build a full referral URL from a code. */
-function referralUrl(code) {
+function referralUrl(code: string) {
   return `${getOrigin()}/waitlist?ref=${code}`;
 }
 
@@ -82,21 +82,32 @@ function AvatarStack() {
 }
 
 // ── Check-position panel ──────────────────────────────────────────────────────
-function CheckPositionPanel({ onClose }) {
+interface CheckResult {
+  invited?: boolean;
+  position?: number | null;
+  name?: string;
+  referral_code?: string;
+  referrals_count?: number;
+  [key: string]: unknown;
+}
+
+type CheckErrors = { email?: string; global?: string };
+
+function CheckPositionPanel({ onClose }: { onClose: () => void }) {
   // FIX: renamed to `errors` / `setErrors` (plural) to match the JSX references
   // that were incorrectly using the parent's state names.
   const [email, setEmail]   = useState("");
   const [loading, setLoading] = useState(false);
   // FIX: use `errors` object (keyed) so the email field className logic works
-  const [errors, setErrors] = useState({});
-  const [result, setResult] = useState(null);
+  const [errors, setErrors] = useState<CheckErrors>({});
+  const [result, setResult] = useState<CheckResult | null>(null);
   const [copied, setCopied] = useState(false);
 
   /** Clear a single field error on change. */
-  const clearError = (field) =>
+  const clearError = (field: keyof CheckErrors) =>
     setErrors((prev) => ({ ...prev, [field]: "" }));
 
-  const handleCheck = async (e) => {
+  const handleCheck = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setErrors({});
 
@@ -335,14 +346,24 @@ function CheckPositionPanel({ onClose }) {
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
+interface WaitlistForm {
+  firstName: string;
+  lastName: string;
+  email: string;
+  budget: string;
+  city: string;
+}
+
+type WaitlistErrors = Partial<Record<keyof WaitlistForm, string>> & { global?: string };
+
 export default function WaitlistPage() {
-  const [form, setForm]         = useState({ firstName: "", lastName: "", email: "", budget: "", city: "" });
-  const [errors, setErrors]     = useState({});
+  const [form, setForm]         = useState<WaitlistForm>({ firstName: "", lastName: "", email: "", budget: "", city: "" });
+  const [errors, setErrors]     = useState<WaitlistErrors>({});
   const [loading, setLoading]   = useState(false);
   const [success, setSuccess]   = useState(false);
-  const [refCode, setRefCode]   = useState(null);
-  const [position, setPosition] = useState(null);
-  const [userRefCode, setUserRefCode] = useState(null);
+  const [refCode, setRefCode]   = useState<string | null>(null);
+  const [position, setPosition] = useState<number | null>(null);
+  const [userRefCode, setUserRefCode] = useState<string | null>(null);
   const [copied, setCopied]     = useState(false);
   const [showCheck, setShowCheck] = useState(false);
 
@@ -351,8 +372,8 @@ export default function WaitlistPage() {
     if (saved) setRefCode(saved);
   }, []);
 
-  const validate = () => {
-    const e = {};
+  const validate = (): WaitlistErrors => {
+    const e: WaitlistErrors = {};
     if (!form.firstName.trim()) e.firstName = "First name is required";
     if (!form.lastName.trim())  e.lastName  = "Last name is required";
     if (!form.email.trim())     e.email     = "Email is required";
@@ -362,7 +383,7 @@ export default function WaitlistPage() {
     return e;
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const errs = validate();
     if (Object.keys(errs).length) { setErrors(errs); return; }
@@ -384,9 +405,9 @@ export default function WaitlistPage() {
 
       if (!res.ok) {
         if (data.errors) {
-          const mapped = {};
+          const mapped: WaitlistErrors = {};
           Object.entries(data.errors).forEach(([k, v]) => {
-            mapped[k] = Array.isArray(v) ? v[0] : v;
+            (mapped as Record<string, string>)[k] = Array.isArray(v) ? v[0] : (v as string);
           });
           setErrors(mapped);
         } else {
@@ -789,11 +810,13 @@ export default function WaitlistPage() {
         {/* Bottom strip */}
         <div className="mt-16 sm:mt-24 pt-8 border-t border-white/8 flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap gap-4 text-xs text-white/20">
-            {[
-              [CheckCircle, "Verified land titles"],
-              [Shield,      "Secure payments"    ],
-              [BadgeCheck,  "Legal compliance"   ],
-            ].map(([Icon, label]) => (
+            {(
+              [
+                [CheckCircle, "Verified land titles"],
+                [Shield,      "Secure payments"    ],
+                [BadgeCheck,  "Legal compliance"   ],
+              ] as Array<[typeof CheckCircle, string]>
+            ).map(([Icon, label]) => (
               <span key={label} className="flex items-center gap-1.5">
                 <Icon size={11} className="text-emerald-400" /> {label}
               </span>

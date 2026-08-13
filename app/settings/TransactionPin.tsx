@@ -1,17 +1,38 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, type FormEvent, type ReactNode } from "react";
+import type { AxiosError } from "axios";
 import api from "../../utils/api";
 import toast from "react-hot-toast";
 import PinInput from "../components/PinInput";
 import { KeyRound, AlertCircle } from "lucide-react";
 
-export default function TransactionPin() {
+interface ApiErrorBody {
+  message?: string;
+  error?: string;
+}
+
+interface TouchedState {
+  current: boolean;
+  new: boolean;
+  confirm: boolean;
+}
+
+interface TransactionPinProps {
+  /** Notifies the parent so nav-indicator state (e.g. the settings sidebar's
+      "PIN not set" dot) updates immediately instead of waiting for a
+      page reload. Was previously passed by app/settings/page.jsx but never
+      declared or called here — a real pre-existing bug caught while typing
+      this file; wired up properly rather than typed around. */
+  onPinSet?: () => void;
+}
+
+export default function TransactionPin({ onPinSet }: TransactionPinProps = {}) {
   const [hasPin, setHasPin]         = useState(false);
   const [currentPin, setCurrentPin] = useState(["", "", "", ""]);
   const [newPin, setNewPin]         = useState(["", "", "", ""]);
   const [confirmPin, setConfirmPin] = useState(["", "", "", ""]);
-  const [touched, setTouched]       = useState({ current: false, new: false, confirm: false });
+  const [touched, setTouched]       = useState<TouchedState>({ current: false, new: false, confirm: false });
   const [loading, setLoading]       = useState(false);
   const [error, setError]           = useState("");
 
@@ -32,9 +53,9 @@ export default function TransactionPin() {
     })();
   }, []);
 
-  const pinToString = (arr) => arr.join("");
+  const pinToString = (arr: string[]) => arr.join("");
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
 
@@ -75,6 +96,7 @@ export default function TransactionPin() {
         });
         toast.success("Transaction PIN set successfully");
         setHasPin(true);
+        onPinSet?.();
       }
 
       // Reset all fields
@@ -83,9 +105,10 @@ export default function TransactionPin() {
       setConfirmPin(["", "", "", ""]);
       setTouched({ current: false, new: false, confirm: false });
     } catch (err) {
+      const axiosErr = err as AxiosError<ApiErrorBody>;
       const msg =
-        err.response?.data?.message ||
-        err.response?.data?.error   ||
+        axiosErr.response?.data?.message ||
+        axiosErr.response?.data?.error   ||
         "Failed to update PIN. Please try again.";
       setError(msg);
       toast.error(msg);
@@ -111,11 +134,13 @@ export default function TransactionPin() {
 
         {hasPin && (
           <PinField label="Current PIN">
+            {/* `dark` dropped — PinInput.tsx has no such prop; was a
+                silently-ignored no-op even before typing (see ResetPin.tsx
+                for the fuller note). */}
             <PinInput
               value={currentPin} onChange={setCurrentPin}
               touched={touched.current}
               setTouched={() => setTouched((p) => ({ ...p, current: true }))}
-              dark
             />
           </PinField>
         )}
@@ -125,7 +150,6 @@ export default function TransactionPin() {
             value={newPin} onChange={setNewPin}
             touched={touched.new}
             setTouched={() => setTouched((p) => ({ ...p, new: true }))}
-            dark
           />
         </PinField>
 
@@ -134,7 +158,6 @@ export default function TransactionPin() {
             value={confirmPin} onChange={setConfirmPin}
             touched={touched.confirm}
             setTouched={() => setTouched((p) => ({ ...p, confirm: true }))}
-            dark
           />
         </PinField>
 
@@ -162,7 +185,12 @@ export default function TransactionPin() {
   );
 }
 
-function PinField({ label, children }) {
+interface PinFieldProps {
+  label: string;
+  children: ReactNode;
+}
+
+function PinField({ label, children }: PinFieldProps) {
   return (
     <div>
       <label className="block text-xs font-bold uppercase tracking-widest text-white/55 mb-3">

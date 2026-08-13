@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, type ChangeEvent, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
+import type { AxiosError } from "axios";
 import {
   Eye, EyeOff, Mail, Lock, User, ArrowRight,
   Gift, CheckCircle, AlertCircle,
@@ -14,7 +15,7 @@ import Image from "next/image";
 
 const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || "REU.ng";
 
-function getSavedReferralCode() {
+function getSavedReferralCode(): string | null {
   try {
     const raw = localStorage.getItem("referral_code");
     if (!raw) return null;
@@ -47,7 +48,14 @@ const PASSWORD_CHECKS = [
 const STRENGTH_COLORS = ["#ef4444", "#f97316", "#eab308", "#22c55e", "#16a34a"];
 const STRENGTH_LABELS = ["Too weak", "Weak", "Fair", "Good", "Strong"];
 
-function Field({ label, hint, children, index = 0 }) {
+interface FieldProps {
+  label?: string;
+  hint?: string;
+  children: ReactNode;
+  index?: number;
+}
+
+function Field({ label, hint, children, index = 0 }: FieldProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 14 }}
@@ -69,8 +77,10 @@ const inputBase =
   "w-full bg-[#0a1a14] border text-white placeholder-white/15 py-3.5 rounded-2xl text-sm " +
   "focus:outline-none transition-all duration-200";
 
-function inputCls(extra = "", state = "default") {
-  const borders = {
+type InputState = "default" | "error" | "success";
+
+function inputCls(extra = "", state: InputState = "default") {
+  const borders: Record<InputState, string> = {
     default: "border-white/8 hover:border-white/18 focus:border-amber-500/60 focus:ring-2 focus:ring-amber-500/15",
     error:   "border-red-500/40 focus:border-red-500/60 focus:ring-2 focus:ring-red-500/10",
     success: "border-emerald-500/40 focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/10",
@@ -79,7 +89,12 @@ function inputCls(extra = "", state = "default") {
 }
 
 /* ── Eye toggle button — always visible regardless of input content ── */
-function EyeToggle({ show, onToggle }) {
+interface EyeToggleProps {
+  show: boolean;
+  onToggle: () => void;
+}
+
+function EyeToggle({ show, onToggle }: EyeToggleProps) {
   return (
     <button
       type="button"
@@ -95,8 +110,23 @@ function EyeToggle({ show, onToggle }) {
   );
 }
 
+interface RegisterFormValues {
+  first_name: string;
+  last_name: string;
+  email: string;
+  password: string;
+  password_confirmation: string;
+  referral_code: string;
+}
+
+interface ApiErrorBody {
+  message?: string;
+  error?: string;
+  errors?: Record<string, string | string[]>;
+}
+
 function RegisterForm() {
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<RegisterFormValues>({
     first_name:            "",
     last_name:             "",
     email:                 "",
@@ -111,7 +141,7 @@ function RegisterForm() {
   const [pwFocused, setPwFocused]           = useState(false);
   const [showReferral, setShowReferral]     = useState(false);
   const [referralLocked, setReferralLocked] = useState(false);
-  const [step, setStep]                     = useState(1);
+  const [step, setStep]                     = useState<1 | 2>(1);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   const router = useRouter();
@@ -125,26 +155,32 @@ function RegisterForm() {
     }
   }, []);
 
-  const set = (field) => (e) => {
+  const set = (field: keyof RegisterFormValues) => (e: ChangeEvent<HTMLInputElement>) => {
     setForm(prev => ({ ...prev, [field]: e.target.value }));
     if (error) setError("");
   };
 
   const passedChecks       = PASSWORD_CHECKS.filter(c => c.test.test(form.password)).length;
-  const passwordsMatch     = form.password && form.password_confirmation && form.password === form.password_confirmation;
-  const passwordsDontMatch = form.password_confirmation && !passwordsMatch;
+  const passwordsMatch     = !!(form.password && form.password_confirmation && form.password === form.password_confirmation);
+  const passwordsDontMatch = !!(form.password_confirmation && !passwordsMatch);
 
-  const step1Valid  = form.first_name.trim() && form.last_name.trim() && form.email.trim();
+  const step1Valid  = !!(form.first_name.trim() && form.last_name.trim() && form.email.trim());
   const step2Valid  = passedChecks === PASSWORD_CHECKS.length && passwordsMatch;
   const isFormValid = step1Valid && step2Valid && acceptedTerms;
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!isFormValid) return;
     setError("");
     setLoading(true);
 
-    const payload = {
+    const payload: {
+      name: string;
+      email: string;
+      password: string;
+      password_confirmation: string;
+      referral_code?: string;
+    } = {
       name:                  `${form.first_name.trim()} ${form.last_name.trim()}`,
       email:                 form.email.trim(),
       password:              form.password,
@@ -160,15 +196,16 @@ function RegisterForm() {
       localStorage.setItem("pending_email", form.email);
       router.push("/verify-email");
     } catch (err) {
-      if (err.response?.status === 422) {
-        const errors = err.response.data?.errors;
+      const axiosErr = err as AxiosError<ApiErrorBody>;
+      if (axiosErr.response?.status === 422) {
+        const errors = axiosErr.response.data?.errors;
         setError(errors
           ? Object.values(errors).flat().join(" · ")
           : "Validation failed. Please check your input.");
       } else {
         setError(
-          err.response?.data?.message ||
-          err.response?.data?.error ||
+          axiosErr.response?.data?.message ||
+          axiosErr.response?.data?.error ||
           "Registration failed. Please try again."
         );
       }

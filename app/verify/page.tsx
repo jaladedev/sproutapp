@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense, type KeyboardEvent } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import api from "../../utils/api";
@@ -12,25 +12,48 @@ import {
 const appname      = process.env.NEXT_PUBLIC_APP_NAME || "REU.ng";
 
 /* ─── Helpers ───────────────────────────────────────────────────────────── */
-const fmtDate = (d) =>
+const fmtDate = (d?: string | null) =>
   d
     ? new Date(d).toLocaleDateString("en-NG", {
         day: "numeric", month: "long", year: "numeric",
       })
     : "—";
 
-const fmtNaira = (v) =>
+const fmtNaira = (v?: number | string | null) =>
   v != null
     ? `₦${Number(v).toLocaleString("en-NG", { minimumFractionDigits: 2 })}`
     : null;
 
 /* ─── Certificate number normaliser ────────────────────────────────────── */
-function normaliseCertNumber(raw) {
+function normaliseCertNumber(raw: string) {
   return raw.replace(/[^A-Z0-9\-]/gi, "").toUpperCase();
 }
 
+interface CertData {
+  cert_number: string;
+  property_title?: string;
+  property_location?: string;
+  units: number | string;
+  total_invested?: number | string | null;
+  issued_at?: string | null;
+  last_updated_at?: string | null;
+  status?: string;
+  owner_name: string;
+  [key: string]: unknown;
+}
+
+interface VerifyResult {
+  valid: boolean;
+  data: CertData | null;
+}
+
 /* ─── Result card ───────────────────────────────────────────────────────── */
-function ResultCard({ result, onReset }) {
+interface ResultCardProps {
+  result: VerifyResult;
+  onReset: () => void;
+}
+
+function ResultCard({ result, onReset }: ResultCardProps) {
   const valid = result.valid;
   const d     = result.data;
 
@@ -107,17 +130,19 @@ function ResultCard({ result, onReset }) {
           </div>
 
           {/* Data rows */}
-          {[
-            ["Certificate No.",    d.cert_number,                                   true],
-            ["Property",          d.property_title,                                 false],
-            ["Location",          d.property_location,                              false],
-            ["Current Units",     `${Number(d.units).toLocaleString()} units`,      false],
-            ["Total Invested",    fmtNaira(d.total_invested),                       false],
-            ["Originally Issued", fmtDate(d.issued_at),                             false],
-            wasUpdated ? ["Last Updated", fmtDate(d.last_updated_at), false] : null,
-            ["Status",            d.status?.toUpperCase(),                          false],
-          ]
-            .filter(Boolean)
+          {(
+            [
+              ["Certificate No.",    d.cert_number,                                   true],
+              ["Property",          d.property_title,                                 false],
+              ["Location",          d.property_location,                              false],
+              ["Current Units",     `${Number(d.units).toLocaleString()} units`,      false],
+              ["Total Invested",    fmtNaira(d.total_invested),                       false],
+              ["Originally Issued", fmtDate(d.issued_at),                             false],
+              wasUpdated ? ["Last Updated", fmtDate(d.last_updated_at), false] : null,
+              ["Status",            d.status?.toUpperCase(),                          false],
+            ] as Array<[string, string | number | null | undefined, boolean] | null>
+          )
+            .filter((row): row is [string, string | number | null | undefined, boolean] => row !== null)
             .map(([label, value, mono]) => (
               <div
                 key={label}
@@ -159,10 +184,10 @@ function ResultCard({ result, onReset }) {
 
 /* ─── Inner page — contains all hooks that need Suspense ────────────────── */
 function VerifyCertPageInner() {
-  const params       = useParams();
+  const params       = useParams<{ certNumber?: string }>();
   const searchParams = useSearchParams();
   const router       = useRouter();
-  const inputRef     = useRef(null);
+  const inputRef     = useRef<HTMLInputElement | null>(null);
 
   // Support /verify/CERT-... (QR / direct link) and /verify?code=CERT-... (manual)
   const prefilledCode =
@@ -171,7 +196,7 @@ function VerifyCertPageInner() {
     "";
 
   const [code, setCode]     = useState(normaliseCertNumber(prefilledCode));
-  const [result, setResult] = useState(null);
+  const [result, setResult] = useState<VerifyResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError]   = useState("");
 
@@ -185,7 +210,7 @@ function VerifyCertPageInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function verify(certNumber = code) {
+  async function verify(certNumber: string = code) {
     const trimmed = certNumber.trim();
     if (!trimmed) { setError("Please enter a certificate number."); return; }
 
@@ -197,7 +222,8 @@ function VerifyCertPageInner() {
       const res = await api.get(`/verify/${trimmed}`);
       setResult({ valid: true, data: res.data.data });
     } catch (err) {
-      if (err.response?.status === 404) {
+      const axiosErr = err as { response?: { status?: number } };
+      if (axiosErr.response?.status === 404) {
         setResult({ valid: false, data: null });
       } else {
         setError("Something went wrong. Please try again.");
@@ -215,7 +241,7 @@ function VerifyCertPageInner() {
     setTimeout(() => inputRef.current?.focus(), 100);
   }
 
-  function handleKeyDown(e) {
+  function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter") verify();
   }
 
@@ -262,7 +288,7 @@ function VerifyCertPageInner() {
 
         {/* Input form — hidden once result is shown */}
         {!result && (
-          <div className="rounded-2xl border border-white/8 bg-white/[2.5%] p-6 mb-5">
+          <div className="rounded-2xl border border-white/8 bg-white/2.5 p-6 mb-5">
             <label className="block text-[10px] font-black uppercase tracking-[0.22em] hover:border-white/35 mb-2">
               Certificate Number
             </label>

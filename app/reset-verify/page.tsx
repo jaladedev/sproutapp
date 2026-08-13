@@ -1,51 +1,57 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, type ChangeEvent, type ClipboardEvent, type FormEvent, type KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import { MailCheck, ArrowLeft, Loader2 } from "lucide-react";
+import type { AxiosError } from "axios";
 import api from "../../utils/api";
 import toast from "react-hot-toast";
+
+interface ApiErrorBody {
+  message?: string;
+  error?: string;
+}
 
 export default function ResetVerify() {
   const router = useRouter();
   const email = typeof window !== "undefined" ? localStorage.getItem("reset_email") : "";
 
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
-  const inputRefs = useRef([]);
+  const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
 
-  const handleChange = (e, index) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement>, index: number) => {
     const value = e.target.value;
     if (/^[0-9]$/.test(value) || value === "") {
       const newOtp = [...otp];
       newOtp[index] = value;
       setOtp(newOtp);
-      if (value && index < 5) inputRefs.current[index + 1].focus();
+      if (value && index < 5) inputRefs.current[index + 1]?.focus();
     }
   };
 
-  const handleKeyDown = (e, index) => {
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>, index: number) => {
     if (e.key === "Backspace" && !otp[index] && index > 0) {
-      inputRefs.current[index - 1].focus();
+      inputRefs.current[index - 1]?.focus();
     }
   };
 
-  const handlePaste = (e) => {
+  const handlePaste = (e: ClipboardEvent<HTMLDivElement>) => {
     e.preventDefault();
     const pasted = e.clipboardData.getData("text").trim();
     if (/^\d{6}$/.test(pasted)) {
       setOtp(pasted.split(""));
-      inputRefs.current[5].focus();
+      inputRefs.current[5]?.focus();
       toast.success("Code pasted!");
     } else {
       toast.error("Please paste a valid 6-digit code");
     }
   };
 
-  const handleVerify = async (e) => {
+  const handleVerify = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(""); setMessage("");
     const code = otp.join("");
@@ -61,7 +67,8 @@ export default function ResetVerify() {
       setMessage(msg); toast.success(msg);
       setTimeout(() => router.push("/set-new-password"), 1500);
     } catch (err) {
-      const msg = err.response?.data?.message || err.response?.data?.error || "Invalid or expired code.";
+      const axiosErr = err as AxiosError<ApiErrorBody>;
+      const msg = axiosErr.response?.data?.message || axiosErr.response?.data?.error || "Invalid or expired code.";
       setError(msg); toast.error(msg);
     } finally {
       setLoading(false);
@@ -78,7 +85,8 @@ export default function ResetVerify() {
       setOtp(["", "", "", "", "", ""]);
       inputRefs.current[0]?.focus();
     } catch (err) {
-      const msg = err.response?.data?.message || "Failed to resend code.";
+      const axiosErr = err as AxiosError<ApiErrorBody>;
+      const msg = axiosErr.response?.data?.message || "Failed to resend code.";
       setError(msg); toast.error(msg);
     } finally {
       setResending(false);
@@ -144,11 +152,11 @@ export default function ResetVerify() {
                   key={index}
                   type="text"
                   inputMode="numeric"
-                  maxLength="1"
+                  maxLength={1}
                   value={digit}
                   onChange={(e) => handleChange(e, index)}
                   onKeyDown={(e) => handleKeyDown(e, index)}
-                  ref={(el) => (inputRefs.current[index] = el)}
+                  ref={(el) => { inputRefs.current[index] = el; }}
                   autoFocus={index === 0}
                   className={`w-12 h-14 text-center rounded-xl border-2 text-lg font-bold bg-white/5 text-white outline-none transition-all ${
                     digit

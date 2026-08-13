@@ -1,15 +1,23 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, type FormEvent, type ChangeEvent } from "react";
+import type { AxiosError } from "axios";
 import api from "../../utils/api";
 import toast from "react-hot-toast";
 import { useAuth } from "../../context/AuthContext";
 import PinInput from "../components/PinInput";
 import { Mail, CheckCircle } from "lucide-react";
 
+interface ApiErrorBody {
+  message?: string;
+  error?: string;
+}
+
+type ResetStep = 1 | 2 | 3;
+
 export default function ResetPin() {
-  const { user } = useAuth();
-  const [step, setStep] = useState(1);
+  const { user } = useAuth() ?? {};
+  const [step, setStep] = useState<ResetStep>(1);
   const [code, setCode] = useState("");
   const [resetToken, setResetToken] = useState("");
   const [pin, setPin] = useState(["", "", "", ""]);
@@ -23,7 +31,7 @@ export default function ResetPin() {
   }, [email]);
 
   // Step 1 — request reset code via email
-  const handleSendCode = async (e) => {
+  const handleSendCode = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!email) return;
     setLoading(true);
@@ -32,9 +40,10 @@ export default function ResetPin() {
       toast.success("Reset code sent to your email.");
       setStep(2);
     } catch (err) {
+      const axiosErr = err as AxiosError<ApiErrorBody>;
       toast.error(
-        err.response?.data?.message ||
-          err.response?.data?.error ||
+        axiosErr.response?.data?.message ||
+          axiosErr.response?.data?.error ||
           "Failed to send code."
       );
     } finally {
@@ -43,7 +52,7 @@ export default function ResetPin() {
   };
 
   // Step 2 — verify the 6-digit code; capture the returned reset_token
-  const handleVerifyCode = async (e) => {
+  const handleVerifyCode = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!email) return;
     setLoading(true);
@@ -53,9 +62,10 @@ export default function ResetPin() {
       toast.success("Code verified! Enter your new PIN.");
       setStep(3);
     } catch (err) {
+      const axiosErr = err as AxiosError<ApiErrorBody>;
       toast.error(
-        err.response?.data?.message ||
-          err.response?.data?.error ||
+        axiosErr.response?.data?.message ||
+          axiosErr.response?.data?.error ||
           "Invalid code."
       );
     } finally {
@@ -64,7 +74,7 @@ export default function ResetPin() {
   };
 
   // Step 3 — set new PIN
-  const handleResetPin = async (e) => {
+  const handleResetPin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const newPin = pin.join("");
     const confirm = confirmPin.join("");
@@ -86,9 +96,10 @@ export default function ResetPin() {
       setPin(["", "", "", ""]);
       setConfirmPin(["", "", "", ""]);
     } catch (err) {
+      const axiosErr = err as AxiosError<ApiErrorBody>;
       toast.error(
-        err.response?.data?.message ||
-          err.response?.data?.error ||
+        axiosErr.response?.data?.message ||
+          axiosErr.response?.data?.error ||
           "Reset failed."
       );
     } finally {
@@ -173,7 +184,7 @@ export default function ResetPin() {
             <input
               type="text"
               value={code}
-              onChange={(e) => setCode(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setCode(e.target.value)}
               placeholder="Enter 6-digit code sent to your email"
               required
               className="w-full bg-white/5 border border-white/10 hover:border-white/20 focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 text-white placeholder-white/20 px-4 py-3 rounded-xl text-sm outline-none transition-all tracking-widest text-center"
@@ -190,11 +201,16 @@ export default function ResetPin() {
             <label className="block text-xs font-bold uppercase tracking-widest text-white/55 mb-3">
               New PIN
             </label>
+            {/* `dark` was previously passed here but PinInput.tsx has no such
+                prop — it was a silently-ignored no-op even before this file
+                was typed (PinInput also has no actual dark-mode styling,
+                it's hardcoded light-mode colors like border-gray-300 inside
+                this dark-themed app). Dropped rather than papered over with
+                an `as any` — worth a real design pass on PinInput itself. */}
             <PinInput
               value={pin}
               onChange={setPin}
               touched={pin.some((d) => d !== "")}
-              dark
             />
           </div>
           <div>
@@ -205,7 +221,6 @@ export default function ResetPin() {
               value={confirmPin}
               onChange={setConfirmPin}
               touched={confirmPin.some((d) => d !== "")}
-              dark
             />
           </div>
           <SubmitButton loading={loading} label="Reset PIN" />
@@ -215,7 +230,12 @@ export default function ResetPin() {
   );
 }
 
-function SubmitButton({ loading, label }) {
+interface SubmitButtonProps {
+  loading: boolean;
+  label: string;
+}
+
+function SubmitButton({ loading, label }: SubmitButtonProps) {
   return (
     <button
       type="submit"

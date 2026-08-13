@@ -37,7 +37,7 @@ interface ApiErrorBody {
 }
 
 interface KycPanelProps {
-  kycStatus?: KycInfo | null;
+  kycStatus?: string | null;
   setKycStatus?: (status: string | null) => void;
 }
 
@@ -269,9 +269,6 @@ export default function KycPanel({ kycStatus: kycStatusProp, setKycStatus: setKy
             </span>
           </div>
 
-          {/* Fixed the same malformed arbitrary-value typo documented in
-              Button.tsx (#9), FormComponents.tsx, and LivenessCheck.tsx:
-              stray trailing digit turned "bg-white/1" into dead "[0.01]0". */}
           <div className="sm:hidden h-0.5 bg-white/1 rounded-full mb-5 overflow-hidden">
             <motion.div
               className="h-full rounded-full"
