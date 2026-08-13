@@ -4,18 +4,18 @@ import Link from "next/link";
 const WHATSAPP_NUMBER = "2348081325657";
 const WHATSAPP_MESSAGE = "Hi, I need help with my account.";
 
-export default function WhatsAppButton() {
-  const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
-    WHATSAPP_MESSAGE
-  )}`;
+export const whatsappSupportUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
+  WHATSAPP_MESSAGE
+)}`;
 
+export default function WhatsAppButton() {
   return (
     <Link
-      href={url}
+      href={whatsappSupportUrl}
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Chat with us on WhatsApp"
-      className="fixed bottom-24 sm:bottom-6 right-4 sm:right-6 z-9999 flex items-center justify-center w-14 h-14 rounded-full shadow-lg transition-transform hover:scale-110 active:scale-95"
+      className="fixed bottom-64 sm:bottom-44 right-4 sm:right-6 z-9998 flex items-center justify-center w-14 h-14 rounded-full shadow-lg transition-transform hover:scale-110 active:scale-95"
       style={{ background: "#25D366", isolation: "isolate" }}
     >
       <img

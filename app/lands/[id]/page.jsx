@@ -79,7 +79,7 @@ function Section({ title, icon, children, defaultOpen = true, accent = "amber" }
   const a = accentMap[accent] || accentMap.amber;
 
   return (
-    <div className="rounded-2xl border border-white/7 bg-white/[2.5%] overflow-hidden">
+    <div className="rounded-2xl border border-white/7 bg-white/2.5 overflow-hidden">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
