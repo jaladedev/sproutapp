@@ -11,7 +11,7 @@ import {
 } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import api, { refreshAccessToken } from "../utils/api";
+import api, { refreshAccessToken, fetchCsrfCookie } from "../utils/api";
 import { isAuthed, clearAuthedFlag } from "../utils/tokenStore";
 import { resetNotificationCache } from "../services/notificationService";
 import { PUBLIC_ROUTES, isPublicRoute } from "../utils/routes";
@@ -173,6 +173,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // ── login ────────────────────────────────────────────────────────────────
 
   const login = async (email: string, password: string): Promise<AuthUser | null> => {
+    await fetchCsrfCookie(); // sets XSRF-TOKEN before the CSRF-protected POST below
     const res       = await api.post("/login", { email, password });
     const expiresAt = res.data?.expires_at ?? null;
 

@@ -12,6 +12,12 @@ const api = axios.create({
   // must respond with a specific Access-Control-Allow-Origin (not "*") and
   // Access-Control-Allow-Credentials: true for this to work.
   withCredentials: true,
+  // Sanctum's stateful-SPA CSRF check (added server-side via statefulApi())
+  // needs the XSRF-TOKEN cookie echoed back as an X-XSRF-TOKEN header on
+  // every mutating request. Axios only does this automatically for
+  // same-origin requests — localhost:3000 -> localhost:8000 is cross-origin
+  // (different port), so it has to be opted into explicitly.
+  withXSRFToken: true,
 });
 
 // ── Request interceptor ───────────────────────────────────────────────────────
@@ -79,6 +85,19 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
  * the response. Resolves with `expires_at` (epoch ms) from the response
  * body so AuthContext can reschedule the next proactive refresh.
  */
+// ── CSRF bootstrap ────────────────────────────────────────────────────────────
+//
+// Sanctum's stateful-SPA CSRF check requires the XSRF-TOKEN cookie to exist
+// before any mutating request (login included) — it isn't set until this
+// endpoint is hit once. It lives outside the /api prefix, so it's called
+// against the API's root origin rather than the `api` instance's baseURL.
+
+const API_ROOT = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/api\/?$/, "");
+
+export function fetchCsrfCookie() {
+  return axios.get(`${API_ROOT}/sanctum/csrf-cookie`, { withCredentials: true });
+}
+
 export function refreshAccessToken() {
   if (!isAuthed()) return Promise.reject(new Error("No session to refresh"));
 
