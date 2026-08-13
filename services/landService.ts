@@ -3,6 +3,9 @@ import api from "../utils/api";
 export interface LandTransactionResponse {
   success: boolean;
   message?: string;
+  total_discount_kobo?: number;
+  paid_from_rewards_kobo?: number;
+  certificate?: { cert_number?: string; [key: string]: unknown };
   [key: string]: unknown;
 }
 
@@ -11,14 +14,49 @@ export interface UserLandUnitsResponse {
   [key: string]: unknown;
 }
 
+export interface Land {
+  id: string | number;
+  [key: string]: unknown;
+}
+
+export interface PurchasePreview {
+  [key: string]: unknown;
+}
+
+/* GET /land — public listing used on the lands index/marketplace map */
+export async function getLandList(): Promise<Land[]> {
+  const res = await api.get("/land");
+  return res.data?.data ?? [];
+}
+
+/* GET /lands/:id — single land detail */
+export async function getLand(id: string | number): Promise<Land> {
+  const res = await api.get(`/lands/${id}`);
+  return res.data.data;
+}
+
+/* GET /lands/:id/purchase/preview */
+export async function getPurchasePreview(
+  id: string | number,
+  units: number,
+  useRewards: boolean
+): Promise<PurchasePreview> {
+  const res = await api.get(`/lands/${id}/purchase/preview`, {
+    params: { units, use_rewards: useRewards ? 1 : 0 },
+  });
+  return res.data.data;
+}
+
 /* PURCHASE LAND */
 export async function purchaseLand(
   id: string | number,
   units: number,
-  pin: string
+  pin: string,
+  useRewards = true
 ): Promise<LandTransactionResponse> {
   const res = await api.post(`/lands/${id}/purchase`, {
     units,
+    use_rewards: useRewards,
     transaction_pin: pin,
   });
 

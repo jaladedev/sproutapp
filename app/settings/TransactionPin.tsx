@@ -2,7 +2,8 @@
 
 import { useState, useEffect, type FormEvent, type ReactNode } from "react";
 import type { AxiosError } from "axios";
-import api from "../../utils/api";
+import { getAccountStatus, setTransactionPin, updateTransactionPin } from "../../services/pinService";
+import { getMe } from "../../services/userService";
 import toast from "react-hot-toast";
 import PinInput from "../components/PinInput";
 import { KeyRound, AlertCircle } from "lucide-react";
@@ -40,13 +41,12 @@ export default function TransactionPin({ onPinSet }: TransactionPinProps = {}) {
     (async () => {
       try {
         // /account-status is the lightest call — use it first
-        const res = await api.get("/user/account-status");
-        setHasPin(!!res.data?.data?.pin_is_set);
+        const status = await getAccountStatus();
+        setHasPin(!!status.pin_is_set);
       } catch {
         // Fallback to /me if account-status isn't available
         try {
-          const res = await api.get("/me");
-          const u = res.data?.data ?? res.data?.user ?? {};
+          const u = await getMe();
           setHasPin(!!u.pin_is_set);
         } catch {}
       }
@@ -83,17 +83,10 @@ export default function TransactionPin({ onPinSet }: TransactionPinProps = {}) {
     setLoading(true);
     try {
       if (hasPin) {
-        await api.post("/pin/update", {
-          current_pin:      currentPinStr,
-          new_pin:          newPinStr,
-          pin_confirmation: confirmPinStr,
-        });
+        await updateTransactionPin(currentPinStr, newPinStr, confirmPinStr);
         toast.success("Transaction PIN updated successfully");
       } else {
-        await api.post("/pin/set", {
-          pin:              newPinStr,
-          pin_confirmation: confirmPinStr,
-        });
+        await setTransactionPin(newPinStr, confirmPinStr);
         toast.success("Transaction PIN set successfully");
         setHasPin(true);
         onPinSet?.();

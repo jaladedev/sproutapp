@@ -5,7 +5,7 @@ import { useAuth } from "../../context/AuthContext";
 import { User, Mail, Lock, Eye, EyeOff, CheckCircle, Shield } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { AxiosError } from "axios";
-import api from "../../utils/api";
+import { changePassword } from "../../services/userService";
 import toast from "react-hot-toast";
 
 interface PasswordFormData {
@@ -62,11 +62,7 @@ export default function ProfileSettings() {
     setLoading(true);
     setError("");
     try {
-      await api.post("/user/change-password", {
-        current_password: formData.currentPassword,
-        new_password: formData.newPassword,
-        new_password_confirmation: formData.confirmPassword,
-      });
+      await changePassword(formData.currentPassword, formData.newPassword, formData.confirmPassword);
       toast.success("Password changed successfully!");
       setFormData({ currentPassword: "", newPassword: "", confirmPassword: "" });
     } catch (err) {

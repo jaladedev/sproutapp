@@ -5,7 +5,8 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import type { AxiosError } from "axios";
-import api from "../../utils/api";
+import { getMe } from "../../services/userService";
+import { getBanks, resolveAccount, updateBankDetails } from "../../services/bankService";
 import toast from "react-hot-toast";
 import { Landmark, Lock, CheckCircle, AlertCircle, ChevronDown } from "lucide-react";
 
@@ -69,8 +70,7 @@ export default function BankDetails() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await api.get("/me");
-        const data: Record<string, any> = res.data.user || res.data.data || res.data;
+        const data: Record<string, any> = await getMe();
         const bank: string = data.bank_name?.trim() || "";
         const number: string = data.account_number?.trim() || "";
         const name: string = data.account_name?.trim() || "";
@@ -92,8 +92,7 @@ export default function BankDetails() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await api.get("/paystack/banks");
-        setBanks(res.data.banks || []);
+        setBanks(await getBanks());
       } catch {
         toast.error("Unable to load bank list.");
       }
@@ -107,11 +106,8 @@ export default function BankDetails() {
     const verify = async () => {
       setVerifying(true);
       try {
-        const res = await api.post("/paystack/resolve-account", {
-          account_number: accountNumber,
-          bank_code: bankCode,
-        });
-        const name: string = res.data.account_name || res.data.data?.account_name || "";
+        const res = await resolveAccount(accountNumber, bankCode);
+        const name: string = res.account_name || res.data?.account_name || "";
         if (name) {
           setValue("account_name", name, { shouldValidate: true });
           toast.success("Account verified!");
@@ -134,7 +130,7 @@ export default function BankDetails() {
   const onSubmit = async (values: BankDetailsFormValues) => {
     setLoading(true);
     try {
-      const res = await api.put("/user/bank-details", {
+      const res = await updateBankDetails({
         bank_code: values.bank_code,
         bank_name: values.bank_name,
         account_number: values.account_number,
@@ -142,7 +138,7 @@ export default function BankDetails() {
       });
       isLockedRef.current = true;
       setIsLocked(true);
-      toast.success(res.data.message || "Bank details saved!");
+      toast.success(res.message || "Bank details saved!");
     } catch (err) {
       const axiosErr = err as AxiosError<ApiErrorBody>;
       toast.error(

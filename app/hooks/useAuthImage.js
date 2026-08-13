@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import api from "../../utils/api"; 
+import { fetchAuthedBlob } from "../../services/mediaService";
 
 export function useAuthImage(url) {
   const [src, setSrc] = useState(null);
@@ -8,9 +8,9 @@ export function useAuthImage(url) {
     if (!url) return;
     let objectUrl;
 
-    api.get(url, { responseType: "blob" })
-      .then((res) => {
-        objectUrl = URL.createObjectURL(res.data);
+    fetchAuthedBlob(url)
+      .then((blob) => {
+        objectUrl = URL.createObjectURL(blob);
         setSrc(objectUrl);
       })
       .catch(() => setSrc(null));

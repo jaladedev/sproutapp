@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Lock, Eye, EyeOff, Loader2, CheckCircle } from "lucide-react";
-import api from "../../utils/api";
+import { resetPassword } from "../../services/authService";
 import toast from "react-hot-toast";
 
 export default function SetNewPassword() {
@@ -57,7 +57,7 @@ export default function SetNewPassword() {
 
     try {
       setLoading(true);
-      await api.post("/password/reset", { email, ...form });
+      await resetPassword(email, form);
       const successMsg = "Password reset successful! Redirecting to login...";
       setMessage(successMsg); toast.success(successMsg);
       localStorage.removeItem("reset_email");

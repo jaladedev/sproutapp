@@ -1,14 +1,5 @@
 import { useEffect, useState } from "react";
-import api from "../../utils/api";
-
-function toRelativePath(url: string): string {
-  try {
-    const path = new URL(url).pathname;
-    return path.replace(/^\/api/, "");
-  } catch {
-    return url;
-  }
-}
+import { toRelativePath, fetchAuthedBlob } from "../../services/mediaService";
 
 type AuthImageProps = {
   url?: string;
@@ -29,10 +20,10 @@ export function AuthImage({ url, alt, className, onBlobReady }: AuthImageProps) 
     setSrc(null);
     setError(false);
 
-    api.get(toRelativePath(url), { responseType: "blob" })
-      .then((res) => {
+    fetchAuthedBlob(toRelativePath(url))
+      .then((blob) => {
         if (cancelled) return;
-        objectUrl = URL.createObjectURL(res.data);
+        objectUrl = URL.createObjectURL(blob);
         setSrc(objectUrl);
         onBlobReady?.(objectUrl);
       })

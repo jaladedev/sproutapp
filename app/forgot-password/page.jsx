@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Mail, ArrowLeft, Loader2 } from "lucide-react";
-import api from "../../utils/api";
+import { requestPasswordResetCode } from "../../services/authService";
 import FormError from "../components/FormError";
 import toast from "react-hot-toast";
 
@@ -24,8 +24,8 @@ export default function ForgotPassword() {
     setLoading(true);
 
     try {
-      const res = await api.post("/password/reset/code", { email });
-      const successMessage = res.data.message || "A reset code has been sent to your email.";
+      const res = await requestPasswordResetCode(email);
+      const successMessage = res.message || "A reset code has been sent to your email.";
       setMessage(successMessage);
       toast.success(successMessage);
       localStorage.setItem("reset_email", email);

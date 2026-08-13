@@ -3,7 +3,14 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import api from "../../utils/api";
+import { getMe, getUserTransactions } from "../../services/userService";
+import { getPortfolioSummary } from "../../services/portfolioService";
+import {
+  getUserUnitsForLand,
+  getPurchasePreview,
+  purchaseLand,
+  sellLand,
+} from "../../services/landService";
 import handleApiError from "../../utils/handleApiError";
 import toast from "react-hot-toast";
 import {
@@ -62,8 +69,8 @@ export default function Portfolio() {
   // ── Data fetching ──────────────────────────────────────────────────────────
   const fetchPortfolioAndUser = useCallback(async () => {
     try {
-      const userRes = await api.get("/me");
-      setHasPin(!!userRes.data.data?.pin_is_set);
+      const u = await getMe();
+      setHasPin(!!u.pin_is_set);
     } catch (err) {
       handleApiError(err);
     }
@@ -71,11 +78,10 @@ export default function Portfolio() {
 
   const fetchAnalytics = useCallback(async () => {
     try {
-      const [summaryRes, txRes] = await Promise.all([
-        api.get("/portfolio/summary"),
-        api.get("/transactions/user"),
+      const [d, txList] = await Promise.all([
+        getPortfolioSummary(),
+        getUserTransactions(),
       ]);
-      const d = summaryRes.data.data;
 
       setSummary({
         current_portfolio_value: d.current_portfolio_value_naira,
@@ -99,9 +105,7 @@ export default function Portfolio() {
       );
 
       setTransactions(
-        (txRes.data.data || []).filter(
-          (t) => t.type === "Purchase" || t.type === "Sale"
-        )
+        txList.filter((t) => t.type === "Purchase" || t.type === "Sale")
       );
     } catch (err) {
       handleApiError(err);
@@ -128,10 +132,8 @@ export default function Portfolio() {
     previewTimer.current = setTimeout(async () => {
       setPreviewLoading(true);
       try {
-        const res = await api.get(`/lands/${modal.land.land_id}/purchase/preview`, {
-          params: { units, use_rewards: modal.useRewards ? 1 : 0 },
-        });
-        setPreview(res.data.data);
+        const preview = await getPurchasePreview(modal.land.land_id, units, modal.useRewards);
+        setPreview(preview);
       } catch {
         setPreview(null);
       } finally {
@@ -171,9 +173,9 @@ export default function Portfolio() {
       userUnits = land.units_owned ?? 0;
     } else {
       try {
-        const res  = await api.get(`/lands/${land.land_id}/units`);
-        availableUnits = res.data.data.available_units ?? 0;
-        userUnits      = res.data.data.user_units      ?? 0;
+        const payload  = await getUserUnitsForLand(land.land_id);
+        availableUnits = payload.data.available_units ?? 0;
+        userUnits      = payload.data.user_units      ?? 0;
       } catch {
         toast.error("Failed to fetch land units");
         return;
@@ -234,12 +236,7 @@ export default function Portfolio() {
 
     try {
       if (modal.type === "buy") {
-        const res = await api.post(`/lands/${modal.land.land_id}/purchase`, {
-          units,
-          use_rewards:     modal.useRewards,
-          transaction_pin: modal.pin,
-        });
-        const d       = res.data;
+        const d = await purchaseLand(modal.land.land_id, units, modal.pin, modal.useRewards);
         const savings = (d.total_discount_kobo ?? 0) + (d.paid_from_rewards_kobo ?? 0);
         let msg = "Purchase successful";
         if (savings > 0) msg += ` · Saved ₦${(savings / 100).toLocaleString()}`;
@@ -267,10 +264,7 @@ export default function Portfolio() {
           }, 800);
         }
       } else {
-        await api.post(`/lands/${modal.land.land_id}/sell`, {
-          units,
-          transaction_pin: modal.pin,
-        });
+        await sellLand(modal.land.land_id, units, modal.pin);
         toast.success("Units sold successfully");
       }
 

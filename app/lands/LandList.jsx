@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import api from "../../utils/api";
+import { getLandList } from "../../services/landService";
+import { getMe } from "../../services/userService";
 import { getLandImage } from "../../utils/images";
 import { koboToNaira } from "../../utils/currency";
 import { useDebounce } from "../../utils/useDebounce";
@@ -268,9 +269,8 @@ export default function LandList() {
 
   // ── Fetch lands ────────────────────────────────────────────────────────────
   useEffect(() => {
-    api.get("/land")
-      .then((res) => {
-        const list = res.data?.data ?? [];
+    getLandList()
+      .then((list) => {
         setLands(list);
         setVisibleLands(list);
       })
@@ -285,11 +285,11 @@ export default function LandList() {
       setAuthLoaded(true);
       return;
     }
-    api.get("/me")
-      .then((res) => {
-        const u = res.data?.data ?? null;
-        setUser(u);
-        if (u) {
+    getMe()
+      .then((u) => {
+        const hasUser = u && Object.keys(u).length > 0;
+        setUser(hasUser ? u : null);
+        if (hasUser) {
           setPinIsSet(u.pin_is_set ?? !!u.transaction_pin);
           setKycStatus(u.kyc_status ?? (u.is_kyc_verified ? "approved" : "none"));
           setStatusLoaded(true);

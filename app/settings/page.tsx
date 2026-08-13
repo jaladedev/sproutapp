@@ -11,7 +11,8 @@ import TransactionPin from "./TransactionPin";
 import ResetPin from "./ResetPin";
 import BankDetails from "./BankDetails";
 import KycPanel from "./kyc/KycPanel";
-import api from "../../utils/api";
+import { getAccountStatus } from "../../services/pinService";
+import { getMe } from "../../services/userService";
 
 interface NavItemData {
   id: string;
@@ -138,17 +139,15 @@ export default function Settings() {
 
   // Load KYC + PIN status on mount
   useEffect(() => {
-    api.get("/user/account-status")
-      .then((res) => {
-        const d = res.data?.data ?? {};
+    getAccountStatus()
+      .then((d) => {
         setKycStatus(d.kyc_status ?? "none");
         setPinIsSet(!!d.pin_is_set);
       })
       .catch(() => {
         // Fallback to /me
-        api.get("/me")
-          .then((res) => {
-            const u = res.data?.data ?? {};
+        getMe()
+          .then((u) => {
             setPinIsSet(u.pin_is_set ?? !!u.transaction_pin);
             setKycStatus(u.kyc_status ?? (u.is_kyc_verified ? "approved" : "none"));
           })

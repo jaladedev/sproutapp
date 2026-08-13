@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, type ChangeEvent, type ClipboardEvent, typ
 import { useRouter } from "next/navigation";
 import { MailCheck, Loader2 } from "lucide-react";
 import type { AxiosError } from "axios";
-import api from "../../utils/api";
+import { verifyEmailCode, resendEmailVerification } from "../../services/authService";
 import toast from "react-hot-toast";
 
 interface ApiErrorBody {
@@ -67,9 +67,10 @@ export default function VerifyEmail() {
       const m = "Please enter all 6 digits.";
       setError(m); toast.error(m); return;
     }
+    if (!email) { toast.error("Missing email. Please go back."); return; }
     setLoading(true); setError(""); setMessage("");
     try {
-      await api.post("/email/verify/code", { email, verification_code: code });
+      await verifyEmailCode(email, code);
       const msg = "Email verified successfully!";
       setMessage(msg); toast.success(msg);
       localStorage.removeItem("pending_email");
@@ -85,9 +86,10 @@ export default function VerifyEmail() {
 
   const handleResend = async () => {
     if (cooldown > 0) return;
+    if (!email) { toast.error("Missing email. Please go back."); return; }
     setLoading(true); setMessage(""); setError("");
     try {
-      await api.post("/email/resend-verification", { email });
+      await resendEmailVerification(email);
       const msg = "Verification code sent!";
       setMessage(msg); toast.success(msg);
       setCooldown(60);

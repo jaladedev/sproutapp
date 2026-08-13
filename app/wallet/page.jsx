@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import api from "../../utils/api";
 import handleApiError from "../../utils/handleApiError";
+import { getMe, getUserTransactions } from "../../services/userService";
+import { depositFunds, withdrawFunds } from "../../services/walletService";
 import toast from "react-hot-toast";
 import {
   Wallet, TrendingUp, TrendingDown, Clock, CheckCircle,
@@ -79,21 +80,17 @@ export default function WalletPage() {
     setLoadError(null);
     setServerError("");
     try {
-      const [walletRes, txRes] = await Promise.all([
-        api.get("/me"),
-        api.get("/transactions/user"),
+      const [user, txList] = await Promise.all([
+        getMe(),
+        getUserTransactions(),
       ]);
 
-      const user = walletRes.data?.data ?? walletRes.data?.user ?? {};
       const balanceKobo =
         user.wallet_balance ?? user.balance_kobo ?? user.balance ?? 0;
       setBalance(balanceKobo);
 
-      const txList = txRes.data?.data ?? txRes.data ?? [];
       setTransactions(
-        (Array.isArray(txList) ? txList : []).filter(
-          (t) => t.type === "Deposit" || t.type === "Withdrawal"
-        )
+        txList.filter((t) => t.type === "Deposit" || t.type === "Withdrawal")
       );
 
       if (isRetry) toast.success("Wallet loaded");
@@ -138,14 +135,11 @@ export default function WalletPage() {
     setLoading("deposit");
 
     try {
-      const res = await api.post("/deposit", {
-        amount: amountNaira * 100, // always send in kobo
-        gateway,                   // "opay" | "monnify" | "paystack"
-      });
+      const res = await depositFunds(amountNaira, gateway);
 
-      if (res.data.payment_url) {
+      if (res.payment_url) {
         toast.success(`Redirecting to ${GATEWAYS.find((g) => g.id === gateway)?.label ?? gateway}…`);
-        setTimeout(() => window.location.assign(res.data.payment_url), 400);
+        setTimeout(() => window.location.assign(res.payment_url), 400);
       } else {
         toast.error("No payment URL received. Please try again.");
       }
@@ -165,11 +159,8 @@ export default function WalletPage() {
 
     setLoading("withdraw");
     try {
-      const res = await api.post("/withdraw", {
-        amount: amountNaira * 100,
-        transaction_pin: pin,
-      });
-      toast.success(res.data.message || "Withdrawal successful!");
+      const res = await withdrawFunds(amountNaira, pin);
+      toast.success(res.message || "Withdrawal successful!");
       setWithdrawAmount("");
       setPin("");
       fetchWalletData();
@@ -305,11 +296,11 @@ export default function WalletPage() {
             </h2>
             <div className="flex flex-wrap gap-3">
               <button onClick={() => setActiveTab("deposit")}
-                className="inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/[1.5%] border border-white/10 text-white text-sm font-semibold transition-all">
+                className="inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/1.5 border border-white/10 text-white text-sm font-semibold transition-all">
                 <ArrowDownCircle size={14} /> Add Money
               </button>
               <button onClick={() => setActiveTab("withdraw")}
-                className="inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/[1.5%] border border-white/10 text-white text-sm font-semibold transition-all">
+                className="inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/1.5 border border-white/10 text-white text-sm font-semibold transition-all">
                 <ArrowUpCircle size={14} /> Withdraw
               </button>
             </div>

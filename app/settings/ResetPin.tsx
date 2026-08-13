@@ -2,7 +2,7 @@
 
 import { useState, useEffect, type FormEvent, type ChangeEvent } from "react";
 import type { AxiosError } from "axios";
-import api from "../../utils/api";
+import { forgotPin, verifyPinCode, resetPin } from "../../services/pinService";
 import toast from "react-hot-toast";
 import { useAuth } from "../../context/AuthContext";
 import PinInput from "../components/PinInput";
@@ -36,7 +36,7 @@ export default function ResetPin() {
     if (!email) return;
     setLoading(true);
     try {
-      await api.post("/pin/forgot", { email });
+      await forgotPin(email);
       toast.success("Reset code sent to your email.");
       setStep(2);
     } catch (err) {
@@ -57,8 +57,8 @@ export default function ResetPin() {
     if (!email) return;
     setLoading(true);
     try {
-      const res = await api.post("/pin/verify-code", { email, code });
-      setResetToken(res.data.reset_token); // ← capture single-use token
+      const res = await verifyPinCode(email, code);
+      setResetToken(res.reset_token); // ← capture single-use token
       toast.success("Code verified! Enter your new PIN.");
       setStep(3);
     } catch (err) {
@@ -83,11 +83,7 @@ export default function ResetPin() {
 
     setLoading(true);
     try {
-      await api.post("/pin/reset", {
-        reset_token: resetToken, 
-        new_pin: newPin,
-        pin_confirmation: confirm,
-      });
+      await resetPin(resetToken, newPin, confirm);
       toast.success("Transaction PIN reset successfully!");
       // Reset all state back to step 1
       setStep(1);

@@ -10,7 +10,7 @@ import {
   Eye, EyeOff, Mail, Lock, User, ArrowRight,
   Gift, CheckCircle, AlertCircle,
 } from "lucide-react";
-import api from "../../utils/api";
+import { registerUser } from "../../services/authService";
 import Image from "next/image";
 
 const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || "REU.ng";
@@ -190,7 +190,7 @@ function RegisterForm() {
     if (code) payload.referral_code = code;
 
     try {
-      await api.post("/register", payload);
+      await registerUser(payload);
       clearSavedReferralCode();
       toast.success("Account created! Please verify your email.");
       localStorage.setItem("pending_email", form.email);

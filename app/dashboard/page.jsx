@@ -4,9 +4,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../context/AuthContext";
 import toast from "react-hot-toast";
-import api from "../../utils/api";
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "../../utils/queryKeys";
+import { getUserStats, getUserTransactions } from "../../services/userService";
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import {
   TrendingUp, Wallet, MapPin, Activity,
@@ -89,29 +89,13 @@ function useCountUp(target, duration = 1100, enabled = true) {
 function useDashboardData(enabled) {
   const statsQuery = useQuery({
     queryKey: queryKeys.userStats(),
-    queryFn: async ({ signal }) => {
-      const res = await api.get("/user/stats", { signal, timeout: 8_000 });
-      const s   = res.data?.data ?? {};
-      return {
-        balance:                 (s.balance_kobo                ?? 0) / 100,
-        current_portfolio_value: (s.current_portfolio_value_kobo ?? 0) / 100,
-        total_invested:          (s.total_invested_kobo           ?? 0) / 100,
-        lands_owned:              s.lands_owned                  ?? 0,
-        units_owned:              s.units_owned                  ?? 0,
-        total_withdrawn:         (s.total_withdrawn_kobo          ?? 0) / 100,
-        pending_withdrawals:      s.pending_withdrawals,
-      };
-    },
+    queryFn: ({ signal }) => getUserStats(signal),
     enabled,
   });
 
   const txQuery = useQuery({
     queryKey: queryKeys.transactions(),
-    queryFn: async ({ signal }) => {
-      const res    = await api.get("/transactions/user", { signal, timeout: 8_000 });
-      const txList = res.data?.data ?? [];
-      return Array.isArray(txList) ? txList : [];
-    },
+    queryFn: ({ signal }) => getUserTransactions(signal),
     enabled,
   });
 

@@ -4,7 +4,7 @@ import { useState, useRef, type ChangeEvent, type ClipboardEvent, type FormEvent
 import { useRouter } from "next/navigation";
 import { MailCheck, ArrowLeft, Loader2 } from "lucide-react";
 import type { AxiosError } from "axios";
-import api from "../../utils/api";
+import { verifyPasswordResetCode, requestPasswordResetCode } from "../../services/authService";
 import toast from "react-hot-toast";
 
 interface ApiErrorBody {
@@ -61,7 +61,7 @@ export default function ResetVerify() {
 
     setLoading(true);
     try {
-      await api.post("/password/reset/verify", { email, reset_code: code });
+      await verifyPasswordResetCode(email, code);
       localStorage.setItem("otp_verified", "true");
       const msg = "Verification successful! Redirecting...";
       setMessage(msg); toast.success(msg);
@@ -79,7 +79,7 @@ export default function ResetVerify() {
     if (!email) { const m = "Missing email. Please go back."; setError(m); return; }
     setResending(true); setMessage(""); setError("");
     try {
-      await api.post("/password/reset/code", { email });
+      await requestPasswordResetCode(email);
       const msg = `A new code has been sent to ${email}.`;
       setMessage(msg); toast.success("New code sent!");
       setOtp(["", "", "", "", "", ""]);

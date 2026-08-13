@@ -3,7 +3,15 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import api from "../../../utils/api";
+import {
+  getLand,
+  getUserUnitsForLand,
+  getPurchasePreview,
+  purchaseLand,
+  sellLand,
+} from "../../../services/landService";
+import { getAccountStatus } from "../../../services/pinService";
+import { getMe } from "../../../services/userService";
 import { getLandSlides } from "../../../utils/images";
 import { formatNaira } from "../../../utils/currency";
 import toast from "react-hot-toast";
@@ -603,8 +611,8 @@ export default function LandDetails() {
 
   const fetchLand = useCallback(async () => {
     try {
-      const res = await api.get(`/lands/${id}`);
-      setLand(res.data.data);
+      const land = await getLand(id);
+      setLand(land);
     } catch {
       setError("Unable to load land details.");
     } finally {
@@ -614,8 +622,8 @@ export default function LandDetails() {
 
   const fetchUserUnits = useCallback(async () => {
     try {
-      const res = await api.get(`/lands/${id}/units`);
-      setUserUnits(res.data?.data?.user_units ?? 0);
+      const payload = await getUserUnitsForLand(id);
+      setUserUnits(payload?.data?.user_units ?? 0);
     } catch {
       setUserUnits(0);
     }
@@ -623,14 +631,12 @@ export default function LandDetails() {
 
   const fetchAccountStatus = useCallback(async () => {
     try {
-      const res = await api.get("/user/account-status");
-      const d   = res.data?.data ?? {};
+      const d = await getAccountStatus();
       setPinIsSet(!!d.pin_is_set);
       setKycStatus(d.kyc_status ?? "none");
     } catch {
       try {
-        const res = await api.get("/me");
-        const u   = res.data?.data ?? {};
+        const u = await getMe();
         setPinIsSet(u.pin_is_set ?? !!u.transaction_pin);
         setKycStatus(u.kyc_status ?? (u.is_kyc_verified ? "approved" : "none"));
       } catch {}
@@ -654,10 +660,8 @@ export default function LandDetails() {
     previewTimer.current = setTimeout(async () => {
       setPreviewLoading(true);
       try {
-        const res = await api.get(`/lands/${id}/purchase/preview`, {
-          params: { units, use_rewards: useRewards ? 1 : 0 },
-        });
-        setPreview(res.data.data);
+        const preview = await getPurchasePreview(id, units, useRewards);
+        setPreview(preview);
       } catch {
         setPreview(null);
       } finally {
@@ -707,11 +711,7 @@ export default function LandDetails() {
 
     try {
       if (modalType === "purchase") {
-        const { data: res } = await api.post(`/lands/${id}/purchase`, {
-          units,
-          use_rewards:     useRewards,
-          transaction_pin: transactionPin,
-        });
+        const res = await purchaseLand(id, units, transactionPin, useRewards);
 
         const savings = (res.total_discount_kobo ?? 0) + (res.paid_from_rewards_kobo ?? 0);
         toast.success(
@@ -739,10 +739,7 @@ export default function LandDetails() {
           }, 800);
         }
       } else {
-        await api.post(`/lands/${id}/sell`, {
-          units,
-          transaction_pin: transactionPin,
-        });
+        await sellLand(id, units, transactionPin);
         toast.success("Transaction Successful");
       }
 

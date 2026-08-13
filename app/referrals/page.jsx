@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import api from "../../utils/api";
+import { getReferralsDashboard, claimReferralReward } from "../../services/referralsService";
 import toast from "react-hot-toast";
 import {
   Gift, Copy, Check, Users, CheckCircle,
@@ -89,8 +89,7 @@ export default function ReferralDashboard() {
 
   const fetchDashboard = async () => {
     try {
-      const res  = await api.get("/referrals/dashboard");
-      const data = res.data.data;
+      const data = await getReferralsDashboard();
 
       const derivedReferrals =
         data.referrals?.length > 0
@@ -165,7 +164,7 @@ export default function ReferralDashboard() {
 
   const claimReward = async (rewardId) => {
     try {
-      await api.post(`/referrals/rewards/${rewardId}/claim`);
+      await claimReferralReward(rewardId);
       toast.success("Reward claimed!");
       fetchDashboard();
     } catch (err) {

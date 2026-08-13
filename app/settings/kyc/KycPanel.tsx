@@ -6,7 +6,7 @@ import type { AxiosError } from "axios";
 import {
   CheckCircle, Camera, CreditCard, ImageIcon, MapPin, User, Shield
 } from "lucide-react";
-import api from "../../../utils/api";
+import { getKycStatus, submitKyc } from "../../../services/kycService";
 
 import { STEPS, ID_TYPES, type KycForm, type KycFormErrors } from "./constants";
 import StatusBanner, { type KycInfo } from "./StatusBanner";
@@ -59,8 +59,7 @@ export default function KycPanel({ kycStatus: kycStatusProp, setKycStatus: setKy
   useEffect(() => {
     (async () => {
       try {
-        const { data } = await api.get("/kyc/status");
-        const kycData: KycInfo = data.data;
+        const kycData = (await getKycStatus()) as KycInfo;
         setKycStatus(kycData);
         setShowForm(["not_submitted", "rejected", "resubmit"].includes(kycData.status));
       } catch {
@@ -187,11 +186,11 @@ export default function KycPanel({ kycStatus: kycStatusProp, setKycStatus: setKy
       if (form.id_back)  fd.append("id_back",  form.id_back);
       if (form.selfie)   fd.append("selfie",   form.selfie);
 
-      await api.post("/kyc/submit", fd);
+      await submitKyc(fd);
 
       try {
-        const { data: statusRes } = await api.get("/kyc/status");
-        setKycStatus(statusRes.data);
+        const statusRes = (await getKycStatus()) as KycInfo;
+        setKycStatus(statusRes);
       } catch {
         setKycStatus({ status: "pending", submission_date: new Date().toISOString() });
       }

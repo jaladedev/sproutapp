@@ -4,8 +4,9 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Bell, CheckCheck, Clock, CheckCircle } from "lucide-react";
 import api from "../../utils/api";
+import { markAllNotificationsRead, markNotificationRead } from "../../services/notificationService";
 
-// ── Inline service calls (bypasses notificationService shape issues) ──────────
+// ── Inline fetch (bypasses notificationService's paginator-only shape) ────────
 
 async function apiFetchNotifications() {
   // GET /notifications → { success, notifications: <paginator> }
@@ -14,16 +15,6 @@ async function apiFetchNotifications() {
   const payload = res.data?.notifications;
   // Handle both paginated ({ data: [...] }) and plain array
   return Array.isArray(payload) ? payload : (payload?.data ?? []);
-}
-
-async function apiMarkAllRead() {
-  // POST /notifications/read
-  await api.post("/notifications/read");
-}
-
-async function apiMarkRead(id) {
-  // POST /notifications/{id}/read
-  await api.post(`/notifications/${id}/read`);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -50,7 +41,7 @@ export default function NotificationsPage() {
 
   const handleMarkAllAsRead = async () => {
     try {
-      await apiMarkAllRead();
+      await markAllNotificationsRead();
       // Optimistic update — mark all locally without refetch
       setNotifications((prev) => prev.map((n) => ({ ...n, read_at: n.read_at ?? new Date().toISOString() })));
     } catch {
@@ -60,7 +51,7 @@ export default function NotificationsPage() {
 
   const handleMarkAsRead = async (id) => {
     try {
-      await apiMarkRead(id);
+      await markNotificationRead(id);
       // Optimistic update
       setNotifications((prev) =>
         prev.map((n) => n.id === id ? { ...n, read_at: n.read_at ?? new Date().toISOString() } : n)
