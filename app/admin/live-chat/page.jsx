@@ -584,7 +584,7 @@ export default function AgentChatPage() {
                     </p>
                     <div className="flex items-center gap-2 mt-0.5">
                       <p className="text-[11px] text-white/55">{activeTicket.reference}</p>
-                      <span className="w-1 h-1 rounded-full bg-white/[1.5%]" />
+                      <span className="w-1 h-1 rounded-full bg-white/1.5" />
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-md"
                         style={{
                           background: `${CATEGORY_COLORS[activeTicket.category] || "#6B7280"}20`,

@@ -7,6 +7,8 @@ import {
   CheckCircle, Camera, CreditCard, ImageIcon, MapPin, User, Shield
 } from "lucide-react";
 import { getKycStatus, submitKyc } from "../../../services/kycService";
+import toast from "react-hot-toast";
+import { saveKycDraft, loadKycDraft, clearKycDraft, isDraftMeaningful } from "../../../utils/kycDraft";
 
 import { STEPS, ID_TYPES, type KycForm, type KycFormErrors } from "./constants";
 import StatusBanner, { type KycInfo } from "./StatusBanner";
@@ -61,16 +63,42 @@ export default function KycPanel({ kycStatus: kycStatusProp, setKycStatus: setKy
       try {
         const kycData = (await getKycStatus()) as KycInfo;
         setKycStatus(kycData);
-        setShowForm(["not_submitted", "rejected", "resubmit"].includes(kycData.status));
+        const editable = ["not_submitted", "rejected", "resubmit"].includes(kycData.status);
+        setShowForm(editable);
+
+        if (editable) {
+          const draft = loadKycDraft();
+          if (isDraftMeaningful(draft)) {
+            setForm((p) => ({ ...p, ...draft.form }));
+            setStep(draft.step);
+            toast.success("Restored your saved KYC draft");
+          }
+        }
       } catch {
         setKycStatus({ status: "not_submitted" });
         setShowForm(true);
+
+        const draft = loadKycDraft();
+        if (isDraftMeaningful(draft)) {
+          setForm((p) => ({ ...p, ...draft.form }));
+          setStep(draft.step);
+          toast.success("Restored your saved KYC draft");
+        }
       } finally {
         setLoading(false);
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Auto-save the in-progress draft (debounced) while the form is open.
+  // File fields (id_front/id_back/selfie) are intentionally excluded —
+  // see utils/kycDraft.ts.
+  useEffect(() => {
+    if (!showForm) return;
+    const timer = setTimeout(() => saveKycDraft(form, step), 800);
+    return () => clearTimeout(timer);
+  }, [form, step, showForm]);
 
   const setField = (k: keyof KycForm, v: any) => setForm(p => ({ ...p, [k]: v }));
   const setFile  = (k: keyof KycForm, f: File | null) => setForm(p => ({ ...p, [k]: f }));
@@ -187,6 +215,7 @@ export default function KycPanel({ kycStatus: kycStatusProp, setKycStatus: setKy
       if (form.selfie)   fd.append("selfie",   form.selfie);
 
       await submitKyc(fd);
+      clearKycDraft();
 
       try {
         const statusRes = (await getKycStatus()) as KycInfo;
