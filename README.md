@@ -33,8 +33,9 @@ Other scripts: `npm run build`, `npm run start` (production server), `npm run li
 
 All client-exposed vars are prefixed `NEXT_PUBLIC_` (Next.js requirement —
 anything without that prefix is server-only and won't reach the browser).
-There's currently no `.env.example` committed; these are the vars the app
-actually reads from `process.env`:
+A `.env.example` is committed at the repo root — copy it to `.env.local`
+to get started. These are the vars the app actually reads from
+`process.env`:
 
 | Variable | Required | Purpose |
 |---|---|---|
@@ -42,6 +43,7 @@ actually reads from `process.env`:
 | `NEXT_PUBLIC_APP_NAME` | No | Display name used in a few UI strings / metadata. |
 | `NEXT_PUBLIC_APP_URL` | No | Public URL of this frontend, used for absolute links (e.g. referral links, sitemap). |
 | `NEXT_PUBLIC_JWT_TTL_MINUTES` | No (default `1440`) | How long the `auth_token`/`user_role` cookies are set to live client-side. Should match (or be ≤) the actual JWT expiry issued by the API — see [Auth flow](#auth-flow). |
+| `NEXT_PUBLIC_R2_URL` | No | Base URL for R2/CDN-hosted images (land photos, blog covers). Used by `utils/images.js`. |
 | `NEXT_PUBLIC_PUSHER_KEY` | Yes, for real-time features | Pusher-protocol key for the Reverb broadcaster (admin live chat, notifications). |
 | `NEXT_PUBLIC_REVERB_HOST` | Yes, for real-time features | Reverb server host (scheme is stripped automatically if included). |
 | `NEXT_PUBLIC_REVERB_PORT` | Yes, for real-time features | Reverb server port. |
