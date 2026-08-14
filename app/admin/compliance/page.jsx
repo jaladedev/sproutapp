@@ -2,7 +2,14 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import api from "../../../utils/api";
+import {
+  getComplianceStats,
+  getComplianceScreenings,
+  getComplianceScreening,
+  clearScreening,
+  blockScreening,
+  rescreenUser,
+} from "../../../services/complianceService";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -85,12 +92,12 @@ export default function ComplianceDashboard() {
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [statsRes, screenRes] = await Promise.all([
-        api.get("/admin/compliance/stats"),
-        api.get("/admin/compliance/screenings"),
+      const [statsBody, screenBody] = await Promise.all([
+        getComplianceStats(),
+        getComplianceScreenings(),
       ]);
-      setStats(statsRes.data.data);
-      setScreenings(screenRes.data.data.data ?? screenRes.data.data ?? []);
+      setStats(statsBody.data);
+      setScreenings(screenBody.data.data ?? screenBody.data ?? []);
     } catch {
       toast.error("Failed to load compliance data");
     } finally {
@@ -102,8 +109,8 @@ export default function ComplianceDashboard() {
 
   const openModal = async (screeningId) => {
     try {
-      const res = await api.get(`/admin/compliance/screenings/${screeningId}`);
-      setSelected(res.data.data);
+      const body = await getComplianceScreening(screeningId);
+      setSelected(body.data);
       setNotes("");
       setShowModal(true);
     } catch {
@@ -120,7 +127,7 @@ export default function ComplianceDashboard() {
     }
     try {
       setActionLoading(true);
-      await api.post(`/admin/compliance/screenings/${selected.id}/clear`, { notes });
+      await clearScreening(selected.id, notes);
       toast.success("User cleared after manual review");
       closeModal();
       fetchAll();
@@ -139,7 +146,7 @@ export default function ComplianceDashboard() {
     if (!window.confirm("Block this user? This will suspend their account.")) return;
     try {
       setActionLoading(true);
-      await api.post(`/admin/compliance/screenings/${selected.id}/block`, { notes });
+      await blockScreening(selected.id, notes);
       toast.success("User blocked");
       closeModal();
       fetchAll();
@@ -152,7 +159,7 @@ export default function ComplianceDashboard() {
 
   const handleRescreen = async (userId) => {
     try {
-      await api.post(`/admin/compliance/users/${userId}/rescreen`);
+      await rescreenUser(userId);
       toast.success("Re-screening queued");
     } catch {
       toast.error("Failed to queue re-screen");

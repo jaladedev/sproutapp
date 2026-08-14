@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import api  from "@/utils/api";
+import { getMe } from "@/services/userService";
 import { ArrowLeft, Clock, Eye, Folder, Tag, Calendar } from "lucide-react";
 
 const API = process.env.NEXT_PUBLIC_API_URL;
@@ -19,8 +19,8 @@ export default function BlogPostPage() {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-  api.get("/me")
-    .then(res => setUser(res.data))
+  getMe()
+    .then(u => setUser(u))
     .catch(() => setUser(null));
 }, []);
 

@@ -3,7 +3,14 @@
 import { useEffect, useState, useCallback, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import api from "../../../utils/api";
+import {
+  getAdminTicketAttachment,
+  replyToAdminTicket,
+  updateAdminTicketStatus,
+  deleteAdminTicket,
+  getAdminTickets,
+  getAdminTicket,
+} from "../../../services/supportService";
 import toast from "react-hot-toast";
 import {
   MessageSquare, Clock, CheckCircle, AlertCircle,
@@ -54,11 +61,8 @@ function Attachment({ messageId, path, isAdmin }) {
     if (blobUrl) return blobUrl;
     setLoading(true);
     try {
-      const res = await api.get(
-        `/admin/support/tickets/${messageId}/attachment`,
-        { responseType: "blob" }
-      );
-      const url = URL.createObjectURL(res.data);
+      const blob = await getAdminTicketAttachment(messageId);
+      const url = URL.createObjectURL(blob);
       setBlobUrl(url);
       return url;
     } catch {
@@ -219,16 +223,13 @@ function TicketModal({ ticket, onClose, onUpdate }) {
       form.append("message", reply);
       if (attachment) form.append("attachment", attachment);
 
-      const res = await api.post(
-        `/admin/support/tickets/${localTicket.id}/reply`,
-        form
-      );
+      const res = await replyToAdminTicket(localTicket.id, form);
 
-      const updated = res.data.data;
+      const updated = res.data;
       setLocalTicket(prev => ({
         ...prev,
         status: "waiting",
-        messages: updated.messages ?? [...(prev.messages || []), res.data.data],
+        messages: updated.messages ?? [...(prev.messages || []), res.data],
       }));
       setReply("");
       setAttachment(null);
@@ -243,7 +244,7 @@ function TicketModal({ ticket, onClose, onUpdate }) {
   const handleStatusChange = async (status) => {
     try {
       setStatusUpdating(true);
-      await api.patch(`/admin/support/tickets/${localTicket.id}/status`, { status });
+      await updateAdminTicketStatus(localTicket.id, { status });
       setLocalTicket(prev => ({ ...prev, status }));
       toast.success(`Ticket marked as ${status}`);
       onUpdate();
@@ -253,7 +254,7 @@ function TicketModal({ ticket, onClose, onUpdate }) {
 
   const handlePriorityChange = async (priority) => {
     try {
-      await api.patch(`/admin/support/tickets/${localTicket.id}/status`, { priority });
+      await updateAdminTicketStatus(localTicket.id, { priority });
       setLocalTicket(prev => ({ ...prev, priority }));
       onUpdate();
     } catch { toast.error("Failed to update priority"); }
@@ -264,7 +265,7 @@ function TicketModal({ ticket, onClose, onUpdate }) {
     if (!window.confirm(`Permanently delete ticket ${localTicket.reference}?`)) return;
     try {
       setDeleting(true);
-      await api.delete(`/admin/support/tickets/${localTicket.id}`);
+      await deleteAdminTicket(localTicket.id);
       toast.success("Ticket deleted");
       onClose(); onUpdate();
     } catch(err) {
@@ -489,8 +490,8 @@ function AdminSupportTicketsInner() {
       if (filters.priority) params.append("priority", filters.priority);
       if (filters.category) params.append("category", filters.category);
       if (filters.search)   params.append("search",   filters.search);
-      const res = await api.get(`/admin/support/tickets?${params}`);
-      const data = res.data.data;
+      const body = await getAdminTickets(params.toString());
+      const data = body.data;
       setTickets(data.data ?? data);
       setPagination({
         currentPage: data.current_page ?? 1,
@@ -508,8 +509,8 @@ function AdminSupportTicketsInner() {
 
   const openTicket = async (ticketId) => {
     try {
-      const res = await api.get(`/admin/support/tickets/${ticketId}`);
-      setSelectedTicket(res.data.data);
+      const body = await getAdminTicket(ticketId);
+      setSelectedTicket(body.data);
     } catch {
       toast.error("Failed to load ticket details");
     }

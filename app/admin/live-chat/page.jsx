@@ -2,7 +2,13 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
-import api from "../../../utils/api";
+import {
+  getLiveChatQueue,
+  claimLiveChatTicket,
+  sendAgentLiveChatMessage,
+  sendAgentLiveChatTyping,
+  endLiveChat,
+} from "../../../services/supportService";
 import toast from "react-hot-toast";
 import {
   ArrowLeft, Send, X, Clock, MessageSquare, Inbox,
@@ -237,8 +243,7 @@ export default function AgentChatPage() {
   /* ── Fetch queue ── */
   const fetchQueue = useCallback(async () => {
     try {
-      const res = await api.get("/admin/live-chat/queue");
-      setQueue(res.data.data ?? []);
+      setQueue(await getLiveChatQueue());
     } catch {
       toast.error("Failed to load queue");
     } finally {
@@ -314,8 +319,7 @@ export default function AgentChatPage() {
   const handleClaim = async (ticket) => {
     setClaiming(true);
     try {
-      const res  = await api.post(`/admin/live-chat/${ticket.id}/claim`);
-      const data = res.data.data;
+      const data = await claimLiveChatTicket(ticket.id);
       setActiveTicket(data);
       setMessages(data.messages ?? []);
       setQueue((q) => q.filter((t) => t.id !== ticket.id));
@@ -350,9 +354,9 @@ export default function AgentChatPage() {
     stopTyping();
 
     try {
-      const res = await api.post(`/admin/live-chat/${activeTicket.id}/message`, { body });
+      const msg = await sendAgentLiveChatMessage(activeTicket.id, body);
       setMessages((prev) =>
-        prev.map((m) => (m.id === optimistic.id ? res.data.data : m))
+        prev.map((m) => (m.id === optimistic.id ? msg : m))
       );
     } catch {
       setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
@@ -367,7 +371,7 @@ export default function AgentChatPage() {
   const stopTyping = useCallback(async () => {
     if (!isTypingRef.current || !activeTicket) return;
     isTypingRef.current = false;
-    try { await api.post(`/admin/live-chat/${activeTicket.id}/typing`, { is_typing: false }); } catch {}
+    try { await sendAgentLiveChatTyping(activeTicket.id, false); } catch {}
   }, [activeTicket]);
 
   const handleDraftChange = useCallback(async (val) => {
@@ -376,7 +380,7 @@ export default function AgentChatPage() {
     clearTimeout(typingTimer.current);
     if (val && !isTypingRef.current) {
       isTypingRef.current = true;
-      try { await api.post(`/admin/live-chat/${activeTicket.id}/typing`, { is_typing: true }); } catch {}
+      try { await sendAgentLiveChatTyping(activeTicket.id, true); } catch {}
     }
     typingTimer.current = setTimeout(stopTyping, 2500);
   }, [activeTicket, stopTyping]);
@@ -387,7 +391,7 @@ export default function AgentChatPage() {
     if (!window.confirm("End this chat and resolve the ticket?")) return;
     setEnding(true);
     try {
-      await api.post(`/admin/live-chat/${activeTicket.id}/end`);
+      await endLiveChat(activeTicket.id);
       toast.success("Chat ended — ticket resolved");
       setActiveTicket(null);
       setMessages([]);

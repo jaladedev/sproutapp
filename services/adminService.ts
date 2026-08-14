@@ -106,3 +106,123 @@ export async function approveAllWithdrawals(): Promise<unknown> {
   const res = await api.post("/admin/withdrawals/approve-all");
   return res.data;
 }
+
+/* ── Dashboard ───────────────────────────────────────────────────────── */
+
+export interface AdminDashboardStats {
+  lands: { total: number; active: number; disabled: number };
+  kyc: { total: number; pending: number; approved: number; rejected: number };
+  referrals: { total: number; completed: number; pending: number; totalRewards: number };
+  support: { total: number; open: number; waiting: number };
+  users: { total: number; suspended: number; admins: number };
+  blog: { total: number; published: number; draft: number };
+  withdrawals: { pending: number; processing: number };
+  liveChat: { queued: number; active: number };
+  compliance: { pendingReview: number; blocked: number; flagged: number };
+}
+
+/* Fetches the ~18 lightweight count endpoints the admin dashboard needs
+   in parallel, tolerating individual failures (Promise.allSettled), and
+   returns them pre-normalized into the shape the dashboard renders. */
+export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
+  const results = await Promise.allSettled([
+    api.get("/admin/lands"),
+    api.get("/admin/kyc?per_page=1"),
+    api.get("/admin/kyc?per_page=1&status=pending"),
+    api.get("/admin/kyc?per_page=1&status=approved"),
+    api.get("/admin/referrals/stats"),
+    api.get("/admin/support/tickets?per_page=1"),
+    api.get("/admin/support/tickets?per_page=1&status=open"),
+    api.get("/admin/support/tickets?per_page=1&status=waiting"),
+    api.get("/admin/users?per_page=1"),
+    api.get("/admin/users?per_page=1&suspended=true"),
+    api.get("/admin/users?per_page=1&is_admin=true"),
+    api.get("/admin/blog?per_page=1"),
+    api.get("/admin/blog?per_page=1&status=published"),
+    api.get("/admin/blog?per_page=1&status=draft"),
+    api.get("/admin/withdrawals?status=pending&per_page=1"),
+    api.get("/admin/withdrawals?status=processing&per_page=1"),
+    api.get("/admin/live-chat/queue"),
+    api.get("/admin/compliance/stats"),
+  ]);
+
+  const get = (index: number) =>
+    results[index].status === "fulfilled"
+      ? (results[index] as PromiseFulfilledResult<any>).value
+      : null;
+
+  results.forEach((result, i) => {
+    if (result.status === "rejected") {
+      console.warn(`Dashboard request ${i} failed:`, (result as PromiseRejectedResult).reason);
+    }
+  });
+
+  const [
+    landsRes, kycAllRes, kycPendingRes, kycApprovedRes,
+    referralsRes,
+    supportAllRes, supportOpenRes, supportWaitingRes,
+    usersAllRes, usersSuspendedRes, usersAdminRes,
+    blogAllRes, blogPublishedRes, blogDraftRes,
+    withdrawalsPendingRes, withdrawalsProcessingRes,
+    liveChatQueueRes, complianceRes,
+  ] = results.map((_, i) => get(i));
+
+  const landsData = landsRes?.data?.data?.data ?? landsRes?.data?.data ?? [];
+  const landsTotal = landsRes?.data?.data?.total ?? landsData.length;
+
+  const kycTotal = kycAllRes?.data?.data?.total ?? 0;
+  const kycPending = kycPendingRes?.data?.data?.total ?? 0;
+  const kycApproved = kycApprovedRes?.data?.data?.total ?? 0;
+  const compliance = complianceRes?.data?.data ?? {};
+
+  const ref = referralsRes?.data?.data ?? {};
+
+  const supportTotal = supportAllRes?.data?.data?.total ?? 0;
+  const supportOpen = supportOpenRes?.data?.data?.total ?? 0;
+  const supportWaiting = supportWaitingRes?.data?.data?.total ?? 0;
+
+  const usersTotal = usersAllRes?.data?.data?.total ?? 0;
+  const usersSuspended = usersSuspendedRes?.data?.data?.total ?? 0;
+  const usersAdmins = usersAdminRes?.data?.data?.total ?? 0;
+
+  const blogTotal = blogAllRes?.data?.data?.total ?? 0;
+  const blogPublished = blogPublishedRes?.data?.data?.total ?? 0;
+  const blogDraft = blogDraftRes?.data?.data?.total ?? 0;
+
+  const wPending = withdrawalsPendingRes?.data?.data?.total ?? 0;
+  const wProcessing = withdrawalsProcessingRes?.data?.data?.total ?? 0;
+
+  const queueData = liveChatQueueRes?.data?.data ?? [];
+  const lcQueued = queueData.filter((t: any) => !t.agent_id).length;
+  const lcActive = queueData.filter((t: any) => !!t.agent_id).length;
+
+  return {
+    lands: {
+      total: landsTotal,
+      active: landsData.filter((l: any) => l.is_available).length,
+      disabled: landsData.filter((l: any) => !l.is_available).length,
+    },
+    kyc: {
+      total: kycTotal,
+      pending: kycPending,
+      approved: kycApproved,
+      rejected: Math.max(0, kycTotal - kycPending - kycApproved),
+    },
+    referrals: {
+      total: ref.total_referrals ?? 0,
+      completed: ref.completed_referrals ?? 0,
+      pending: ref.pending_referrals ?? 0,
+      totalRewards: ref.total_rewards_issued ?? 0,
+    },
+    support: { total: supportTotal, open: supportOpen, waiting: supportWaiting },
+    users: { total: usersTotal, suspended: usersSuspended, admins: usersAdmins },
+    blog: { total: blogTotal, published: blogPublished, draft: blogDraft },
+    withdrawals: { pending: wPending, processing: wProcessing },
+    liveChat: { queued: lcQueued, active: lcActive },
+    compliance: {
+      pendingReview: compliance.pending_review ?? 0,
+      blocked: compliance.blocked_users ?? 0,
+      flagged: compliance.flagged_users ?? 0,
+    },
+  };
+}

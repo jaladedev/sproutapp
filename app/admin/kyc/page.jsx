@@ -2,7 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import api from "../../../utils/api";
+import {
+  getAdminKycList,
+  getAdminKycDetail,
+  approveKyc,
+  rejectKyc,
+  resubmitKyc,
+} from "../../../services/kycService";
 import toast from "react-hot-toast";
 import { AuthImage } from "../../components/AuthImage";
 import {
@@ -43,8 +49,8 @@ export default function AdminKycManagement() {
   const fetchKycs = async () => {
     try {
       setLoading(true);
-      const res = await api.get(`/admin/kyc?status=${filter}`);
-      setKycs(res.data.data.data ?? res.data.data ?? []);
+      const body = await getAdminKycList(filter);
+      setKycs(body.data.data ?? body.data ?? []);
     } catch {
       toast.error("Failed to load KYC submissions");
     } finally {
@@ -54,8 +60,8 @@ export default function AdminKycManagement() {
 
   const viewDetails = async (kycId) => {
     try {
-      const res = await api.get(`/admin/kyc/${kycId}`);
-      setSelectedKyc(res.data.data);
+      const body = await getAdminKycDetail(kycId);
+      setSelectedKyc(body.data);
       setRejectionReason("");
       setBlobUrls({});
       setShowModal(true);
@@ -75,7 +81,7 @@ export default function AdminKycManagement() {
     if (!window.confirm("Approve this KYC submission?")) return;
     try {
       setActionLoading(true);
-      await api.post(`/admin/kyc/${kycId}/approve`);
+      await approveKyc(kycId);
       toast.success("KYC approved successfully");
       closeModal();
       fetchKycs();
@@ -90,7 +96,7 @@ export default function AdminKycManagement() {
     if (!rejectionReason.trim()) { toast.error("Please provide a rejection reason"); return; }
     try {
       setActionLoading(true);
-      await api.post(`/admin/kyc/${kycId}/reject`, { reason: rejectionReason });
+      await rejectKyc(kycId, rejectionReason);
       toast.success("KYC rejected");
       closeModal();
       fetchKycs();
@@ -105,7 +111,7 @@ export default function AdminKycManagement() {
     if (!rejectionReason.trim()) { toast.error("Please provide a reason for resubmission"); return; }
     try {
       setActionLoading(true);
-      await api.post(`/admin/kyc/${kycId}/resubmit`, { reason: rejectionReason });
+      await resubmitKyc(kycId, rejectionReason);
       toast.success("Resubmission requested");
       closeModal();
       fetchKycs();

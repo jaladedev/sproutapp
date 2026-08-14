@@ -132,3 +132,135 @@ export async function fetchFaqs(): Promise<FaqGroups> {
   const res = await api.get("/support/faqs");
   return res.data.data; // { account: [...], payment: [...], ... }
 }
+
+// ── Ticket message attachments ────────────────────────────────────────────────
+export async function fetchTicketMessageAttachment(
+  ticketId: string | number,
+  messageId: string | number
+): Promise<Blob> {
+  const res = await api.get(
+    `/support/tickets/${ticketId}/messages/${messageId}/attachment`,
+    { responseType: "blob" }
+  );
+  return res.data;
+}
+
+// ── Live chat (auth required) ─────────────────────────────────────────────────
+
+export interface LiveChatRequestInput {
+  subject: string;
+  category: string;
+  message: string;
+}
+
+export interface LiveChatRequestResponse {
+  ticket_id: string | number;
+  reference: string;
+  queue_pos: number;
+  [key: string]: unknown;
+}
+
+export async function requestLiveChat(
+  form: LiveChatRequestInput
+): Promise<LiveChatRequestResponse> {
+  const res = await api.post("/support/live-chat/request", form);
+  return res.data;
+}
+
+export interface LiveChatMessageResponse {
+  data: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+export async function sendLiveChatMessage(
+  ticketId: string | number,
+  fd: FormData
+): Promise<LiveChatMessageResponse> {
+  const res = await api.post(`/support/live-chat/${ticketId}/message`, fd, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return res.data;
+}
+
+export async function sendLiveChatTyping(
+  ticketId: string | number,
+  isTyping: boolean
+): Promise<void> {
+  await api.post(`/support/live-chat/${ticketId}/typing`, { is_typing: isTyping });
+}
+
+// ── Admin ticket management ────────────────────────────────────────────────────
+
+export async function getAdminTicketAttachment(
+  messageId: string | number
+): Promise<Blob> {
+  const res = await api.get(`/admin/support/tickets/${messageId}/attachment`, {
+    responseType: "blob",
+  });
+  return res.data;
+}
+
+export interface AdminReplyResponse {
+  data: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+export async function replyToAdminTicket(
+  ticketId: string | number,
+  form: FormData
+): Promise<AdminReplyResponse> {
+  const res = await api.post(`/admin/support/tickets/${ticketId}/reply`, form);
+  return res.data;
+}
+
+export async function updateAdminTicketStatus(
+  ticketId: string | number,
+  fields: { status?: string; priority?: string }
+): Promise<void> {
+  await api.patch(`/admin/support/tickets/${ticketId}/status`, fields);
+}
+
+export async function deleteAdminTicket(ticketId: string | number): Promise<void> {
+  await api.delete(`/admin/support/tickets/${ticketId}`);
+}
+
+export async function getAdminTickets(params: string): Promise<unknown> {
+  const res = await api.get(`/admin/support/tickets?${params}`);
+  return res.data;
+}
+
+export async function getAdminTicket(ticketId: string | number): Promise<unknown> {
+  const res = await api.get(`/admin/support/tickets/${ticketId}`);
+  return res.data;
+}
+
+// ── Admin live-chat (agent side) ────────────────────────────────────────────────
+
+export async function getLiveChatQueue(): Promise<unknown[]> {
+  const res = await api.get("/admin/live-chat/queue");
+  return res.data.data ?? [];
+}
+
+export async function claimLiveChatTicket(ticketId: string | number): Promise<any> {
+  const res = await api.post(`/admin/live-chat/${ticketId}/claim`);
+  return res.data.data;
+}
+
+export async function sendAgentLiveChatMessage(
+  ticketId: string | number,
+  body: string
+): Promise<any> {
+  const res = await api.post(`/admin/live-chat/${ticketId}/message`, { body });
+  return res.data.data;
+}
+
+export async function sendAgentLiveChatTyping(
+  ticketId: string | number,
+  isTyping: boolean
+): Promise<void> {
+  await api.post(`/admin/live-chat/${ticketId}/typing`, { is_typing: isTyping });
+}
+
+export async function endLiveChat(ticketId: string | number): Promise<void> {
+  await api.post(`/admin/live-chat/${ticketId}/end`);
+}

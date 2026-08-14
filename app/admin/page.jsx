@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import api from "../../utils/api";
+import { getAdminDashboardStats } from "../../services/adminService";
 import toast from "react-hot-toast";
 import {
   MapPin, ShieldCheck, Gift, Wallet, FileText,
@@ -30,93 +30,7 @@ export default function AdminDashboard() {
 
   const fetchDashboardStats = async () => {
   try {
-    const results = await Promise.allSettled([
-      api.get("/admin/lands"),
-      api.get("/admin/kyc?per_page=1"),
-      api.get("/admin/kyc?per_page=1&status=pending"),
-      api.get("/admin/kyc?per_page=1&status=approved"),
-      api.get("/admin/referrals/stats"),
-      api.get("/admin/support/tickets?per_page=1"),
-      api.get("/admin/support/tickets?per_page=1&status=open"),
-      api.get("/admin/support/tickets?per_page=1&status=waiting"),
-      api.get("/admin/users?per_page=1"),
-      api.get("/admin/users?per_page=1&suspended=true"),
-      api.get("/admin/users?per_page=1&is_admin=true"),
-      api.get("/admin/blog?per_page=1"),
-      api.get("/admin/blog?per_page=1&status=published"),
-      api.get("/admin/blog?per_page=1&status=draft"),
-      api.get("/admin/withdrawals?status=pending&per_page=1"),
-      api.get("/admin/withdrawals?status=processing&per_page=1"),
-      api.get("/admin/live-chat/queue"),
-      api.get("/admin/compliance/stats"),
-    ]);
-
-    // Helper: safely get response data or null if request failed
-    const get = (index) => results[index].status === "fulfilled"
-      ? results[index].value
-      : null;
-
-    const [
-      landsRes, kycAllRes, kycPendingRes, kycApprovedRes,
-      referralsRes,
-      supportAllRes, supportOpenRes, supportWaitingRes,
-      usersAllRes, usersSuspendedRes, usersAdminRes,
-      blogAllRes, blogPublishedRes, blogDraftRes,
-      withdrawalsPendingRes, withdrawalsProcessingRes,
-      liveChatQueueRes, complianceRes,
-    ] = results.map((_, i) => get(i));
-
-    // Log any failed requests so you can see which ones in the console
-    results.forEach((result, i) => {
-      if (result.status === "rejected") {
-        console.warn(`Dashboard request ${i} failed:`, result.reason);
-      }
-    });
-
-    const landsData  = landsRes?.data?.data?.data ?? landsRes?.data?.data ?? [];
-    const landsTotal = landsRes?.data?.data?.total ?? landsData.length;
-
-    const kycTotal    = kycAllRes?.data?.data?.total      ?? 0;
-    const kycPending  = kycPendingRes?.data?.data?.total  ?? 0;
-    const kycApproved = kycApprovedRes?.data?.data?.total ?? 0;
-    const compliance = complianceRes?.data?.data ?? {};
-
-    const ref = referralsRes?.data?.data ?? {};
-
-    const supportTotal   = supportAllRes?.data?.data?.total     ?? 0;
-    const supportOpen    = supportOpenRes?.data?.data?.total    ?? 0;
-    const supportWaiting = supportWaitingRes?.data?.data?.total ?? 0;
-
-    const usersTotal     = usersAllRes?.data?.data?.total       ?? 0;
-    const usersSuspended = usersSuspendedRes?.data?.data?.total ?? 0;
-    const usersAdmins    = usersAdminRes?.data?.data?.total     ?? 0;
-
-    const blogTotal     = blogAllRes?.data?.data?.total      ?? 0;
-    const blogPublished = blogPublishedRes?.data?.data?.total ?? 0;
-    const blogDraft     = blogDraftRes?.data?.data?.total    ?? 0;
-
-    const wPending    = withdrawalsPendingRes?.data?.data?.total    ?? 0;
-    const wProcessing = withdrawalsProcessingRes?.data?.data?.total ?? 0;
-
-    const queueData = liveChatQueueRes?.data?.data ?? [];
-    const lcQueued  = queueData.filter((t) => !t.agent_id).length;
-    const lcActive  = queueData.filter((t) => !!t.agent_id).length;
-
-    setStats({
-      lands: {
-        total:    landsTotal,
-        active:   landsData.filter((l) => l.is_available).length,
-        disabled: landsData.filter((l) => !l.is_available).length,
-      },
-      kyc:         { total: kycTotal, pending: kycPending, approved: kycApproved, rejected: Math.max(0, kycTotal - kycPending - kycApproved) },
-      referrals:   { total: ref.total_referrals ?? 0, completed: ref.completed_referrals ?? 0, pending: ref.pending_referrals ?? 0, totalRewards: ref.total_rewards_issued ?? 0 },
-      support:     { total: supportTotal, open: supportOpen, waiting: supportWaiting },
-      users:       { total: usersTotal, suspended: usersSuspended, admins: usersAdmins },
-      blog:        { total: blogTotal, published: blogPublished, draft: blogDraft },
-      withdrawals: { pending: wPending, processing: wProcessing },
-      liveChat:    { queued: lcQueued, active: lcActive },
-      compliance: {  pendingReview: compliance.pending_review ?? 0,  blocked: compliance.blocked_users  ?? 0, flagged:  compliance.flagged_users  ?? 0},
-    });
+    setStats(await getAdminDashboardStats());
   } catch (err) {
     console.error("Dashboard stats error:", err);
     toast.error("Failed to load some dashboard stats");

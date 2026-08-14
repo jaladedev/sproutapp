@@ -3,7 +3,17 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import api from "../../../utils/api";
+import {
+  getAdminBlogPosts,
+  getAdminBlogPost,
+  createBlogPost,
+  updateBlogPost,
+  deleteBlogPost,
+  getBlogCategories,
+  getBlogTags,
+  addTaxonomyItem,
+  deleteTaxonomyItem,
+} from "../../../services/blogService";
 import toast from "react-hot-toast";
 import {
   ArrowLeft, Plus, Eye, Pencil, Trash2, Search, X,
@@ -86,10 +96,10 @@ function PostModal({ post, categories, tags, onClose, onSaved }) {
       if (isEdit) fd.append("_method", "POST");
 
       if (isEdit) {
-        await api.post(`/admin/blog/${post.id}`, fd);
+        await updateBlogPost(post.id, fd);
         toast.success("Post updated");
       } else {
-        await api.post("/admin/blog", fd);
+        await createBlogPost(fd);
         toast.success("Post created");
       }
       onSaved();
@@ -247,14 +257,13 @@ function PostModal({ post, categories, tags, onClose, onSaved }) {
 function TaxonomyManager({ type, items, onRefresh }) {
   const [newName, setNewName] = useState("");
   const [saving, setSaving]  = useState(false);
-  const endpoint = type === "category" ? "/admin/blog/categories" : "/admin/blog/tags";
   const label    = type === "category" ? "Category" : "Tag";
 
   const handleAdd = async () => {
     if (!newName.trim()) return;
     setSaving(true);
     try {
-      await api.post(endpoint, { name: newName });
+      await addTaxonomyItem(type, newName);
       toast.success(`${label} added`);
       setNewName("");
       onRefresh();
@@ -268,7 +277,7 @@ function TaxonomyManager({ type, items, onRefresh }) {
   const handleDelete = async (id, name) => {
     if (!window.confirm(`Delete ${label.toLowerCase()} "${name}"?`)) return;
     try {
-      await api.delete(`${endpoint}/${id}`);
+      await deleteTaxonomyItem(type, id);
       toast.success(`${label} deleted`);
       onRefresh();
     } catch {
@@ -335,8 +344,8 @@ export default function AdminBlogPage() {
     try {
       const params = new URLSearchParams({ page, per_page: 20 });
       if (filterStatus) params.set("status", filterStatus);
-      const res = await api.get(`/admin/blog?${params}`);
-      const d   = res.data.data;
+      const body = await getAdminBlogPosts(params.toString());
+      const d   = body.data;
       setPosts(d.data ?? d ?? []);
       setPagination({ current_page: d.current_page ?? 1, last_page: d.last_page ?? 1, total: d.total ?? 0 });
     } catch {
@@ -348,12 +357,12 @@ export default function AdminBlogPage() {
 
   const fetchTaxonomy = useCallback(async () => {
     try {
-        const [catRes, tagRes] = await Promise.all([
-        api.get("/admin/blog/categories"),
-        api.get("/admin/blog/tags"),
+        const [cats, tagList] = await Promise.all([
+        getBlogCategories(),
+        getBlogTags(),
         ]);
-        setCategories(catRes.data.data ?? []);
-        setTags(tagRes.data.data ?? []);
+        setCategories(cats);
+        setTags(tagList);
     } catch {}
     }, []);
 
@@ -365,7 +374,7 @@ export default function AdminBlogPage() {
     if (!window.confirm(`Delete "${title}"? This cannot be undone.`)) return;
     setDeleting(id);
     try {
-      await api.delete(`/admin/blog/${id}`);
+      await deleteBlogPost(id);
       toast.success("Post deleted");
       fetchPosts();
     } catch {
@@ -377,8 +386,8 @@ export default function AdminBlogPage() {
 
   const openEdit = async (postId) => {
     try {
-      const res = await api.get(`/admin/blog/${postId}`);
-      setEditPost(res.data.data);
+      const post = await getAdminBlogPost(postId);
+      setEditPost(post);
       setShowModal(true);
     } catch {
       toast.error("Failed to load post");
@@ -502,7 +511,7 @@ export default function AdminBlogPage() {
               </div>
               {filtered.map((post, i) => (
                 <div key={post.id}
-                  className={`grid grid-cols-[2.5fr_1fr_1fr_80px_80px_100px] gap-4 px-6 py-4 items-center hover:bg-white/[2.5%] transition-colors ${
+                  className={`grid grid-cols-[2.5fr_1fr_1fr_80px_80px_100px] gap-4 px-6 py-4 items-center hover:bg-white/2.5 transition-colors ${
                     i < filtered.length - 1 ? "border-b border-white/4" : ""
                   }`}>
                   <div className="min-w-0">
