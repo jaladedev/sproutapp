@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, ReactNode } from "react";
 import Link from "next/link";
-import api from "../../../utils/api";
+import { getAdminUsers, getAdminUser, performUserAction } from "../../../services/adminService";
 import toast from "react-hot-toast";
 import { useConfirm } from "../../../stores/useUIStore";
 import {
@@ -170,8 +170,8 @@ export default function AdminUsersPage() {
       if (filters.suspended)  params.set("suspended",  filters.suspended);
       if (filters.is_admin)   params.set("is_admin",   filters.is_admin);
       if (filters.kyc_status) params.set("kyc_status", filters.kyc_status);
-      const res = await api.get(`/admin/users?${params}`);
-      const d   = res.data.data;
+      const body = await getAdminUsers(params.toString());
+      const d: any = (body as any).data;
       setUsers(d.data ?? d ?? []);
       setPagination({ current_page: d.current_page ?? 1, last_page: d.last_page ?? 1, total: d.total ?? 0 });
     } catch { toast.error("Failed to load users"); }
@@ -181,8 +181,8 @@ export default function AdminUsersPage() {
   const viewUser = async (userId: string | number) => {
     setMenuOpen(null);
     try {
-      const res = await api.get(`/admin/users/${userId}`);
-      setSelectedUser(res.data.data);
+      const body: any = await getAdminUser(userId);
+      setSelectedUser(body.data);
       setShowModal(true);
     } catch { toast.error("Failed to load user details"); }
   };
@@ -200,16 +200,8 @@ export default function AdminUsersPage() {
     }
     setActionLoading(action);
     try {
-      const map: Record<ActionType, [ "patch" | "delete", string ]> = {
-        suspend:     ["patch",  `/admin/users/${user.id}/suspend`],
-        unsuspend:   ["patch",  `/admin/users/${user.id}/unsuspend`],
-        makeAdmin:   ["patch",  `/admin/users/${user.id}/make-admin`],
-        removeAdmin: ["patch",  `/admin/users/${user.id}/remove-admin`],
-        delete:      ["delete", `/admin/users/${user.id}`],
-      };
-      const [method, url] = map[action];
-      const res = await api[method](url);
-      toast.success(res.data.message);
+      const res = await performUserAction(user.id, action);
+      toast.success(res.message || "Action completed");
       setMenuOpen(null);
       if (showModal) closeModal();
       fetchUsers();

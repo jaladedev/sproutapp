@@ -5,7 +5,7 @@ import { compressImage } from "../../../../../utils/compressImage";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import api from "../../../../../utils/api";
+import { getAdminLand, updateAdminLand, updateLandPrice } from "../../../../../services/landService";
 import toast from "react-hot-toast";
 import {
   MapPin, FileText, Layers, DollarSign, ArrowLeft, Save, X,
@@ -326,8 +326,7 @@ export default function EditLand() {
   useEffect(() => {
     const fetchLand = async () => {
       try {
-        const res  = await api.get(`/admin/lands/${id}`);
-        const land = res.data.data;
+        const land = await getAdminLand(id);
 
         const polygon    = extractPolygon(land);
         const hasPolygon = !!polygon;
@@ -577,13 +576,13 @@ export default function EditLand() {
       setLoading(true);
 
       // 1. Update land details
-      await api.post(`/admin/lands/${id}`, buildFormData(payload, newImages, removeImages));
+      await updateAdminLand(id, buildFormData(payload, newImages, removeImages));
 
       // 2. Update price only if it changed
       const newPrice = parseInt(priceKobo) || 0;
       const oldPrice = parseInt(currentPriceKobo) || 0;
       if (newPrice !== oldPrice && newPrice > 0) {
-        await api.patch(`/admin/lands/${id}/price`, { price_per_unit_kobo: newPrice });
+        await updateLandPrice(id, newPrice);
       }
 
       toast.success("Land updated successfully");

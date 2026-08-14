@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import api from "../../../utils/api";
+import { getAdminLands, toggleLandAvailability, updateLandPrice } from "../../../services/landService";
 import toast from "react-hot-toast";
 import { koboToNaira, nairaToKobo, formatNaira } from "../../../utils/currency";
 import {
@@ -22,8 +22,7 @@ export default function AdminLands() {
 
   const fetchLands = async () => {
     try {
-      const res = await api.get("/admin/lands");
-      setLands(res.data.data.data ?? res.data.data);
+      setLands(await getAdminLands());
     } catch {
       toast.error("Failed to load lands");
     } finally {
@@ -35,7 +34,7 @@ export default function AdminLands() {
 
   const toggleLand = async (id) => {
     try {
-      await api.patch(`/admin/lands/${id}/availability`);
+      await toggleLandAvailability(id);
       toast.success("Availability updated");
       fetchLands();
     } catch {
@@ -55,10 +54,7 @@ export default function AdminLands() {
     if (!newPrice || !priceDate) { toast.error("Price and date are required"); return; }
     try {
       setUpdating(true);
-      await api.patch(`/admin/lands/${selectedLand.id}/price`, {
-        price_per_unit_kobo: nairaToKobo(newPrice),
-        price_date: priceDate,
-      });
+      await updateLandPrice(selectedLand.id, nairaToKobo(newPrice), priceDate);
       toast.success("Price updated successfully");
       setShowModal(false);
       fetchLands();

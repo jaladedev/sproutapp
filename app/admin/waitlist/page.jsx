@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import api from "../../../utils/api";
+import { getWaitlistStats, getWaitlist, inviteWaitlistEntry, deleteWaitlistEntry } from "../../../services/adminService";
 import toast from "react-hot-toast";
 import {
   ArrowLeft, Users, MapPin, Wallet, BarChart3,
@@ -90,8 +90,8 @@ export default function AdminWaitlistPage() {
   const fetchStats = useCallback(async () => {
     try {
       setStatsLoading(true);
-      const res = await api.get("/admin/waitlist/stats");
-      setStats(res.data.data);
+      const body = await getWaitlistStats();
+      setStats(body.data);
     } catch {
       toast.error("Failed to load waitlist stats");
     } finally {
@@ -106,8 +106,8 @@ export default function AdminWaitlistPage() {
       if (filterCity)    params.set("city", filterCity);
       if (filterBudget)  params.set("budget", filterBudget);
       if (filterInvited) params.set("invited", filterInvited);
-      const res = await api.get(`/admin/waitlist?${params}`);
-      const d   = res.data.data;
+      const body = await getWaitlist(params.toString());
+      const d   = body.data;
       setEntries(d.data ?? d ?? []);
       setPagination({ current_page: d.current_page ?? 1, last_page: d.last_page ?? 1, total: d.total ?? 0 });
     } catch {
@@ -125,7 +125,7 @@ export default function AdminWaitlistPage() {
     if (!window.confirm(`Mark ${name} as invited and send their access link?`)) return;
     try {
       setInviting(id);
-      await api.post(`/admin/waitlist/${id}/invite`);
+      await inviteWaitlistEntry(id);
       toast.success(`${name} marked as invited`);
       fetchEntries();
       fetchStats();
@@ -140,7 +140,7 @@ export default function AdminWaitlistPage() {
     if (!window.confirm(`Remove ${name} from the waitlist? This will close the gap in positions.`)) return;
     try {
       setDeleting(id);
-      await api.delete(`/admin/waitlist/${id}`);
+      await deleteWaitlistEntry(id);
       toast.success(`${name} removed`);
       fetchEntries();
       fetchStats();
@@ -295,7 +295,7 @@ export default function AdminWaitlistPage() {
               </div>
               {filtered.map((entry, i) => (
                 <div key={entry.id}
-                  className={`grid grid-cols-[40px_2fr_1.5fr_1fr_1fr_1fr_1fr_120px] gap-3 px-5 py-3.5 items-center hover:bg-white/[2.5%] transition-colors ${
+                  className={`grid grid-cols-[40px_2fr_1.5fr_1fr_1fr_1fr_1fr_120px] gap-3 px-5 py-3.5 items-center hover:bg-white/2.5 transition-colors ${
                     i < filtered.length - 1 ? "border-b border-white/4" : ""
                   }`}
                 >

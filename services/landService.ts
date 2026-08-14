@@ -84,3 +84,47 @@ export async function getUserUnitsForLand(
   const res = await api.get(`/lands/${id}/units`);
   return res.data;
 }
+
+/* ── Admin ───────────────────────────────────────────────────────────── */
+
+/* GET /admin/lands */
+export async function getAdminLands(): Promise<Land[]> {
+  const res = await api.get("/admin/lands");
+  return res.data?.data?.data ?? res.data?.data ?? [];
+}
+
+/* GET /admin/lands/:id */
+export async function getAdminLand(id: string | number): Promise<Land> {
+  const res = await api.get(`/admin/lands/${id}`);
+  return res.data.data;
+}
+
+/* PATCH /admin/lands/:id/availability — toggle visible on marketplace */
+export async function toggleLandAvailability(id: string | number): Promise<void> {
+  await api.patch(`/admin/lands/${id}/availability`);
+}
+
+/* PATCH /admin/lands/:id/price */
+export async function updateLandPrice(
+  id: string | number,
+  pricePerUnitKobo: number,
+  priceDate?: string
+): Promise<void> {
+  await api.patch(`/admin/lands/${id}/price`, {
+    price_per_unit_kobo: pricePerUnitKobo,
+    ...(priceDate ? { price_date: priceDate } : {}),
+  });
+}
+
+/* POST /admin/lands — create (multipart form) */
+export async function createAdminLand(formData: FormData): Promise<void> {
+  await api.post("/admin/lands", formData);
+}
+
+/* POST /admin/lands/:id — update (multipart form, method-spoofed as POST) */
+export async function updateAdminLand(
+  id: string | number,
+  formData: FormData
+): Promise<void> {
+  await api.post(`/admin/lands/${id}`, formData);
+}

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import api from "../../../utils/api";
+import { getAdminWithdrawals, approveWithdrawal, rejectWithdrawal, approveAllWithdrawals } from "../../../services/adminService";
 import toast from "react-hot-toast";
 import {
   ArrowLeft, CheckCircle2, XCircle, Clock, AlertTriangle,
@@ -46,7 +46,7 @@ function RejectModal({ withdrawal, onClose, onDone }) {
     if (!reason.trim()) { toast.error("Please provide a rejection reason"); return; }
     setLoading(true);
     try {
-      await api.post(`/admin/withdrawals/${withdrawal.id}/reject`, { reason });
+      await rejectWithdrawal(withdrawal.id, reason);
       toast.success("Withdrawal rejected and funds returned to user");
       onDone();
     } catch (err) {
@@ -286,8 +286,8 @@ export default function AdminWithdrawalsPage() {
     try {
       const params = new URLSearchParams({ page, per_page: 20 });
       if (filterStatus) params.set("status", filterStatus);
-      const res = await api.get(`/admin/withdrawals?${params}`);
-      const d   = res.data.data;
+      const body = await getAdminWithdrawals(params.toString());
+      const d   = body.data;
       setWithdrawals(d.data ?? []);
       setPagination({ current_page: d.current_page, last_page: d.last_page, total: d.total });
     } catch {
@@ -306,7 +306,7 @@ export default function AdminWithdrawalsPage() {
     setApproving(withdrawal.id);
     setDrawerItem(null);
     try {
-      await api.post(`/admin/withdrawals/${withdrawal.id}/approve`);
+      await approveWithdrawal(withdrawal.id);
       toast.success("Transfer initiated successfully");
       fetchWithdrawals();
     } catch (err) {
@@ -323,8 +323,7 @@ export default function AdminWithdrawalsPage() {
     if (!window.confirm(`Approve all ${pendingCount} pending withdrawal${pendingCount !== 1 ? "s" : ""}? This will initiate Paystack transfers for each.`)) return;
     setApprovingAll(true);
     try {
-      const res  = await api.post("/admin/withdrawals/approve-all");
-      const data = res.data;
+      const data = await approveAllWithdrawals();
       toast.success(`${data.approved} approved${data.failed ? `, ${data.failed} failed` : ""}`);
       fetchWithdrawals();
     } catch (err) {

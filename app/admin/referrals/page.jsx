@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import api from "../../../utils/api";
+import { getAdminReferralStats, getAdminReferrals } from "../../../services/adminService";
 import toast from "react-hot-toast";
 import {
   Gift, TrendingUp, Clock, CheckCircle,
@@ -35,12 +35,12 @@ export default function AdminReferralManagement() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [statsRes, referralsRes] = await Promise.all([
-        api.get("/admin/referrals/stats"),
-        api.get(`/admin/referrals${filter !== "all" ? `?status=${filter}` : ""}`),
+      const [stats, referrals] = await Promise.all([
+        getAdminReferralStats(),
+        getAdminReferrals(filter),
       ]);
-      setStats(statsRes.data.data);
-      setReferrals(referralsRes.data.data?.data ?? referralsRes.data.data ?? []);
+      setStats(stats);
+      setReferrals(referrals);
     } catch {
       toast.error("Failed to load referral data");
     } finally {

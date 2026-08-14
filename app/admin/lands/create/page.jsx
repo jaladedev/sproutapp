@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import toast from "react-hot-toast";
-import api from "../../../../utils/api";
+import { createAdminLand } from "../../../../services/landService";
 import {
   MapPin, Image, FileText, Layers, DollarSign, ArrowLeft, Plus, X,
   Building2, ShieldCheck, Activity, Zap, BarChart3, Trash2,
@@ -395,7 +395,7 @@ export default function CreateLand() {
 
     try {
       setLoading(true);
-      await api.post("/admin/lands", formData);
+      await createAdminLand(formData);
       toast.success("Land created successfully");
       router.push("/admin/lands");
     } catch (err) {
