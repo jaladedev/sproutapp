@@ -9,11 +9,14 @@ import {
   Wallet, Trophy, Users, Info,
 } from "lucide-react";
 
-function StatusBadge({ status }) {
-  const cfg = {
+type ReferralStatus = "pending" | "completed";
+
+function StatusBadge({ status }: { status: string }) {
+  const cfg = ({
     pending:   { label: "Pending",   color: "text-amber-400",   bg: "bg-amber-500/10  border-amber-500/20",   icon: <Clock size={11} /> },
     completed: { label: "Completed", color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/20", icon: <CheckCircle size={11} /> },
-  }[status] || { label: status, color: "text-white/60", bg: "bg-white/5 border-white/10", icon: null };
+  } as Record<string, { label: string; color: string; bg: string; icon: React.ReactNode }>)[status]
+    || { label: status, color: "text-white/60", bg: "bg-white/5 border-white/10", icon: null };
 
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${cfg.color} ${cfg.bg}`}>
@@ -24,9 +27,38 @@ function StatusBadge({ status }) {
 
 const MEDAL = ["🥇", "🥈", "🥉"];
 
+interface ReferralStats {
+  total_referrals: number;
+  completed_referrals: number;
+  pending_referrals: number;
+  total_rewards_issued: number;
+  unclaimed_rewards: number;
+  top_referrers?: Array<{
+    id: string | number;
+    name: string;
+    email: string;
+    referral_code: string;
+    referrals_count: number;
+  }>;
+}
+
+interface ReferralPerson {
+  name: string;
+  email: string;
+}
+
+interface Referral {
+  id: string | number;
+  referrer: ReferralPerson;
+  referred_user: ReferralPerson;
+  status: ReferralStatus | string;
+  created_at: string;
+  completed_at?: string | null;
+}
+
 export default function AdminReferralManagement() {
-  const [stats, setStats] = useState(null);
-  const [referrals, setReferrals] = useState([]);
+  const [stats, setStats] = useState<ReferralStats | null>(null);
+  const [referrals, setReferrals] = useState<Referral[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
 
@@ -39,8 +71,11 @@ export default function AdminReferralManagement() {
         getAdminReferralStats(),
         getAdminReferrals(filter),
       ]);
-      setStats(stats);
-      setReferrals(referrals);
+      // adminService's AdminReferralStats/unknown[] are deliberately loose
+      // (shared across consumers) — this page knows the actual response
+      // shape it renders, so it asserts into the richer local types here.
+      setStats(stats as unknown as ReferralStats);
+      setReferrals(referrals as Referral[]);
     } catch {
       toast.error("Failed to load referral data");
     } finally {
@@ -48,7 +83,7 @@ export default function AdminReferralManagement() {
     }
   };
 
-  const koboToNaira = (kobo) => (kobo / 100).toLocaleString();
+  const koboToNaira = (kobo: number) => (kobo / 100).toLocaleString();
 
   return (
     <div
@@ -118,7 +153,9 @@ export default function AdminReferralManagement() {
             )}
 
             {/* Top Referrers */}
-            {stats?.top_referrers?.length > 0 && (
+            {stats?.top_referrers && stats.top_referrers.length > 0 && (() => {
+              const topReferrers = stats.top_referrers;
+              return (
               <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden mb-6">
                 <div className="flex items-center gap-3 px-6 py-5 border-b border-white/10">
                   <div className="w-9 h-9 rounded-xl bg-amber-500/15 flex items-center justify-center">
@@ -136,11 +173,11 @@ export default function AdminReferralManagement() {
                   ))}
                 </div>
 
-                {stats.top_referrers.map((referrer, i) => (
+                {topReferrers.map((referrer, i) => (
                   <div
                     key={referrer.id}
                     className={`grid grid-cols-[40px_1.5fr_1.5fr_1fr_80px] gap-4 px-6 py-4 items-center hover:bg-white/5 transition-colors ${
-                      i < stats.top_referrers.length - 1 ? "border-b border-white/5" : ""
+                      i < topReferrers.length - 1 ? "border-b border-white/5" : ""
                     }`}
                   >
                     <span className="text-lg">{MEDAL[i] || `#${i + 1}`}</span>
@@ -158,7 +195,8 @@ export default function AdminReferralManagement() {
                   </div>
                 ))}
               </div>
-            )}
+              );
+            })()}
 
             {/* Referrals Table */}
             <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden mb-6">

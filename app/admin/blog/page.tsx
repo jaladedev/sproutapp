@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, type ChangeEvent, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -15,6 +15,7 @@ import {
   deleteTaxonomyItem,
 } from "../../../services/blogService";
 import toast from "react-hot-toast";
+import type { AxiosError } from "axios";
 import {
   ArrowLeft, Plus, Eye, Pencil, Trash2, Search, X,
   FileText, Tag, Globe, BookOpen, Clock, TrendingUp,
@@ -24,13 +25,27 @@ import {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const STATUS_CFG = {
+type PostStatus = "published" | "draft";
+
+interface StatusConfigEntry {
+  label: string;
+  cls: string;
+  icon: ReactNode;
+}
+
+const STATUS_CFG: Record<PostStatus, StatusConfigEntry> = {
   published: { label: "Published", cls: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20", icon: <Globe size={9} /> },
   draft:     { label: "Draft",     cls: "text-amber-400  bg-amber-500/10  border-amber-500/20",  icon: <Clock  size={9} /> },
 };
 
-function StatusBadge({ status }) {
-  const cfg = STATUS_CFG[status] || STATUS_CFG.draft;
+interface ApiErrorBody {
+  message?: string;
+  error?: string;
+  errors?: Record<string, string | string[]>;
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const cfg = STATUS_CFG[status as PostStatus] || STATUS_CFG.draft;
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${cfg.cls}`}>
       {cfg.icon} {cfg.label}
@@ -38,7 +53,14 @@ function StatusBadge({ status }) {
   );
 }
 
-function StatCard({ icon, label, value, accent }) {
+interface StatCardProps {
+  icon: ReactNode;
+  label: string;
+  value: number | string;
+  accent: string;
+}
+
+function StatCard({ icon, label, value, accent }: StatCardProps) {
   return (
     <div className="relative rounded-2xl border border-white/10 bg-white/5 p-5 overflow-hidden group hover:border-white/20 hover:-translate-y-0.5 transition-all">
       <div className="absolute -top-5 -right-5 w-16 h-16 rounded-full opacity-20 group-hover:opacity-30 transition-opacity pointer-events-none"
@@ -53,11 +75,62 @@ function StatCard({ icon, label, value, accent }) {
   );
 }
 
+// ── Shared types ───────────────────────────────────────────────────────────────
+
+interface Category {
+  id: string | number;
+  name: string;
+  posts_count?: number;
+}
+
+interface PostTag {
+  id: string | number;
+  name: string;
+  posts_count?: number;
+}
+
+interface BlogPost {
+  id: string | number;
+  title: string;
+  slug: string;
+  excerpt?: string;
+  content: string;
+  category_id?: string | number | null;
+  category?: { name?: string } | null;
+  status: string;
+  seo_title?: string;
+  seo_description?: string;
+  cover_image_url?: string | null;
+  tags?: PostTag[];
+  views?: number;
+  read_time_minutes?: number;
+  published_at?: string | null;
+}
+
 // ── Post Form Modal ───────────────────────────────────────────────────────────
 
-function PostModal({ post, categories, tags, onClose, onSaved }) {
+interface PostFormValues {
+  title: string;
+  slug: string;
+  excerpt: string;
+  content: string;
+  category_id: string | number;
+  status: string;
+  seo_title: string;
+  seo_description: string;
+}
+
+interface PostModalProps {
+  post: BlogPost | null;
+  categories: Category[];
+  tags: PostTag[];
+  onClose: () => void;
+  onSaved: () => void;
+}
+
+function PostModal({ post, categories, tags, onClose, onSaved }: PostModalProps) {
   const isEdit = !!post;
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<PostFormValues>({
     title:           post?.title           || "",
     slug:            post?.slug            || "",
     excerpt:         post?.excerpt         || "",
@@ -67,22 +140,22 @@ function PostModal({ post, categories, tags, onClose, onSaved }) {
     seo_title:       post?.seo_title       || "",
     seo_description: post?.seo_description || "",
   });
-  const [selectedTags, setSelectedTags] = useState(post?.tags?.map(t => t.id) || []);
-  const [coverFile, setCoverFile]       = useState(null);
-  const [coverPreview, setCoverPreview] = useState(post?.cover_image_url || null);
+  const [selectedTags, setSelectedTags] = useState<Array<string | number>>(post?.tags?.map(t => t.id) || []);
+  const [coverFile, setCoverFile]       = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(post?.cover_image_url || null);
   const [saving, setSaving]             = useState(false);
 
-  const toggleTag = (id) =>
+  const toggleTag = (id: string | number) =>
     setSelectedTags(prev => prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id]);
 
-  const handleCover = (e) => {
-    const file = e.target.files[0];
+  const handleCover = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (!file) return;
     setCoverFile(file);
     setCoverPreview(URL.createObjectURL(file));
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!form.title.trim()) { toast.error("Title is required"); return; }
     if (!form.content.trim()) { toast.error("Content is required"); return; }
@@ -90,13 +163,13 @@ function PostModal({ post, categories, tags, onClose, onSaved }) {
     setSaving(true);
     try {
       const fd = new FormData();
-      Object.entries(form).forEach(([k, v]) => { if (v !== "") fd.append(k, v); });
-      selectedTags.forEach(id => fd.append("tag_ids[]", id));
+      Object.entries(form).forEach(([k, v]) => { if (v !== "") fd.append(k, String(v)); });
+      selectedTags.forEach(id => fd.append("tag_ids[]", String(id)));
       if (coverFile) fd.append("cover_image", coverFile);
       if (isEdit) fd.append("_method", "POST");
 
       if (isEdit) {
-        await updateBlogPost(post.id, fd);
+        await updateBlogPost(post!.id, fd);
         toast.success("Post updated");
       } else {
         await createBlogPost(fd);
@@ -104,9 +177,10 @@ function PostModal({ post, categories, tags, onClose, onSaved }) {
       }
       onSaved();
     } catch (err) {
-      const errors = err.response?.data?.errors;
+      const axiosErr = err as AxiosError<ApiErrorBody>;
+      const errors = axiosErr.response?.data?.errors;
       if (errors) Object.values(errors).flat().forEach(e => toast.error(e));
-      else toast.error(err.response?.data?.message || "Save failed");
+      else toast.error(axiosErr.response?.data?.message || "Save failed");
     } finally {
       setSaving(false);
     }
@@ -135,21 +209,21 @@ function PostModal({ post, categories, tags, onClose, onSaved }) {
           {/* Title */}
           <div>
             <label className={labelCls}>Title *</label>
-            <input value={form.title} onChange={e => setForm({ ...form, title: e.target.value, slug: !isEdit ? e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") : form.slug })}
+            <input value={form.title} onChange={(e: ChangeEvent<HTMLInputElement>) => setForm({ ...form, title: e.target.value, slug: !isEdit ? e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") : form.slug })}
               placeholder="Post title" className={inputCls} required />
           </div>
 
           {/* Slug */}
           <div>
             <label className={labelCls}>Slug</label>
-            <input value={form.slug} onChange={e => setForm({ ...form, slug: e.target.value })}
+            <input value={form.slug} onChange={(e: ChangeEvent<HTMLInputElement>) => setForm({ ...form, slug: e.target.value })}
               placeholder="auto-generated-from-title" className={inputCls} />
           </div>
 
           {/* Excerpt */}
           <div>
             <label className={labelCls}>Excerpt</label>
-            <textarea value={form.excerpt} onChange={e => setForm({ ...form, excerpt: e.target.value })}
+            <textarea value={form.excerpt} onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setForm({ ...form, excerpt: e.target.value })}
               rows={2} placeholder="Brief summary (max 500 chars)" maxLength={500}
               className={`${inputCls} resize-none`} />
           </div>
@@ -157,7 +231,7 @@ function PostModal({ post, categories, tags, onClose, onSaved }) {
           {/* Content */}
           <div>
             <label className={labelCls}>Content *</label>
-            <textarea value={form.content} onChange={e => setForm({ ...form, content: e.target.value })}
+            <textarea value={form.content} onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setForm({ ...form, content: e.target.value })}
               rows={10} placeholder="Write your post content here…"
               className={`${inputCls} resize-y`} required />
           </div>
@@ -166,7 +240,7 @@ function PostModal({ post, categories, tags, onClose, onSaved }) {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={labelCls}>Category</label>
-              <select value={form.category_id} onChange={e => setForm({ ...form, category_id: e.target.value })}
+              <select value={form.category_id} onChange={(e: ChangeEvent<HTMLSelectElement>) => setForm({ ...form, category_id: e.target.value })}
                 className={`${inputCls} bg-[#0D1F1A] appearance-none`}>
                 <option value="" className="bg-[#0D1F1A]">No category</option>
                 {categories.map(c => (
@@ -176,7 +250,7 @@ function PostModal({ post, categories, tags, onClose, onSaved }) {
             </div>
             <div>
               <label className={labelCls}>Status</label>
-              <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}
+              <select value={form.status} onChange={(e: ChangeEvent<HTMLSelectElement>) => setForm({ ...form, status: e.target.value })}
                 className={`${inputCls} bg-[#0D1F1A] appearance-none`}>
                 <option value="draft" className="bg-[#0D1F1A]">Draft</option>
                 <option value="published" className="bg-[#0D1F1A]">Published</option>
@@ -222,9 +296,9 @@ function PostModal({ post, categories, tags, onClose, onSaved }) {
           {/* SEO */}
           <div className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-3">
             <p className="text-xs font-bold uppercase tracking-widest text-white/55">SEO (optional)</p>
-            <input value={form.seo_title} onChange={e => setForm({ ...form, seo_title: e.target.value })}
+            <input value={form.seo_title} onChange={(e: ChangeEvent<HTMLInputElement>) => setForm({ ...form, seo_title: e.target.value })}
               placeholder="SEO title (max 70 chars)" maxLength={70} className={inputCls} />
-            <textarea value={form.seo_description} onChange={e => setForm({ ...form, seo_description: e.target.value })}
+            <textarea value={form.seo_description} onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setForm({ ...form, seo_description: e.target.value })}
               placeholder="Meta description (max 160 chars)" maxLength={160} rows={2}
               className={`${inputCls} resize-none`} />
           </div>
@@ -254,7 +328,13 @@ function PostModal({ post, categories, tags, onClose, onSaved }) {
 
 // ── Category / Tag Manager ────────────────────────────────────────────────────
 
-function TaxonomyManager({ type, items, onRefresh }) {
+interface TaxonomyManagerProps {
+  type: "category" | "tag";
+  items: Array<Category | PostTag>;
+  onRefresh: () => void;
+}
+
+function TaxonomyManager({ type, items, onRefresh }: TaxonomyManagerProps) {
   const [newName, setNewName] = useState("");
   const [saving, setSaving]  = useState(false);
   const label    = type === "category" ? "Category" : "Tag";
@@ -268,13 +348,14 @@ function TaxonomyManager({ type, items, onRefresh }) {
       setNewName("");
       onRefresh();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to add");
+      const axiosErr = err as AxiosError<ApiErrorBody>;
+      toast.error(axiosErr.response?.data?.message || "Failed to add");
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDelete = async (id, name) => {
+  const handleDelete = async (id: string | number, name: string) => {
     if (!window.confirm(`Delete ${label.toLowerCase()} "${name}"?`)) return;
     try {
       await deleteTaxonomyItem(type, id);
@@ -289,8 +370,8 @@ function TaxonomyManager({ type, items, onRefresh }) {
     <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
       <p className="text-xs font-bold uppercase tracking-widest text-white/55 mb-3">{label}s</p>
       <div className="flex gap-2 mb-3">
-        <input value={newName} onChange={e => setNewName(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && handleAdd()}
+        <input value={newName} onChange={(e: ChangeEvent<HTMLInputElement>) => setNewName(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleAdd()}
           placeholder={`New ${label.toLowerCase()}…`}
           className="flex-1 bg-white/5 border border-white/10 hover:border-white/20 focus:border-amber-500/40 text-white placeholder-white/20 px-3 py-2 rounded-xl text-sm outline-none transition-all" />
         <button onClick={handleAdd} disabled={saving || !newName.trim()}
@@ -322,17 +403,17 @@ function TaxonomyManager({ type, items, onRefresh }) {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function AdminBlogPage() {
-  const [posts, setPosts]           = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [tags, setTags]             = useState([]);
+  const [posts, setPosts]           = useState<BlogPost[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [tags, setTags]             = useState<PostTag[]>([]);
   const [loading, setLoading]       = useState(true);
   const [pagination, setPagination] = useState({ current_page: 1, last_page: 1, total: 0 });
   const [page, setPage]             = useState(1);
   const [search, setSearch]         = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [showModal, setShowModal]   = useState(false);
-  const [editPost, setEditPost]     = useState(null);
-  const [deleting, setDeleting]     = useState(null);
+  const [editPost, setEditPost]     = useState<BlogPost | null>(null);
+  const [deleting, setDeleting]     = useState<string | number | null>(null);
   const [showTaxonomy, setShowTaxonomy] = useState(false);
 
   const published = posts.filter(p => p.status === "published").length;
@@ -342,11 +423,15 @@ export default function AdminBlogPage() {
   const fetchPosts = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ page, per_page: 20 });
+      const params = new URLSearchParams({ page: String(page), per_page: "20" });
       if (filterStatus) params.set("status", filterStatus);
-      const body = await getAdminBlogPosts(params.toString());
+      // blogService's list/detail/taxonomy calls return unknown (shared,
+      // loose by design) — asserting the actual response shapes here.
+      const body = await getAdminBlogPosts(params.toString()) as {
+        data: { data?: BlogPost[]; current_page?: number; last_page?: number; total?: number };
+      };
       const d   = body.data;
-      setPosts(d.data ?? d ?? []);
+      setPosts(d.data ?? []);
       setPagination({ current_page: d.current_page ?? 1, last_page: d.last_page ?? 1, total: d.total ?? 0 });
     } catch {
       toast.error("Failed to load posts");
@@ -358,8 +443,8 @@ export default function AdminBlogPage() {
   const fetchTaxonomy = useCallback(async () => {
     try {
         const [cats, tagList] = await Promise.all([
-        getBlogCategories(),
-        getBlogTags(),
+        getBlogCategories() as Promise<Category[]>,
+        getBlogTags() as Promise<PostTag[]>,
         ]);
         setCategories(cats);
         setTags(tagList);
@@ -370,7 +455,7 @@ export default function AdminBlogPage() {
   useEffect(() => { fetchTaxonomy(); }, [fetchTaxonomy]);
   useEffect(() => { setPage(1); }, [filterStatus]);
 
-  const handleDelete = async (id, title) => {
+  const handleDelete = async (id: string | number, title: string) => {
     if (!window.confirm(`Delete "${title}"? This cannot be undone.`)) return;
     setDeleting(id);
     try {
@@ -384,9 +469,9 @@ export default function AdminBlogPage() {
     }
   };
 
-  const openEdit = async (postId) => {
+  const openEdit = async (postId: string | number) => {
     try {
-      const post = await getAdminBlogPost(postId);
+      const post = await getAdminBlogPost(postId) as BlogPost;
       setEditPost(post);
       setShowModal(true);
     } catch {
@@ -464,7 +549,7 @@ export default function AdminBlogPage() {
         <div className="flex flex-wrap gap-3 mb-5">
           <div className="relative flex-1 min-w-48">
             <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" />
-            <input value={search} onChange={e => setSearch(e.target.value)}
+            <input value={search} onChange={(e: ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
               placeholder="Search posts…"
               className="w-full bg-white/5 border border-white/10 hover:border-white/20 focus:border-purple-500/40 text-white placeholder-white/20 pl-10 pr-9 py-2.5 rounded-xl text-sm outline-none transition-all" />
             {search && (

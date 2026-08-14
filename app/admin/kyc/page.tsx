@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ChangeEvent, type ReactNode } from "react";
 import Link from "next/link";
 import {
   getAdminKycList,
@@ -10,6 +10,7 @@ import {
   resubmitKyc,
 } from "../../../services/kycService";
 import toast from "react-hot-toast";
+import type { AxiosError } from "axios";
 import { AuthImage } from "../../components/AuthImage";
 import {
   ShieldCheck, Clock, RefreshCw, Shield,
@@ -18,15 +19,29 @@ import {
   ArrowLeft,
 } from "lucide-react";
 
-const STATUS_CONFIG = {
+type KycStatus = "pending" | "approved" | "rejected" | "resubmit";
+
+interface StatusConfigEntry {
+  label: string;
+  color: string;
+  bg: string;
+  icon: ReactNode;
+}
+
+const STATUS_CONFIG: Record<KycStatus, StatusConfigEntry> = {
   pending:  { label: "Pending",  color: "text-amber-400",   bg: "bg-amber-500/10  border-amber-500/20",   icon: <Clock       size={12} /> },
   approved: { label: "Approved", color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/20", icon: <CheckCircle size={12} /> },
   rejected: { label: "Rejected", color: "text-red-400",     bg: "bg-red-500/10    border-red-500/20",     icon: <XCircle     size={12} /> },
   resubmit: { label: "Resubmit", color: "text-orange-400",  bg: "bg-orange-500/10 border-orange-500/20",  icon: <RefreshCw   size={12} /> },
 };
 
-function StatusBadge({ status }) {
-  const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.pending;
+interface ApiErrorBody {
+  message?: string;
+  error?: string;
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const cfg = STATUS_CONFIG[status as KycStatus] || STATUS_CONFIG.pending;
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${cfg.color} ${cfg.bg}`}>
       {cfg.icon}{cfg.label}
@@ -34,23 +49,51 @@ function StatusBadge({ status }) {
   );
 }
 
+interface KycSubmission {
+  id: string | number;
+  user?: { name?: string; email?: string };
+  full_name: string;
+  id_type?: string;
+  id_number?: string;
+  status: string;
+  created_at: string;
+  date_of_birth: string;
+  phone_number?: string;
+  city?: string;
+  state?: string;
+  address?: string;
+  id_front_url?: string;
+  id_back_url?: string;
+  selfie_url?: string;
+  is_pep?: boolean;
+  pep_relationship?: string;
+  pep_country?: string;
+  pep_role?: string;
+  pep_details?: string;
+  rejection_reason?: string;
+  [key: string]: unknown;
+}
+
 export default function AdminKycManagement() {
-  const [kycs, setKycs]                       = useState([]);
+  const [kycs, setKycs]                       = useState<KycSubmission[]>([]);
   const [loading, setLoading]                 = useState(true);
-  const [filter, setFilter]                   = useState("pending");
-  const [selectedKyc, setSelectedKyc]         = useState(null);
+  const [filter, setFilter]                   = useState<KycStatus>("pending");
+  const [selectedKyc, setSelectedKyc]         = useState<KycSubmission | null>(null);
   const [showModal, setShowModal]             = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
   const [actionLoading, setActionLoading]     = useState(false);
-  const [blobUrls, setBlobUrls]               = useState({});
+  const [blobUrls, setBlobUrls]               = useState<Record<string, string>>({});
 
   useEffect(() => { fetchKycs(); }, [filter]);
 
   const fetchKycs = async () => {
     try {
       setLoading(true);
-      const body = await getAdminKycList(filter);
-      setKycs(body.data.data ?? body.data ?? []);
+      // kycService.getAdminKycList() returns unknown (shared, loose by
+      // design) — asserting the actual response shape this page renders.
+      const body = await getAdminKycList(filter) as { data: { data?: KycSubmission[] } | KycSubmission[] };
+      const d = body.data;
+      setKycs((Array.isArray(d) ? d : d.data) ?? []);
     } catch {
       toast.error("Failed to load KYC submissions");
     } finally {
@@ -58,9 +101,9 @@ export default function AdminKycManagement() {
     }
   };
 
-  const viewDetails = async (kycId) => {
+  const viewDetails = async (kycId: string | number) => {
     try {
-      const body = await getAdminKycDetail(kycId);
+      const body = await getAdminKycDetail(kycId) as { data: KycSubmission };
       setSelectedKyc(body.data);
       setRejectionReason("");
       setBlobUrls({});
@@ -77,7 +120,7 @@ export default function AdminKycManagement() {
     setSelectedKyc(null);
   };
 
-  const handleApprove = async (kycId) => {
+  const handleApprove = async (kycId: string | number) => {
     if (!window.confirm("Approve this KYC submission?")) return;
     try {
       setActionLoading(true);
@@ -86,13 +129,14 @@ export default function AdminKycManagement() {
       closeModal();
       fetchKycs();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to approve KYC");
+      const axiosErr = err as AxiosError<ApiErrorBody>;
+      toast.error(axiosErr.response?.data?.message || "Failed to approve KYC");
     } finally {
       setActionLoading(false);
     }
   };
 
-  const handleReject = async (kycId) => {
+  const handleReject = async (kycId: string | number) => {
     if (!rejectionReason.trim()) { toast.error("Please provide a rejection reason"); return; }
     try {
       setActionLoading(true);
@@ -101,13 +145,14 @@ export default function AdminKycManagement() {
       closeModal();
       fetchKycs();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to reject KYC");
+      const axiosErr = err as AxiosError<ApiErrorBody>;
+      toast.error(axiosErr.response?.data?.message || "Failed to reject KYC");
     } finally {
       setActionLoading(false);
     }
   };
 
-  const handleRequestResubmit = async (kycId) => {
+  const handleRequestResubmit = async (kycId: string | number) => {
     if (!rejectionReason.trim()) { toast.error("Please provide a reason for resubmission"); return; }
     try {
       setActionLoading(true);
@@ -116,16 +161,17 @@ export default function AdminKycManagement() {
       closeModal();
       fetchKycs();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to request resubmission");
+      const axiosErr = err as AxiosError<ApiErrorBody>;
+      toast.error(axiosErr.response?.data?.message || "Failed to request resubmission");
     } finally {
       setActionLoading(false);
     }
   };
 
-  const tabs = ["pending", "approved", "rejected", "resubmit"];
+  const tabs: KycStatus[] = ["pending", "approved", "rejected", "resubmit"];
 
   // Build the docs array for the modal
-  const modalDocs = selectedKyc
+  const modalDocs: { label: string; url?: string }[] = selectedKyc
     ? [
         { label: "ID Front", url: selectedKyc.id_front_url },
         ...(selectedKyc.id_back_url ? [{ label: "ID Back", url: selectedKyc.id_back_url }] : []),
@@ -486,7 +532,7 @@ export default function AdminKycManagement() {
                     </label>
                     <textarea
                       value={rejectionReason}
-                      onChange={(e) => setRejectionReason(e.target.value)}
+                      onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setRejectionReason(e.target.value)}
                       rows={3}
                       placeholder="Explain why this KYC is being rejected or needs resubmission..."
                       className="w-full bg-white/5 border border-white/10 focus:border-amber-500/40 focus:ring-2 focus:ring-amber-500/20 text-white placeholder-white/20 rounded-xl px-4 py-3 text-sm outline-none transition-all resize-none"

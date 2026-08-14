@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { getAdminLands, toggleLandAvailability, updateLandPrice } from "../../../services/landService";
 import toast from "react-hot-toast";
@@ -11,18 +11,30 @@ import {
   CheckCircle, XCircle,
 } from "lucide-react";
 
+interface AdminLandRow {
+  id: string | number;
+  title: string;
+  location: string;
+  current_price_per_unit_kobo?: number | null;
+  price_per_unit_kobo?: number;
+  available_units: number;
+  total_units: number;
+  is_available: boolean;
+  [key: string]: unknown;
+}
+
 export default function AdminLands() {
-  const [lands, setLands] = useState([]);
+  const [lands, setLands] = useState<AdminLandRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [selectedLand, setSelectedLand] = useState(null);
-  const [newPrice, setNewPrice] = useState("");
+  const [selectedLand, setSelectedLand] = useState<AdminLandRow | null>(null);
+  const [newPrice, setNewPrice] = useState<string | number>("");
   const [priceDate, setPriceDate] = useState("");
   const [updating, setUpdating] = useState(false);
 
   const fetchLands = async () => {
     try {
-      setLands(await getAdminLands());
+      setLands((await getAdminLands()) as AdminLandRow[]);
     } catch {
       toast.error("Failed to load lands");
     } finally {
@@ -32,7 +44,7 @@ export default function AdminLands() {
 
   useEffect(() => { fetchLands(); }, []);
 
-  const toggleLand = async (id) => {
+  const toggleLand = async (id: string | number) => {
     try {
       await toggleLandAvailability(id);
       toast.success("Availability updated");
@@ -42,7 +54,7 @@ export default function AdminLands() {
     }
   };
 
-  const openPriceModal = (land) => {
+  const openPriceModal = (land: AdminLandRow) => {
     setSelectedLand(land);
     const currentKobo = land.current_price_per_unit_kobo ?? land.price_per_unit_kobo ?? 0;
     setNewPrice(koboToNaira(currentKobo));
@@ -51,7 +63,7 @@ export default function AdminLands() {
   };
 
   const handleUpdatePrice = async () => {
-    if (!newPrice || !priceDate) { toast.error("Price and date are required"); return; }
+    if (!newPrice || !priceDate || !selectedLand) { toast.error("Price and date are required"); return; }
     try {
       setUpdating(true);
       await updateLandPrice(selectedLand.id, nairaToKobo(newPrice), priceDate);
@@ -65,7 +77,7 @@ export default function AdminLands() {
     }
   };
 
-  const currentPrice = (land) =>
+  const currentPrice = (land: AdminLandRow) =>
     land.current_price_per_unit_kobo ?? land.price_per_unit_kobo ?? 0;
 
   return (
@@ -247,7 +259,14 @@ export default function AdminLands() {
   );
 }
 
-function ActionBtn({ href, icon, label, color }) {
+interface ActionBtnProps {
+  href: string;
+  icon: ReactNode;
+  label: string;
+  color: string;
+}
+
+function ActionBtn({ href, icon, label, color }: ActionBtnProps) {
   return (
     <Link href={href} title={label}
       className={`w-7 h-7 rounded-lg flex items-center justify-center hover:bg-white/10 transition-all ${color}`}>

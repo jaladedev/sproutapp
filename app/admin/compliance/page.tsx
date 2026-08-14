@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, type ChangeEvent, type ReactNode } from "react";
 import Link from "next/link";
 import {
   getComplianceStats,
@@ -11,6 +11,7 @@ import {
   rescreenUser,
 } from "../../../services/complianceService";
 import toast from "react-hot-toast";
+import type { AxiosError } from "axios";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Shield, AlertTriangle, Ban, CheckCircle,
@@ -20,13 +21,28 @@ import {
 
 // ─── Status config ────────────────────────────────────────────────────────────
 
-const SCREENING_STATUS = {
+type ScreeningStatus = "flagged" | "blocked" | "clear";
+
+interface StatusConfigEntry {
+  label: string;
+  color: string;
+  bg: string;
+  icon: ReactNode;
+}
+
+const SCREENING_STATUS: Record<ScreeningStatus, StatusConfigEntry> = {
   flagged: { label: "Flagged",  color: "text-amber-400",   bg: "bg-amber-500/10  border-amber-500/20",   icon: <AlertTriangle size={11} /> },
   blocked: { label: "Blocked",  color: "text-red-400",     bg: "bg-red-500/10    border-red-500/20",     icon: <Ban           size={11} /> },
   clear:   { label: "Cleared",  color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/20", icon: <CheckCircle   size={11} /> },
 };
 
-const TRIGGER_META = {
+interface TriggerMetaEntry {
+  label: string;
+  color: string;
+  bg: string;
+}
+
+const TRIGGER_META: Record<string, TriggerMetaEntry> = {
   pep_self_declaration: { label: "PEP Self-Declaration", color: "text-purple-400",  bg: "bg-purple-500/10 border-purple-500/20" },
   sanctions_hit:        { label: "Sanctions Hit",        color: "text-red-400",     bg: "bg-red-500/10    border-red-500/20"    },
   fuzzy_match:          { label: "Fuzzy Match",          color: "text-amber-400",   bg: "bg-amber-500/10  border-amber-500/20"  },
@@ -34,8 +50,13 @@ const TRIGGER_META = {
   kyc:                  { label: "KYC Screening",        color: "text-white/50",    bg: "bg-white/5       border-white/10"      },
 };
 
-function StatusBadge({ status }) {
-  const cfg = SCREENING_STATUS[status] ?? SCREENING_STATUS.flagged;
+interface ApiErrorBody {
+  message?: string;
+  error?: string;
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const cfg = SCREENING_STATUS[status as ScreeningStatus] ?? SCREENING_STATUS.flagged;
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${cfg.color} ${cfg.bg}`}>
       {cfg.icon}{cfg.label}
@@ -43,8 +64,8 @@ function StatusBadge({ status }) {
   );
 }
 
-function TriggerBadge({ trigger }) {
-  const cfg = TRIGGER_META[trigger] ?? TRIGGER_META.kyc;
+function TriggerBadge({ trigger }: { trigger?: string }) {
+  const cfg = (trigger ? TRIGGER_META[trigger] : undefined) ?? TRIGGER_META.kyc;
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border ${cfg.color} ${cfg.bg}`}>
       {cfg.label}
@@ -54,8 +75,18 @@ function TriggerBadge({ trigger }) {
 
 // ─── Stat card ────────────────────────────────────────────────────────────────
 
-function StatCard({ icon, label, value, sub, accent = "amber" }) {
-  const accents = {
+type StatAccent = "amber" | "red" | "emerald" | "purple" | "blue";
+
+interface StatCardProps {
+  icon: ReactNode;
+  label: string;
+  value?: number | string | null;
+  sub?: string | null;
+  accent?: StatAccent;
+}
+
+function StatCard({ icon, label, value, sub, accent = "amber" }: StatCardProps) {
+  const accents: Record<StatAccent, string> = {
     amber:   "text-amber-500  bg-amber-500/10  border-amber-500/20",
     red:     "text-red-400    bg-red-500/10    border-red-500/20",
     emerald: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
@@ -79,11 +110,44 @@ function StatCard({ icon, label, value, sub, accent = "amber" }) {
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
+interface ComplianceStats {
+  total_screened?: number;
+  pending_review?: number;
+  blocked_users?: number;
+  flagged_users?: number;
+  clear_users?: number;
+  sanctions_entries?: number;
+  last_sync?: { synced_at: string } | null;
+}
+
+interface ScreeningMatch {
+  is_pep?: boolean;
+  source?: string;
+  score?: number;
+  matched_name?: string;
+  queried_name?: string;
+  program?: string;
+  entry_type?: string;
+  list?: string;
+}
+
+interface Screening {
+  id: string | number;
+  user?: { id?: string | number; name?: string; email?: string };
+  trigger?: string;
+  status: string;
+  matches?: ScreeningMatch[];
+  created_at: string;
+  reviewed_at?: string | null;
+  reviewed_by?: string | null;
+  notes?: string | null;
+}
+
 export default function ComplianceDashboard() {
-  const [stats, setStats]             = useState(null);
-  const [screenings, setScreenings]   = useState([]);
+  const [stats, setStats]             = useState<ComplianceStats | null>(null);
+  const [screenings, setScreenings]   = useState<Screening[]>([]);
   const [loading, setLoading]         = useState(true);
-  const [selected, setSelected]       = useState(null);
+  const [selected, setSelected]       = useState<Screening | null>(null);
   const [showModal, setShowModal]     = useState(false);
   const [notes, setNotes]             = useState("");
   const [actionLoading, setActionLoading] = useState(false);
@@ -92,12 +156,15 @@ export default function ComplianceDashboard() {
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
+      // complianceService's stats/screenings calls return unknown (shared,
+      // loose by design) — asserting the actual response shapes here.
       const [statsBody, screenBody] = await Promise.all([
-        getComplianceStats(),
-        getComplianceScreenings(),
+        getComplianceStats() as Promise<{ data: ComplianceStats }>,
+        getComplianceScreenings() as Promise<{ data: { data?: Screening[] } | Screening[] }>,
       ]);
       setStats(statsBody.data);
-      setScreenings(screenBody.data.data ?? screenBody.data ?? []);
+      const sd = screenBody.data;
+      setScreenings((Array.isArray(sd) ? sd : sd.data) ?? []);
     } catch {
       toast.error("Failed to load compliance data");
     } finally {
@@ -107,9 +174,9 @@ export default function ComplianceDashboard() {
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  const openModal = async (screeningId) => {
+  const openModal = async (screeningId: string | number) => {
     try {
-      const body = await getComplianceScreening(screeningId);
+      const body = await getComplianceScreening(screeningId) as { data: Screening };
       setSelected(body.data);
       setNotes("");
       setShowModal(true);
@@ -121,7 +188,7 @@ export default function ComplianceDashboard() {
   const closeModal = () => { setShowModal(false); setSelected(null); setNotes(""); };
 
   const handleClear = async () => {
-    if (!notes.trim() || notes.trim().length < 10) {
+    if (!notes.trim() || notes.trim().length < 10 || !selected) {
       toast.error("Please provide review notes (min 10 characters)");
       return;
     }
@@ -132,14 +199,15 @@ export default function ComplianceDashboard() {
       closeModal();
       fetchAll();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Action failed");
+      const axiosErr = err as AxiosError<ApiErrorBody>;
+      toast.error(axiosErr.response?.data?.message || "Action failed");
     } finally {
       setActionLoading(false);
     }
   };
 
   const handleBlock = async () => {
-    if (!notes.trim() || notes.trim().length < 10) {
+    if (!notes.trim() || notes.trim().length < 10 || !selected) {
       toast.error("Please provide review notes (min 10 characters)");
       return;
     }
@@ -151,13 +219,15 @@ export default function ComplianceDashboard() {
       closeModal();
       fetchAll();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Action failed");
+      const axiosErr = err as AxiosError<ApiErrorBody>;
+      toast.error(axiosErr.response?.data?.message || "Action failed");
     } finally {
       setActionLoading(false);
     }
   };
 
-  const handleRescreen = async (userId) => {
+  const handleRescreen = async (userId?: string | number) => {
+    if (!userId) return;
     try {
       await rescreenUser(userId);
       toast.success("Re-screening queued");
@@ -249,7 +319,7 @@ export default function ComplianceDashboard() {
             className="w-full sm:w-80 bg-white/5 border border-white/10 focus:border-amber-500/40 focus:ring-2 focus:ring-amber-500/10 text-white placeholder-white/20 rounded-xl pl-10 pr-4 py-2.5 text-sm outline-none transition-all"
             placeholder="Search by name, email, trigger…"
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
           />
         </div>
 
@@ -499,7 +569,7 @@ export default function ComplianceDashboard() {
                       </label>
                       <textarea
                         value={notes}
-                        onChange={e => setNotes(e.target.value)}
+                        onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setNotes(e.target.value)}
                         rows={3}
                         placeholder="Document your review decision and reasoning…"
                         className="w-full bg-white/5 border border-white/10 focus:border-amber-500/40 focus:ring-2 focus:ring-amber-500/20 text-white placeholder-white/20 rounded-xl px-4 py-3 text-sm outline-none transition-all resize-none"

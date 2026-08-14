@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, type ChangeEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { getWaitlistStats, getWaitlist, inviteWaitlistEntry, deleteWaitlistEntry } from "../../../services/adminService";
 import toast from "react-hot-toast";
+import type { AxiosError } from "axios";
 import {
   ArrowLeft, Users, MapPin, Wallet, BarChart3,
   Mail, CheckCircle, Clock, Trash2, Send,
@@ -13,29 +14,42 @@ import {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const BUDGET_LABELS = {
+const BUDGET_LABELS: Record<string, string> = {
   "5k_50k":    "₦5k – ₦50k",
   "50k_500k":  "₦50k – ₦500k",
   "500k_plus": "₦500k+",
 };
 
-const CITY_LABELS = {
+const CITY_LABELS: Record<string, string> = {
   ogun:  "Ogun",
   oyo:   "Oyo",
   abuja: "Abuja",
   other: "Other",
 };
 
-const CITY_COLORS = {
+const CITY_COLORS: Record<string, string> = {
   ogun:  "#C8873A",
   oyo:   "#2D7A55",
   abuja: "#8B5CF6",
   other: "#06B6D4",
 };
 
+interface ApiErrorBody {
+  message?: string;
+  error?: string;
+}
+
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-function StatCard({ icon, label, value, accent, sub }) {
+interface StatCardProps {
+  icon: ReactNode;
+  label: string;
+  value: number | string;
+  accent: string;
+  sub?: string;
+}
+
+function StatCard({ icon, label, value, accent, sub }: StatCardProps) {
   return (
     <div className="relative rounded-2xl border border-white/10 bg-white/5 p-5 overflow-hidden group hover:border-white/20 hover:-translate-y-0.5 transition-all">
       <div
@@ -55,7 +69,7 @@ function StatCard({ icon, label, value, accent, sub }) {
   );
 }
 
-function InvitedBadge({ invited }) {
+function InvitedBadge({ invited }: { invited: boolean }) {
   if (invited) {
     return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border border-emerald-500/20 bg-emerald-500/10 text-emerald-400">
@@ -72,25 +86,52 @@ function InvitedBadge({ invited }) {
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
+interface WaitlistEntry {
+  id: string | number;
+  position: number;
+  name: string;
+  email: string;
+  city?: string | null;
+  budget?: string | null;
+  referral_code?: string | null;
+  referral_count?: number;
+  invited: boolean;
+}
+
+interface WaitlistStats {
+  total: number;
+  invited: number;
+  with_referrals: number;
+  by_city?: Record<string, number>;
+}
+
+interface Pagination {
+  current_page: number;
+  last_page: number;
+  total: number;
+}
+
 export default function AdminWaitlistPage() {
-  const [entries, setEntries]         = useState([]);
-  const [stats, setStats]             = useState(null);
+  const [entries, setEntries]         = useState<WaitlistEntry[]>([]);
+  const [stats, setStats]             = useState<WaitlistStats | null>(null);
   const [loading, setLoading]         = useState(true);
   const [statsLoading, setStatsLoading] = useState(true);
-  const [pagination, setPagination]   = useState({ current_page: 1, last_page: 1, total: 0 });
+  const [pagination, setPagination]   = useState<Pagination>({ current_page: 1, last_page: 1, total: 0 });
   const [page, setPage]               = useState(1);
   const [search, setSearch]           = useState("");
   const [filterCity, setFilterCity]   = useState("");
   const [filterBudget, setFilterBudget] = useState("");
   const [filterInvited, setFilterInvited] = useState("");
-  const [inviting, setInviting]       = useState(null);
-  const [deleting, setDeleting]       = useState(null);
+  const [inviting, setInviting]       = useState<string | number | null>(null);
+  const [deleting, setDeleting]       = useState<string | number | null>(null);
   const [showFilters, setShowFilters] = useState(false);
 
   const fetchStats = useCallback(async () => {
     try {
       setStatsLoading(true);
-      const body = await getWaitlistStats();
+      // adminService.getWaitlistStats() returns unknown (shared, loose by
+      // design) — this page asserts the actual response shape it renders.
+      const body = await getWaitlistStats() as { data: WaitlistStats };
       setStats(body.data);
     } catch {
       toast.error("Failed to load waitlist stats");
@@ -102,13 +143,15 @@ export default function AdminWaitlistPage() {
   const fetchEntries = useCallback(async () => {
     try {
       setLoading(true);
-      const params = new URLSearchParams({ page, per_page: 20 });
+      const params = new URLSearchParams({ page: String(page), per_page: "20" });
       if (filterCity)    params.set("city", filterCity);
       if (filterBudget)  params.set("budget", filterBudget);
       if (filterInvited) params.set("invited", filterInvited);
-      const body = await getWaitlist(params.toString());
+      const body = await getWaitlist(params.toString()) as {
+        data: { data?: WaitlistEntry[]; current_page?: number; last_page?: number; total?: number };
+      };
       const d   = body.data;
-      setEntries(d.data ?? d ?? []);
+      setEntries(d.data ?? []);
       setPagination({ current_page: d.current_page ?? 1, last_page: d.last_page ?? 1, total: d.total ?? 0 });
     } catch {
       toast.error("Failed to load waitlist");
@@ -121,7 +164,7 @@ export default function AdminWaitlistPage() {
   useEffect(() => { fetchEntries(); }, [fetchEntries]);
   useEffect(() => { setPage(1); }, [filterCity, filterBudget, filterInvited]);
 
-  const handleInvite = async (id, name) => {
+  const handleInvite = async (id: string | number, name: string) => {
     if (!window.confirm(`Mark ${name} as invited and send their access link?`)) return;
     try {
       setInviting(id);
@@ -130,13 +173,14 @@ export default function AdminWaitlistPage() {
       fetchEntries();
       fetchStats();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to invite");
+      const axiosErr = err as AxiosError<ApiErrorBody>;
+      toast.error(axiosErr.response?.data?.message || "Failed to invite");
     } finally {
       setInviting(null);
     }
   };
 
-  const handleDelete = async (id, name) => {
+  const handleDelete = async (id: string | number, name: string) => {
     if (!window.confirm(`Remove ${name} from the waitlist? This will close the gap in positions.`)) return;
     try {
       setDeleting(id);
@@ -145,7 +189,8 @@ export default function AdminWaitlistPage() {
       fetchEntries();
       fetchStats();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to remove");
+      const axiosErr = err as AxiosError<ApiErrorBody>;
+      toast.error(axiosErr.response?.data?.message || "Failed to remove");
     } finally {
       setDeleting(null);
     }
@@ -228,7 +273,7 @@ export default function AdminWaitlistPage() {
           {/* Search */}
           <div className="relative flex-1 min-w-48">
             <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" />
-            <input value={search} onChange={e => setSearch(e.target.value)}
+            <input value={search} onChange={(e: ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
               placeholder="Search name, email, or referral code…"
               className="w-full bg-white/5 border border-white/10 hover:border-white/20 focus:border-amber-500/40 text-white placeholder-white/20 pl-10 pr-9 py-2.5 rounded-xl text-sm outline-none transition-all" />
             {search && (
@@ -258,14 +303,16 @@ export default function AdminWaitlistPage() {
 
         {showFilters && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5 p-4 rounded-xl border border-white/10 bg-white/3">
-            {[
-              { label: "City",    key: "filterCity",    val: filterCity,    set: setFilterCity,    opts: [["", "All Cities"], ...Object.entries(CITY_LABELS)] },
-              { label: "Budget",  key: "filterBudget",  val: filterBudget,  set: setFilterBudget,  opts: [["", "All Budgets"], ...Object.entries(BUDGET_LABELS)] },
-              { label: "Status",  key: "filterInvited", val: filterInvited, set: setFilterInvited, opts: [["", "All"], ["true", "Invited"], ["false", "Waiting"]] },
-            ].map(f => (
+            {(
+              [
+                { label: "City",    key: "filterCity",    val: filterCity,    set: setFilterCity,    opts: [["", "All Cities"], ...Object.entries(CITY_LABELS)] },
+                { label: "Budget",  key: "filterBudget",  val: filterBudget,  set: setFilterBudget,  opts: [["", "All Budgets"], ...Object.entries(BUDGET_LABELS)] },
+                { label: "Status",  key: "filterInvited", val: filterInvited, set: setFilterInvited, opts: [["", "All"], ["true", "Invited"], ["false", "Waiting"]] },
+              ] as Array<{ label: string; key: string; val: string; set: (v: string) => void; opts: string[][] }>
+            ).map(f => (
               <div key={f.key}>
                 <label className="block text-xs font-bold uppercase tracking-widest text-white/55 mb-2">{f.label}</label>
-                <select value={f.val} onChange={e => f.set(e.target.value)}
+                <select value={f.val} onChange={(e: ChangeEvent<HTMLSelectElement>) => f.set(e.target.value)}
                   className="w-full bg-white/5 border border-white/10 text-white rounded-xl px-3 py-2.5 text-sm outline-none focus:border-amber-500/40 appearance-none">
                   {f.opts.map(([v, l]) => <option key={v} value={v} className="bg-[#0D1F1A]">{l}</option>)}
                 </select>
@@ -305,18 +352,18 @@ export default function AdminWaitlistPage() {
                   <p className="text-xs text-white/60 truncate">{entry.email}</p>
 
                   <span className="text-xs text-white/50">
-                    {CITY_LABELS[entry.city] || entry.city || "—"}
+                    {(entry.city && CITY_LABELS[entry.city]) || entry.city || "—"}
                   </span>
 
                   <span className="text-xs text-white/50">
-                    {BUDGET_LABELS[entry.budget] || entry.budget || "—"}
+                    {(entry.budget && BUDGET_LABELS[entry.budget]) || entry.budget || "—"}
                   </span>
 
                   <div className="flex items-center gap-1.5">
-                    <span className={`text-sm font-bold ${entry.referral_count > 0 ? "text-emerald-400" : "text-white/25"}`}>
+                    <span className={`text-sm font-bold ${(entry.referral_count ?? 0) > 0 ? "text-emerald-400" : "text-white/25"}`}>
                       {entry.referral_count ?? 0}
                     </span>
-                    {entry.referral_count > 0 && <TrendingUp size={10} className="text-emerald-400" />}
+                    {(entry.referral_count ?? 0) > 0 && <TrendingUp size={10} className="text-emerald-400" />}
                   </div>
 
                   <InvitedBadge invited={entry.invited} />
@@ -380,8 +427,8 @@ export default function AdminWaitlistPage() {
                   </div>
                   <div className="grid grid-cols-3 gap-2">
                     {[
-                      { label: "City",      value: CITY_LABELS[entry.city] || "—" },
-                      { label: "Budget",    value: BUDGET_LABELS[entry.budget] || "—" },
+                      { label: "City",      value: (entry.city && CITY_LABELS[entry.city]) || "—" },
+                      { label: "Budget",    value: (entry.budget && BUDGET_LABELS[entry.budget]) || "—" },
                       { label: "Referrals", value: entry.referral_count ?? 0 },
                     ].map(s => (
                       <div key={s.label} className="bg-white/5 rounded-lg p-2">
