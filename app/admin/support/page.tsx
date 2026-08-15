@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef, Suspense } from "react";
+import { useEffect, useState, useCallback, useRef, Suspense, type ChangeEvent, type MouseEvent, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -12,19 +12,36 @@ import {
   getAdminTicket,
 } from "../../../services/supportService";
 import toast from "react-hot-toast";
+import type { AxiosError } from "axios";
 import {
   MessageSquare, Clock, CheckCircle, AlertCircle,
   Send, Trash2, User, Search, X, Eye, ArrowLeft,
   Paperclip, Download, Image as ImageIcon, FileText, Film,
 } from "lucide-react";
 
-const STATUS_CONFIG = {
+type TicketStatus = "open" | "waiting" | "closed";
+type TicketPriority = "low" | "normal" | "high";
+
+interface StatusConfigEntry {
+  label: string;
+  color: string;
+  bg: string;
+  icon: ReactNode;
+}
+
+const STATUS_CONFIG: Record<TicketStatus, StatusConfigEntry> = {
   open:    { label:"Open",    color:"text-cyan-400",  bg:"bg-cyan-500/10  border-cyan-500/20",  icon:<AlertCircle size={11}/> },
   waiting: { label:"Waiting", color:"text-amber-400", bg:"bg-amber-500/10 border-amber-500/20", icon:<Clock size={11}/> },
   closed:  { label:"Closed",  color:"text-white/60",  bg:"bg-white/5      border-white/10",     icon:<CheckCircle size={11}/> },
 };
 
-const PRIORITY_CONFIG = {
+interface PriorityConfigEntry {
+  label: string;
+  color: string;
+  dot: string;
+}
+
+const PRIORITY_CONFIG: Record<TicketPriority, PriorityConfigEntry> = {
   low:    { label:"Low",    color:"text-white/60", dot:"bg-white/20" },
   normal: { label:"Normal", color:"text-blue-400", dot:"bg-blue-400" },
   high:   { label:"High",   color:"text-red-400",  dot:"bg-red-400"  },
@@ -32,26 +49,67 @@ const PRIORITY_CONFIG = {
 
 const CATEGORIES = ["account","payment","kyc","investment","withdrawal","other"];
 
+interface ApiErrorBody {
+  message?: string;
+  error?: string;
+}
+
+// ─── Shared types ───────────────────────────────────────────────────────────
+
+interface TicketUser {
+  name?: string;
+  email?: string;
+}
+
+interface TicketMessage {
+  id: string | number;
+  sender_type: "admin" | "user" | string;
+  body: string;
+  attachment_path?: string | null;
+  created_at: string;
+}
+
+interface Ticket {
+  id: string | number;
+  reference?: string;
+  subject: string;
+  category: string;
+  status: string;
+  priority?: string;
+  user?: TicketUser | null;
+  guest_name?: string;
+  guest_email?: string;
+  messages?: TicketMessage[];
+  latest_message?: { attachment_path?: string | null };
+  updated_at: string;
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function getFileType(path) {
+function getFileType(path?: string | null): "image" | "video" | "pdf" | "file" | null {
   if (!path) return null;
-  const ext = path.split(".").pop().toLowerCase();
+  const ext = path.split(".").pop()?.toLowerCase() || "";
   if (["jpg","jpeg","png","gif","webp"].includes(ext)) return "image";
   if (["mp4","webm"].includes(ext)) return "video";
   if (ext === "pdf") return "pdf";
   return "file";
 }
 
-function getFileName(path) {
+function getFileName(path?: string | null): string {
   if (!path) return "attachment";
-  return path.split("/").pop();
+  return path.split("/").pop() || "attachment";
 }
 
 // ─── Attachment component ─────────────────────────────────────────────────────
 
-function Attachment({ messageId, path, isAdmin }) {
-  const [blobUrl, setBlobUrl]   = useState(null);
+interface AttachmentProps {
+  messageId: string | number;
+  path?: string | null;
+  isAdmin: boolean;
+}
+
+function Attachment({ messageId, path, isAdmin }: AttachmentProps) {
+  const [blobUrl, setBlobUrl]   = useState<string | null>(null);
   const [loading, setLoading]   = useState(false);
   const [lightbox, setLightbox] = useState(false);
   const fileType = getFileType(path);
@@ -158,10 +216,10 @@ function Attachment({ messageId, path, isAdmin }) {
             src={blobUrl}
             alt="attachment"
             className="max-w-full max-h-[90vh] rounded-2xl object-contain shadow-2xl"
-            onClick={e => e.stopPropagation()}
+            onClick={(e: MouseEvent<HTMLImageElement>) => e.stopPropagation()}
           />
           <button
-            onClick={e => { e.stopPropagation(); handleDownload(); }}
+            onClick={(e: MouseEvent<HTMLButtonElement>) => { e.stopPropagation(); handleDownload(); }}
             className="absolute bottom-4 right-4 flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-all"
           >
             <Download size={13}/> Download
@@ -174,8 +232,8 @@ function Attachment({ messageId, path, isAdmin }) {
 
 // ─── Shared UI ────────────────────────────────────────────────────────────────
 
-function StatusBadge({ status }) {
-  const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.open;
+function StatusBadge({ status }: { status: string }) {
+  const cfg = STATUS_CONFIG[status as TicketStatus] || STATUS_CONFIG.open;
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${cfg.color} ${cfg.bg}`}>
       {cfg.icon}{cfg.label}
@@ -183,8 +241,8 @@ function StatusBadge({ status }) {
   );
 }
 
-function PriorityDot({ priority }) {
-  const cfg = PRIORITY_CONFIG[priority] || PRIORITY_CONFIG.normal;
+function PriorityDot({ priority }: { priority?: string }) {
+  const cfg = PRIORITY_CONFIG[priority as TicketPriority] || PRIORITY_CONFIG.normal;
   return (
     <span className={`inline-flex items-center gap-1.5 text-xs ${cfg.color}`}>
       <span className={`w-2 h-2 rounded-full ${cfg.dot}`}/>
@@ -193,7 +251,7 @@ function PriorityDot({ priority }) {
   );
 }
 
-function DarkSelect({ children, className="", ...props }) {
+function DarkSelect({ children, className="", ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <select
       className={`bg-[#0f2820] border border-white/10 hover:border-white/20 focus:border-cyan-500/40 text-white px-3 py-2 rounded-xl text-sm outline-none transition-all appearance-none cursor-pointer ${className}`}
@@ -206,14 +264,20 @@ function DarkSelect({ children, className="", ...props }) {
 
 // ─── Ticket Modal ─────────────────────────────────────────────────────────────
 
-function TicketModal({ ticket, onClose, onUpdate }) {
+interface TicketModalProps {
+  ticket: Ticket;
+  onClose: () => void;
+  onUpdate: () => void;
+}
+
+function TicketModal({ ticket, onClose, onUpdate }: TicketModalProps) {
   const [reply, setReply]                 = useState("");
-  const [attachment, setAttachment]       = useState(null);
+  const [attachment, setAttachment]       = useState<File | null>(null);
   const [sending, setSending]             = useState(false);
   const [deleting, setDeleting]           = useState(false);
-  const [localTicket, setLocalTicket]     = useState(ticket);
+  const [localTicket, setLocalTicket]     = useState<Ticket>(ticket);
   const [statusUpdating, setStatusUpdating] = useState(false);
-  const fileInputRef = useRef(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleReply = async () => {
     if (!reply.trim()) { toast.error("Reply cannot be empty"); return; }
@@ -225,11 +289,11 @@ function TicketModal({ ticket, onClose, onUpdate }) {
 
       const res = await replyToAdminTicket(localTicket.id, form);
 
-      const updated = res.data;
+      const updated = res.data as { messages?: TicketMessage[] };
       setLocalTicket(prev => ({
         ...prev,
         status: "waiting",
-        messages: updated.messages ?? [...(prev.messages || []), res.data],
+        messages: updated.messages ?? [...(prev.messages || []), res.data as unknown as TicketMessage],
       }));
       setReply("");
       setAttachment(null);
@@ -237,11 +301,12 @@ function TicketModal({ ticket, onClose, onUpdate }) {
       toast.success("Reply sent");
       onUpdate();
     } catch(err) {
-      toast.error(err.response?.data?.message || "Failed to send reply");
+      const axiosErr = err as AxiosError<ApiErrorBody>;
+      toast.error(axiosErr.response?.data?.message || "Failed to send reply");
     } finally { setSending(false); }
   };
 
-  const handleStatusChange = async (status) => {
+  const handleStatusChange = async (status: string) => {
     try {
       setStatusUpdating(true);
       await updateAdminTicketStatus(localTicket.id, { status });
@@ -252,7 +317,7 @@ function TicketModal({ ticket, onClose, onUpdate }) {
     finally { setStatusUpdating(false); }
   };
 
-  const handlePriorityChange = async (priority) => {
+  const handlePriorityChange = async (priority: string) => {
     try {
       await updateAdminTicketStatus(localTicket.id, { priority });
       setLocalTicket(prev => ({ ...prev, priority }));
@@ -269,11 +334,12 @@ function TicketModal({ ticket, onClose, onUpdate }) {
       toast.success("Ticket deleted");
       onClose(); onUpdate();
     } catch(err) {
-      toast.error(err.response?.data?.message || "Failed to delete ticket");
+      const axiosErr = err as AxiosError<ApiErrorBody>;
+      toast.error(axiosErr.response?.data?.message || "Failed to delete ticket");
     } finally { setDeleting(false); }
   };
 
-  const authorName = (msg) =>
+  const authorName = (msg: TicketMessage) =>
     msg.sender_type === "admin"
       ? "Admin"
       : (localTicket.user?.name || localTicket.guest_name || "Guest");
@@ -315,7 +381,7 @@ function TicketModal({ ticket, onClose, onUpdate }) {
         {/* Status / Priority controls */}
         <div className="flex items-center gap-2 px-6 py-3 border-b border-white/5 bg-white/5 shrink-0 flex-wrap">
           <span className="text-xs text-white/55 mr-1">Status:</span>
-          {["open","waiting","closed"].map(s => (
+          {(["open","waiting","closed"] as TicketStatus[]).map(s => (
             <button
               key={s}
               onClick={() => handleStatusChange(s)}
@@ -333,7 +399,7 @@ function TicketModal({ ticket, onClose, onUpdate }) {
             <span className="text-xs text-white/55">Priority:</span>
             <DarkSelect
               value={localTicket.priority || "normal"}
-              onChange={e => handlePriorityChange(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLSelectElement>) => handlePriorityChange(e.target.value)}
             >
               {Object.entries(PRIORITY_CONFIG).map(([v, c]) => (
                 <option key={v} value={v}>{c.label}</option>
@@ -398,8 +464,8 @@ function TicketModal({ ticket, onClose, onUpdate }) {
               <div className="flex-1 flex flex-col gap-2">
                 <textarea
                   value={reply}
-                  onChange={e => setReply(e.target.value)}
-                  onKeyDown={e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleReply(); }}
+                  onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setReply(e.target.value)}
+                  onKeyDown={(e: React.KeyboardEvent<HTMLTextAreaElement>) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleReply(); }}
                   placeholder="Write a reply… (Cmd+Enter to send)"
                   rows={3}
                   className="w-full bg-white/5 border border-white/10 focus:border-cyan-500/40 focus:ring-2 focus:ring-cyan-500/20 text-white placeholder-white/20 rounded-xl px-4 py-3 text-sm outline-none transition-all resize-none"
@@ -410,7 +476,7 @@ function TicketModal({ ticket, onClose, onUpdate }) {
                     type="file"
                     accept="image/jpg,image/jpeg,image/png,application/pdf,video/mp4,video/webm"
                     className="hidden"
-                    onChange={e => setAttachment(e.target.files?.[0] || null)}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setAttachment(e.target.files?.[0] || null)}
                   />
                   <button
                     onClick={() => fileInputRef.current?.click()}
@@ -469,12 +535,19 @@ function TicketModal({ ticket, onClose, onUpdate }) {
 
 // ─── Inner component — uses useSearchParams, must be inside Suspense ──────────
 
+interface TicketFilters {
+  status: string;
+  priority: string;
+  category: string;
+  search: string;
+}
+
 function AdminSupportTicketsInner() {
   const searchParams = useSearchParams();
-  const [tickets, setTickets]               = useState([]);
+  const [tickets, setTickets]               = useState<Ticket[]>([]);
   const [loading, setLoading]               = useState(true);
-  const [selectedTicket, setSelectedTicket] = useState(null);
-  const [filters, setFilters]               = useState({
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+  const [filters, setFilters]               = useState<TicketFilters>({
     status:   searchParams.get("status") || "",
     priority: "",
     category: "",
@@ -485,18 +558,22 @@ function AdminSupportTicketsInner() {
   const fetchTickets = useCallback(async (page = 1) => {
     try {
       setLoading(true);
-      const params = new URLSearchParams({ per_page: 20, page });
+      const params = new URLSearchParams({ per_page: "20", page: String(page) });
       if (filters.status)   params.append("status",   filters.status);
       if (filters.priority) params.append("priority", filters.priority);
       if (filters.category) params.append("category", filters.category);
       if (filters.search)   params.append("search",   filters.search);
-      const body = await getAdminTickets(params.toString());
+      // supportService.getAdminTickets() returns unknown (shared, loose by
+      // design) — asserting the actual response shape this page renders.
+      const body = await getAdminTickets(params.toString()) as {
+        data: { data?: Ticket[]; current_page?: number; last_page?: number; total?: number } | Ticket[];
+      };
       const data = body.data;
-      setTickets(data.data ?? data);
+      setTickets(Array.isArray(data) ? data : (data.data ?? []));
       setPagination({
-        currentPage: data.current_page ?? 1,
-        lastPage:    data.last_page    ?? 1,
-        total:       data.total        ?? 0,
+        currentPage: Array.isArray(data) ? 1 : (data.current_page ?? 1),
+        lastPage:    Array.isArray(data) ? 1 : (data.last_page    ?? 1),
+        total:       Array.isArray(data) ? data.length : (data.total ?? 0),
       });
     } catch {
       toast.error("Failed to load tickets");
@@ -507,16 +584,16 @@ function AdminSupportTicketsInner() {
 
   useEffect(() => { fetchTickets(1); }, [fetchTickets]);
 
-  const openTicket = async (ticketId) => {
+  const openTicket = async (ticketId: string | number) => {
     try {
-      const body = await getAdminTicket(ticketId);
+      const body = await getAdminTicket(ticketId) as { data: Ticket };
       setSelectedTicket(body.data);
     } catch {
       toast.error("Failed to load ticket details");
     }
   };
 
-  const handleFilterChange = (key, value) =>
+  const handleFilterChange = (key: keyof TicketFilters, value: string) =>
     setFilters(prev => ({ ...prev, [key]: value }));
 
   const openCount = tickets.filter(t => t.status === "open").length;
@@ -581,14 +658,14 @@ function AdminSupportTicketsInner() {
             ))}
           </div>
 
-          <DarkSelect value={filters.priority} onChange={e => handleFilterChange("priority", e.target.value)}>
+          <DarkSelect value={filters.priority} onChange={(e: ChangeEvent<HTMLSelectElement>) => handleFilterChange("priority", e.target.value)}>
             <option value="">All Priorities</option>
             <option value="high">High</option>
             <option value="normal">Normal</option>
             <option value="low">Low</option>
           </DarkSelect>
 
-          <DarkSelect value={filters.category} onChange={e => handleFilterChange("category", e.target.value)}>
+          <DarkSelect value={filters.category} onChange={(e: ChangeEvent<HTMLSelectElement>) => handleFilterChange("category", e.target.value)}>
             <option value="">All Categories</option>
             {CATEGORIES.map(c => (
               <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
@@ -599,7 +676,7 @@ function AdminSupportTicketsInner() {
             <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20"/>
             <input
               value={filters.search}
-              onChange={e => handleFilterChange("search", e.target.value)}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => handleFilterChange("search", e.target.value)}
               placeholder="Search reference, subject, email…"
               className="w-full bg-white/5 border border-white/10 hover:border-white/20 focus:border-cyan-500/40 text-white placeholder-white/20 pl-10 pr-9 py-2 rounded-xl text-sm outline-none transition-all"
             />

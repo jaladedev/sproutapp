@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, type ChangeEvent, type KeyboardEvent, type ReactNode } from "react";
 import Link from "next/link";
 import {
   getLiveChatQueue,
@@ -9,17 +9,28 @@ import {
   sendAgentLiveChatTyping,
   endLiveChat,
 } from "../../../services/supportService";
+// Real bug found while typing this file: broadcastAuthorizer() below calls
+// api.post(...) but nothing in this file ever imported `api` — every prior
+// consumer of this page (untyped .jsx let it slide silently) would have
+// hit a ReferenceError the moment a private-channel subscription tried to
+// authorize. Added the missing import rather than routing it through a
+// service, since it needs the raw axios instance for Echo's authorizer
+// callback shape (channel, socketId, callback), not a typed request/response.
+import api from "../../../utils/api";
 import toast from "react-hot-toast";
+import type { AxiosError } from "axios";
+import type EchoType from "laravel-echo";
+import type { Channel } from "laravel-echo";
 import {
   ArrowLeft, Send, X, Clock, MessageSquare, Inbox,
   CheckCheck, Loader2, Circle, Paperclip,
 } from "lucide-react";
 
 /* ─── Helpers ───────────────────────────────────────────────────────────── */
-const fmtTime = (d) =>
+const fmtTime = (d?: string | null) =>
   d ? new Date(d).toLocaleTimeString("en-NG", { hour: "2-digit", minute: "2-digit" }) : "";
 
-const fmtDate = (d) => {
+const fmtDate = (d?: string | null) => {
   if (!d) return "";
   const date      = new Date(d);
   const now       = new Date();
@@ -30,7 +41,7 @@ const fmtDate = (d) => {
   return date.toLocaleDateString("en-NG", { day: "numeric", month: "short" });
 };
 
-const CATEGORY_COLORS = {
+const CATEGORY_COLORS: Record<string, string> = {
   account:    "#C8873A",
   payment:    "#2D7A55",
   kyc:        "#8B5CF6",
@@ -39,27 +50,64 @@ const CATEGORY_COLORS = {
   other:      "#6B7280",
 };
 
+interface ApiErrorBody {
+  message?: string;
+  error?: string;
+}
+
+interface TicketUser {
+  name?: string;
+  email?: string;
+}
+
+interface ChatMessage {
+  id: string | number;
+  ticket_id?: string | number;
+  sender_type: "agent" | "user" | string;
+  body: string;
+  created_at?: string;
+  user_name?: string;
+}
+
+interface Ticket {
+  id: string | number;
+  user?: TicketUser;
+  subject: string;
+  category: string;
+  reference?: string;
+  agent_id?: string | number | null;
+  created_at?: string;
+  messages?: ChatMessage[];
+}
+
 /* ─── Broadcasting auth — routed through our axios instance so the
    httpOnly session cookie is sent automatically (withCredentials), instead
    of trying to read the (now-inaccessible) token out of document.cookie. ─── */
-function broadcastAuthorizer(channel) {
+import type { ChannelAuthorizationCallback } from "pusher-js";
+
+// pusher-js exports ChannelAuthorizationCallback publicly but not the
+// ChannelAuthorizationData type it references internally — derived
+// structurally off the callback's own second parameter instead.
+type AuthData = NonNullable<Parameters<ChannelAuthorizationCallback>[1]>;
+
+function broadcastAuthorizer(channel: { name: string }) {
   return {
-    authorize: (socketId, callback) => {
+    authorize: (socketId: string, callback: ChannelAuthorizationCallback) => {
       api
         .post("/broadcasting/auth", { socket_id: socketId, channel_name: channel.name })
-        .then((res) => callback(false, res.data))
-        .catch((err) => callback(true, err));
+        .then((res) => callback(null, res.data as AuthData))
+        .catch((err) => callback(err instanceof Error ? err : new Error(String(err)), null));
     },
   };
 }
 
 /* ─── Echo hook — waits for dynamic imports before resolving ────────────── */
 function useEcho() {
-  const echoRef  = useRef(null);
+  const echoRef  = useRef<EchoType<"reverb"> | null>(null);
   const readyRef = useRef(false);
   // Expose a promise so subscribers can await Echo being ready
-  const readyPromise = useRef(null);
-  const resolveReady = useRef(null);
+  const readyPromise = useRef<Promise<EchoType<"reverb">> | null>(null);
+  const resolveReady = useRef<((echo: EchoType<"reverb">) => void) | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -73,7 +121,7 @@ function useEcho() {
       import("laravel-echo"),
       import("pusher-js"),
     ]).then(([{ default: Echo }, { default: Pusher }]) => {
-      window.Pusher = Pusher;
+      (window as unknown as { Pusher: typeof Pusher }).Pusher = Pusher;
 
       echoRef.current = new Echo({
       broadcaster:       "reverb",
@@ -87,7 +135,7 @@ function useEcho() {
       authorizer:        broadcastAuthorizer,
     });
       readyRef.current = true;
-      resolveReady.current(echoRef.current); // ← unblocks any awaiting subscribers
+      resolveReady.current?.(echoRef.current); // ← unblocks any awaiting subscribers
     });
 
     return () => {
@@ -101,10 +149,16 @@ function useEcho() {
 }
 
 /* ─── Queue item ────────────────────────────────────────────────────────── */
-function QueueItem({ ticket, isActive, onClick }) {
+interface QueueItemProps {
+  ticket: Ticket;
+  isActive: boolean;
+  onClick: () => void;
+}
+
+function QueueItem({ ticket, isActive, onClick }: QueueItemProps) {
   const color    = CATEGORY_COLORS[ticket.category] || "#6B7280";
   const waitMins = ticket.created_at
-    ? Math.floor((Date.now() - new Date(ticket.created_at)) / 60000)
+    ? Math.floor((Date.now() - new Date(ticket.created_at).getTime()) / 60000)
     : 0;
   const isClaimed = !!ticket.agent_id;
 
@@ -155,7 +209,12 @@ function QueueItem({ ticket, isActive, onClick }) {
 }
 
 /* ─── Message bubble ────────────────────────────────────────────────────── */
-function MessageBubble({ message, isAgent }) {
+interface MessageBubbleProps {
+  message: ChatMessage;
+  isAgent: boolean;
+}
+
+function MessageBubble({ message, isAgent }: MessageBubbleProps) {
   return (
     <div className={`flex gap-2.5 ${isAgent ? "flex-row-reverse" : ""}`}>
       <div
@@ -184,7 +243,7 @@ function MessageBubble({ message, isAgent }) {
 }
 
 /* ─── Typing indicator ──────────────────────────────────────────────────── */
-function TypingIndicator({ name }) {
+function TypingIndicator({ name }: { name?: string | null }) {
   return (
     <div className="flex gap-2.5 items-end">
       <div className="w-7 h-7 rounded-xl bg-white/10 flex items-center justify-center text-xs font-bold text-white/60">
@@ -224,9 +283,9 @@ function EmptyState() {
    MAIN PAGE
    ═══════════════════════════════════════════════════════════════════════════ */
 export default function AgentChatPage() {
-  const [queue, setQueue]               = useState([]);
-  const [activeTicket, setActiveTicket] = useState(null);
-  const [messages, setMessages]         = useState([]);
+  const [queue, setQueue]               = useState<Ticket[]>([]);
+  const [activeTicket, setActiveTicket] = useState<Ticket | null>(null);
+  const [messages, setMessages]         = useState<ChatMessage[]>([]);
   const [draft, setDraft]               = useState("");
   const [sending, setSending]           = useState(false);
   const [claiming, setClaiming]         = useState(false);
@@ -234,8 +293,8 @@ export default function AgentChatPage() {
   const [userTyping, setUserTyping]     = useState(false);
   const [queueLoading, setQueueLoading] = useState(true);
 
-  const messagesEndRef = useRef(null);
-  const typingTimer    = useRef(null);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const typingTimer    = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const isTypingRef    = useRef(false);
 
   const { echoRef, readyPromise } = useEcho();
@@ -243,7 +302,9 @@ export default function AgentChatPage() {
   /* ── Fetch queue ── */
   const fetchQueue = useCallback(async () => {
     try {
-      setQueue(await getLiveChatQueue());
+      // supportService.getLiveChatQueue() returns unknown[] (shared, loose
+      // by design) — asserting the actual response shape this page renders.
+      setQueue((await getLiveChatQueue()) as Ticket[]);
     } catch {
       toast.error("Failed to load queue");
     } finally {
@@ -266,19 +327,19 @@ export default function AgentChatPage() {
   useEffect(() => {
     if (!activeTicket) return;
 
-    let channel = null;
+    let channel: Channel | null = null;
 
-    readyPromise.current.then((echo) => {
+    readyPromise.current?.then((echo) => {
       channel = echo.private(`support.ticket.${activeTicket.id}`);
 
-      channel.listen(".message.sent", (e) => {
+      channel.listen(".message.sent", (e: ChatMessage) => {
         if (e.sender_type !== "agent") {
           setMessages((prev) => [...prev, e]);
           setUserTyping(false);
         }
       });
 
-      channel.listen(".typing", (e) => {
+      channel.listen(".typing", (e: { sender: string; is_typing: boolean }) => {
         if (e.sender === "user") {
           setUserTyping(e.is_typing);
           clearTimeout(typingTimer.current);
@@ -288,7 +349,7 @@ export default function AgentChatPage() {
         }
       });
 
-      channel.listen(".status.changed", (e) => {
+      channel.listen(".status.changed", (e: { status: string }) => {
         if (e.status === "queued") fetchQueue();
       });
     });
@@ -303,7 +364,7 @@ export default function AgentChatPage() {
 
   /* ── Subscribe to global agents channel for queue updates ── */
   useEffect(() => {
-    readyPromise.current.then((echo) => {
+    readyPromise.current?.then((echo) => {
       const channel = echo.channel("agents");
       channel.listen(".status.changed", () => fetchQueue());
     });
@@ -316,22 +377,23 @@ export default function AgentChatPage() {
   }, [fetchQueue, readyPromise]);
 
   /* ── Claim ticket ── */
-  const handleClaim = async (ticket) => {
+  const handleClaim = async (ticket: Ticket) => {
     setClaiming(true);
     try {
-      const data = await claimLiveChatTicket(ticket.id);
+      const data = (await claimLiveChatTicket(ticket.id)) as Ticket;
       setActiveTicket(data);
       setMessages(data.messages ?? []);
       setQueue((q) => q.filter((t) => t.id !== ticket.id));
       toast.success(`Claimed ticket from ${ticket.user?.name}`);
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to claim ticket");
+      const axiosErr = err as AxiosError<ApiErrorBody>;
+      toast.error(axiosErr.response?.data?.message || "Failed to claim ticket");
     } finally {
       setClaiming(false);
     }
   };
 
-  const handleSelectQueue = (ticket) => {
+  const handleSelectQueue = (ticket: Ticket) => {
     if (activeTicket?.id === ticket.id) return;
     handleClaim(ticket);
   };
@@ -342,7 +404,7 @@ export default function AgentChatPage() {
     if (!body || !activeTicket || sending) return;
 
     setSending(true);
-    const optimistic = {
+    const optimistic: ChatMessage = {
       id:          `opt-${Date.now()}`,
       ticket_id:   activeTicket.id,
       sender_type: "agent",
@@ -354,7 +416,7 @@ export default function AgentChatPage() {
     stopTyping();
 
     try {
-      const msg = await sendAgentLiveChatMessage(activeTicket.id, body);
+      const msg = (await sendAgentLiveChatMessage(activeTicket.id, body)) as ChatMessage;
       setMessages((prev) =>
         prev.map((m) => (m.id === optimistic.id ? msg : m))
       );
@@ -374,7 +436,7 @@ export default function AgentChatPage() {
     try { await sendAgentLiveChatTyping(activeTicket.id, false); } catch {}
   }, [activeTicket]);
 
-  const handleDraftChange = useCallback(async (val) => {
+  const handleDraftChange = useCallback(async (val: string) => {
     setDraft(val);
     if (!activeTicket) return;
     clearTimeout(typingTimer.current);
@@ -403,22 +465,22 @@ export default function AgentChatPage() {
     }
   };
 
-  const handleKeyDown = (e) => {
+  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
   };
 
   const pendingCount = queue.filter((t) => !t.agent_id).length;
 
   // Mobile: toggle between 'queue' and 'chat' panels
-  const [mobilePanel, setMobilePanel] = useState("queue");
+  const [mobilePanel, setMobilePanel] = useState<"queue" | "chat">("queue");
 
   // Auto-switch to chat on mobile when a ticket is claimed
-  const handleClaimWithMobileSwitch = async (ticket) => {
+  const handleClaimWithMobileSwitch = async (ticket: Ticket) => {
     await handleClaim(ticket);
     setMobilePanel("chat");
   };
 
-  const handleSelectQueueMobile = (ticket) => {
+  const handleSelectQueueMobile = (ticket: Ticket) => {
     if (activeTicket?.id === ticket.id) {
       setMobilePanel("chat");
       return;
@@ -646,7 +708,7 @@ export default function AgentChatPage() {
                 <div className="flex items-end gap-2 sm:gap-3 bg-white/4 border border-white/8 hover:border-white/14 focus-within:border-amber-500/30 focus-within:ring-2 focus-within:ring-amber-500/10 rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 transition-all">
                   <textarea
                     value={draft}
-                    onChange={(e) => handleDraftChange(e.target.value)}
+                    onChange={(e: ChangeEvent<HTMLTextAreaElement>) => handleDraftChange(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder="Type a message…"
                     rows={1}
