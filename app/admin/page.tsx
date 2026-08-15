@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { getAdminDashboardStats } from "../../services/adminService";
+import { getAdminDashboardStats, type AdminDashboardStats } from "../../services/adminService";
 import toast from "react-hot-toast";
 import {
   MapPin, ShieldCheck, Gift, Wallet, FileText,
@@ -11,19 +11,20 @@ import {
   LucideWalletCards, HeadphonesIcon, Shield, Ban 
 } from "lucide-react";
 
-export default function AdminDashboard() {
-  const [stats, setStats] = useState({
-    lands:       { total: 0, active: 0, disabled: 0 },
-    kyc:         { total: 0, pending: 0, approved: 0, rejected: 0 },
-    referrals:   { total: 0, completed: 0, pending: 0, totalRewards: 0 },
-    support:     { total: 0, open: 0, waiting: 0 },
-    users:       { total: 0, suspended: 0, admins: 0 },
-    withdrawals: { pending: 0, processing: 0 },
-    blog:        { total: 0, published: 0, draft: 0 },
-    liveChat:    { queued: 0, active: 0 },
-    compliance: { pendingReview: 0, blocked: 0, flagged: 0 },
+const EMPTY_STATS: AdminDashboardStats = {
+  lands:       { total: 0, active: 0, disabled: 0 },
+  kyc:         { total: 0, pending: 0, approved: 0, rejected: 0 },
+  referrals:   { total: 0, completed: 0, pending: 0, totalRewards: 0 },
+  support:     { total: 0, open: 0, waiting: 0 },
+  users:       { total: 0, suspended: 0, admins: 0 },
+  withdrawals: { pending: 0, processing: 0 },
+  blog:        { total: 0, published: 0, draft: 0 },
+  liveChat:    { queued: 0, active: 0 },
+  compliance:  { pendingReview: 0, blocked: 0, flagged: 0 },
+};
 
-  });
+export default function AdminDashboard() {
+  const [stats, setStats] = useState<AdminDashboardStats>(EMPTY_STATS);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => { fetchDashboardStats(); }, []);
@@ -38,7 +39,7 @@ export default function AdminDashboard() {
     setLoading(false);
   }
 };
-  const koboToNaira = (kobo) => (kobo / 100).toLocaleString();
+  const koboToNaira = (kobo: number) => (kobo / 100).toLocaleString();
 
   if (loading) {
     return (
@@ -52,7 +53,16 @@ export default function AdminDashboard() {
     );
   }
 
-  const statCards = [
+  interface StatCardData {
+    label: string;
+    value: number;
+    icon: ReactNode;
+    accent: string;
+    href: string;
+    sub: Array<{ label: string; value: number; color: string }>;
+  }
+
+  const statCards: StatCardData[] = [
     {
       label: "Total Lands",
       value: stats.lands.total,
@@ -496,7 +506,16 @@ export default function AdminDashboard() {
   );
 }
 
-function ManagementRow({ href, icon, title, subtitle, accent, highlight }) {
+interface ManagementRowProps {
+  href: string;
+  icon: ReactNode;
+  title: string;
+  subtitle: string;
+  accent: string;
+  highlight?: boolean;
+}
+
+function ManagementRow({ href, icon, title, subtitle, accent, highlight }: ManagementRowProps) {
   return (
     <Link href={href}
       className={`flex items-center justify-between p-4 rounded-xl border transition-all group ${

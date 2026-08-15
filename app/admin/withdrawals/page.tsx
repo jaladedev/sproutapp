@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, type ChangeEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { getAdminWithdrawals, approveWithdrawal, rejectWithdrawal, approveAllWithdrawals } from "../../../services/adminService";
 import toast from "react-hot-toast";
+import type { AxiosError } from "axios";
 import {
   ArrowLeft, CheckCircle2, XCircle, Clock, AlertTriangle,
   BadgeCheck, RefreshCw, Search, X, ChevronLeft, ChevronRight,
@@ -13,7 +14,15 @@ import {
 
 /* ─── Helpers ───────────────────────────────────────────────────────────── */
 
-const STATUS = {
+type WithdrawalStatus = "pending" | "processing" | "approved" | "completed" | "rejected" | "failed";
+
+interface StatusConfigEntry {
+  label: string;
+  cls: string;
+  icon: ReactNode;
+}
+
+const STATUS: Record<WithdrawalStatus, StatusConfigEntry> = {
   pending:    { label: "Pending",    cls: "text-amber-400 bg-amber-500/10 border-amber-500/25",    icon: <Clock         size={10} /> },
   processing: { label: "Processing", cls: "text-blue-400  bg-blue-500/10  border-blue-500/25",     icon: <RefreshCw     size={10} className="animate-spin" /> },
   approved:   { label: "Approved",   cls: "text-emerald-400 bg-emerald-500/10 border-emerald-500/25", icon: <CheckCircle2  size={10} /> },
@@ -22,8 +31,13 @@ const STATUS = {
   failed:     { label: "Failed",     cls: "text-red-400   bg-red-500/10   border-red-500/25",     icon: <AlertTriangle size={10} /> },
 };
 
-function StatusBadge({ status }) {
-  const cfg = STATUS[status] || STATUS.pending;
+interface ApiErrorBody {
+  message?: string;
+  error?: string;
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const cfg = STATUS[status as WithdrawalStatus] || STATUS.pending;
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black border uppercase tracking-wider ${cfg.cls}`}>
       {cfg.icon} {cfg.label}
@@ -31,14 +45,39 @@ function StatusBadge({ status }) {
   );
 }
 
-const fmtNaira = (kobo) =>
+const fmtNaira = (kobo: number | string) =>
   `₦${(Number(kobo) / 100).toLocaleString("en-NG", { minimumFractionDigits: 2 })}`;
 
-const fmtDate = (d) =>
+const fmtDate = (d?: string | null) =>
   d ? new Date(d).toLocaleString("en-NG", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
 
+interface WithdrawalUser {
+  name?: string;
+  email?: string;
+  account_name?: string;
+  account_number?: string;
+  bank_name?: string;
+}
+
+interface Withdrawal {
+  id: string | number;
+  amount_kobo: number;
+  status: string;
+  user?: WithdrawalUser;
+  reference?: string;
+  created_at?: string;
+  reviewed_at?: string | null;
+  rejection_reason?: string | null;
+}
+
 /* ─── Reject modal ──────────────────────────────────────────────────────── */
-function RejectModal({ withdrawal, onClose, onDone }) {
+interface RejectModalProps {
+  withdrawal: Withdrawal;
+  onClose: () => void;
+  onDone: () => void;
+}
+
+function RejectModal({ withdrawal, onClose, onDone }: RejectModalProps) {
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -50,7 +89,8 @@ function RejectModal({ withdrawal, onClose, onDone }) {
       toast.success("Withdrawal rejected and funds returned to user");
       onDone();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Rejection failed");
+      const axiosErr = err as AxiosError<ApiErrorBody>;
+      toast.error(axiosErr.response?.data?.message || "Rejection failed");
     } finally {
       setLoading(false);
     }
@@ -90,7 +130,7 @@ function RejectModal({ withdrawal, onClose, onDone }) {
             </label>
             <textarea
               value={reason}
-              onChange={(e) => setReason(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setReason(e.target.value)}
               rows={3}
               placeholder="e.g. Invalid bank details, suspicious activity…"
               className="w-full bg-white/5 border border-white/10 hover:border-white/20 focus:border-red-500/40 focus:ring-2 focus:ring-red-500/10 text-white placeholder-white/20 px-4 py-3 rounded-xl text-sm outline-none transition-all resize-none"
@@ -120,7 +160,15 @@ function RejectModal({ withdrawal, onClose, onDone }) {
 }
 
 /* ─── Withdrawal detail drawer ──────────────────────────────────────────── */
-function WithdrawalDrawer({ withdrawal, onClose, onApprove, onReject, approving }) {
+interface WithdrawalDrawerProps {
+  withdrawal: Withdrawal | null;
+  onClose: () => void;
+  onApprove: (w: Withdrawal) => void;
+  onReject: (w: Withdrawal) => void;
+  approving: string | number | null;
+}
+
+function WithdrawalDrawer({ withdrawal, onClose, onApprove, onReject, approving }: WithdrawalDrawerProps) {
   if (!withdrawal) return null;
 
   const canApprove = withdrawal.status === "pending";
@@ -252,7 +300,15 @@ function WithdrawalDrawer({ withdrawal, onClose, onApprove, onReject, approving 
 }
 
 /* ─── Stat card ─────────────────────────────────────────────────────────── */
-function StatCard({ label, value, sub, accent, icon }) {
+interface StatCardProps {
+  label: string;
+  value: number | string;
+  sub?: string;
+  accent: string;
+  icon: ReactNode;
+}
+
+function StatCard({ label, value, sub, accent, icon }: StatCardProps) {
   return (
     <div className="rounded-2xl border border-white/7 bg-white/2.5 p-5 relative overflow-hidden group hover:border-white/12 transition-all">
       <div className="absolute -top-6 -right-6 w-20 h-20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
@@ -270,26 +326,30 @@ function StatCard({ label, value, sub, accent, icon }) {
 
 /* ─── Main page ─────────────────────────────────────────────────────────── */
 export default function AdminWithdrawalsPage() {
-  const [withdrawals, setWithdrawals]     = useState([]);
+  const [withdrawals, setWithdrawals]     = useState<Withdrawal[]>([]);
   const [loading, setLoading]             = useState(true);
   const [filterStatus, setFilterStatus]   = useState("");
   const [search, setSearch]               = useState("");
   const [page, setPage]                   = useState(1);
   const [pagination, setPagination]       = useState({ current_page: 1, last_page: 1, total: 0 });
-  const [approving, setApproving]         = useState(null);
+  const [approving, setApproving]         = useState<string | number | null>(null);
   const [approvingAll, setApprovingAll]   = useState(false);
-  const [rejectTarget, setRejectTarget]   = useState(null);
-  const [drawerItem, setDrawerItem]       = useState(null);
+  const [rejectTarget, setRejectTarget]   = useState<Withdrawal | null>(null);
+  const [drawerItem, setDrawerItem]       = useState<Withdrawal | null>(null);
 
   const fetchWithdrawals = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ page, per_page: 20 });
+      const params = new URLSearchParams({ page: String(page), per_page: "20" });
       if (filterStatus) params.set("status", filterStatus);
-      const body = await getAdminWithdrawals(params.toString());
+      // adminService.getAdminWithdrawals() returns unknown (shared, loose by
+      // design) — asserting the actual response shape this page renders.
+      const body = await getAdminWithdrawals(params.toString()) as {
+        data: { data?: Withdrawal[]; current_page?: number; last_page?: number; total?: number };
+      };
       const d   = body.data;
       setWithdrawals(d.data ?? []);
-      setPagination({ current_page: d.current_page, last_page: d.last_page, total: d.total });
+      setPagination({ current_page: d.current_page ?? 1, last_page: d.last_page ?? 1, total: d.total ?? 0 });
     } catch {
       toast.error("Failed to load withdrawals");
     } finally {
@@ -301,7 +361,7 @@ export default function AdminWithdrawalsPage() {
   useEffect(() => { setPage(1); }, [filterStatus]);
 
   /* ── Approve single ── */
-  const handleApprove = async (withdrawal) => {
+  const handleApprove = async (withdrawal: Withdrawal) => {
     if (!window.confirm(`Approve ₦${(withdrawal.amount_kobo / 100).toLocaleString()} withdrawal for ${withdrawal.user?.name}? This will initiate a Paystack transfer immediately.`)) return;
     setApproving(withdrawal.id);
     setDrawerItem(null);
@@ -310,7 +370,8 @@ export default function AdminWithdrawalsPage() {
       toast.success("Transfer initiated successfully");
       fetchWithdrawals();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Approval failed");
+      const axiosErr = err as AxiosError<ApiErrorBody>;
+      toast.error(axiosErr.response?.data?.message || "Approval failed");
     } finally {
       setApproving(null);
     }
@@ -323,11 +384,14 @@ export default function AdminWithdrawalsPage() {
     if (!window.confirm(`Approve all ${pendingCount} pending withdrawal${pendingCount !== 1 ? "s" : ""}? This will initiate Paystack transfers for each.`)) return;
     setApprovingAll(true);
     try {
-      const data = await approveAllWithdrawals();
-      toast.success(`${data.approved} approved${data.failed ? `, ${data.failed} failed` : ""}`);
+      // adminService.approveAllWithdrawals() returns unknown (shared, loose
+      // by design) — asserting the actual response shape this page reads.
+      const data = await approveAllWithdrawals() as { approved?: number; failed?: number };
+      toast.success(`${data.approved ?? 0} approved${data.failed ? `, ${data.failed} failed` : ""}`);
       fetchWithdrawals();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Batch approval failed");
+      const axiosErr = err as AxiosError<ApiErrorBody>;
+      toast.error(axiosErr.response?.data?.message || "Batch approval failed");
     } finally {
       setApprovingAll(false);
     }
@@ -416,7 +480,7 @@ export default function AdminWithdrawalsPage() {
             <Search size={13} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20 pointer-events-none" />
             <input
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
               placeholder="Search by name, email, reference…"
               className="w-full bg-white/5 border border-white/10 hover:border-white/20 focus:border-amber-500/40 text-white placeholder-white/20 pl-10 pr-9 py-2.5 rounded-xl text-sm outline-none transition-all"
             />
