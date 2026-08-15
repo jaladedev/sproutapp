@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import type { AxiosError } from "axios";
 import handleApiError from "../../utils/handleApiError";
-import { getMe, getUserTransactions } from "../../services/userService";
+import { getMe, getUserTransactions, type Transaction } from "../../services/userService";
 import { depositFunds, withdrawFunds } from "../../services/walletService";
 import toast from "react-hot-toast";
 import {
@@ -16,7 +17,25 @@ const FEE_PERCENT   = 2;
 const FEE_CAP       = 3000;
 const QUICK_AMOUNTS = [1000, 5000, 10000, 50000];
 
-const GATEWAYS = [
+interface Gateway {
+  id: string;
+  label: string;
+  description: string;
+  icon: ReactNode;
+}
+
+interface WalletTransaction extends Transaction {
+  reference?: string | number;
+  amount?: number | string;
+  gateway?: string;
+  date?: string;
+  created_at?: string;
+}
+
+type LoadingKind = "deposit" | "withdraw" | null;
+type LoadErrorKind = "network" | "server" | null;
+
+const GATEWAYS: Gateway[] = [
    {
      id: "paystack",
       label: "Paystack",
@@ -63,14 +82,14 @@ export default function WalletPage() {
   const [depositAmount, setDepositAmount]   = useState("");
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [pin, setPin]                       = useState("");
-  const [loading, setLoading]               = useState(null);
-  const [transactions, setTransactions]     = useState([]);
+  const [loading, setLoading]               = useState<LoadingKind>(null);
+  const [transactions, setTransactions]     = useState<WalletTransaction[]>([]);
   const [gateway, setGateway]               = useState("paystack");
   const [feePreview, setFeePreview]         = useState(0);
   const [totalPreview, setTotalPreview]     = useState(0);
-  const [activeTab, setActiveTab]           = useState("deposit");
+  const [activeTab, setActiveTab]           = useState<"deposit" | "withdraw">("deposit");
   const [isLoadingData, setIsLoadingData]   = useState(true);
-  const [loadError, setLoadError]           = useState(null);
+  const [loadError, setLoadError]           = useState<LoadErrorKind>(null);
   const [serverError, setServerError]       = useState("");
   const router = useRouter();
 
@@ -95,13 +114,14 @@ export default function WalletPage() {
 
       if (isRetry) toast.success("Wallet loaded");
     } catch (err) {
-      if (!err.response) {
+      const axiosErr = err as AxiosError<{ message?: string; error?: string }>;
+      if (!axiosErr.response) {
         setLoadError("network");
       } else {
         const msg =
-          err.response?.data?.message ||
-          err.response?.data?.error ||
-          `Server error (${err.response.status})`;
+          axiosErr.response?.data?.message ||
+          axiosErr.response?.data?.error ||
+          `Server error (${axiosErr.response.status})`;
         setServerError(msg);
         setLoadError("server");
       }
@@ -139,12 +159,12 @@ export default function WalletPage() {
 
       if (res.payment_url) {
         toast.success(`Redirecting to ${GATEWAYS.find((g) => g.id === gateway)?.label ?? gateway}…`);
-        setTimeout(() => window.location.assign(res.payment_url), 400);
+        setTimeout(() => window.location.assign(res.payment_url as string), 400);
       } else {
         toast.error("No payment URL received. Please try again.");
       }
     } catch (err) {
-      handleApiError(err);
+      handleApiError(err as Error);
     } finally {
       setLoading(null);
     }
@@ -165,14 +185,15 @@ export default function WalletPage() {
       setPin("");
       fetchWalletData();
     } catch (err) {
-      const msg = err.response?.data?.message || "";
+      const axiosErr = err as AxiosError<{ message?: string }>;
+      const msg = axiosErr.response?.data?.message || "";
       if (msg.toLowerCase().includes("transaction pin not set")) {
         toast.error("Please set a transaction PIN in settings");
         setTimeout(() => router.push("/settings?tab=pin"), 1500);
       } else if (msg.toLowerCase().includes("insufficient")) {
         toast.error("Insufficient funds");
       } else {
-        handleApiError(err);
+        handleApiError(err as Error);
       }
     } finally {
       setLoading(null);
@@ -180,7 +201,7 @@ export default function WalletPage() {
   };
 
   /* ─── STATUS HELPERS ────────────────────────────────────────────────── */
-  const getStatusIcon = (status) => {
+  const getStatusIcon = (status?: string) => {
     if (!status) return <Clock size={12} />;
     const s = status.toLowerCase();
     if (s.includes("complete")) return <CheckCircle size={12} />;
@@ -189,7 +210,7 @@ export default function WalletPage() {
     return <AlertCircle size={12} />;
   };
 
-  const getStatusStyle = (status) => {
+  const getStatusStyle = (status?: string) => {
     if (!status) return "bg-white/5 border-white/10 text-white/55";
     const s = status.toLowerCase();
     if (s.includes("complete")) return "bg-emerald-500/10 border-emerald-500/20 text-emerald-400";
@@ -198,10 +219,10 @@ export default function WalletPage() {
     return "bg-white/5 border-white/10 text-white/55";
   };
 
-  const formatDate = (d) =>
-    new Date(d).toLocaleString("en-NG", { dateStyle: "medium", timeStyle: "short" });
+  const formatDate = (d?: string) =>
+    new Date(d ?? "").toLocaleString("en-NG", { dateStyle: "medium", timeStyle: "short" });
 
-  const formatAmount = (t) =>
+  const formatAmount = (t: WalletTransaction) =>
     Number(t.amount ?? 0).toLocaleString("en-NG", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
@@ -312,10 +333,12 @@ export default function WalletPage() {
 
           {/* Tabs */}
           <div className="flex border-b border-white/10">
-            {[
-              { id: "deposit",  label: "Deposit",  icon: <TrendingUp  size={14} /> },
-              { id: "withdraw", label: "Withdraw", icon: <TrendingDown size={14} /> },
-            ].map((tab) => (
+            {(
+              [
+                { id: "deposit",  label: "Deposit",  icon: <TrendingUp  size={14} /> },
+                { id: "withdraw", label: "Withdraw", icon: <TrendingDown size={14} /> },
+              ] as const
+            ).map((tab) => (
               <button key={tab.id} onClick={() => setActiveTab(tab.id)}
                 className={`flex-1 py-4 text-sm font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${
                   activeTab === tab.id
@@ -548,7 +571,7 @@ export default function WalletPage() {
               </div>
             ) : (
               <div className="space-y-2">
-                {transactions.map((t, i) => {
+                {transactions.map((t: WalletTransaction, i: number) => {
                   const isDeposit   = t.type === "Deposit";
                   const statusStyle = getStatusStyle(t.status);
                   const txDate      = t.date ?? t.created_at;
@@ -603,7 +626,7 @@ export default function WalletPage() {
 }
 
 /* ─── SUB-COMPONENTS ────────────────────────────────────────────────────── */
-function FeeRow({ label, value }) {
+function FeeRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between items-center">
       <span className="text-xs text-amber-500/60">{label}</span>
@@ -612,7 +635,14 @@ function FeeRow({ label, value }) {
   );
 }
 
-function ActionButton({ onClick, loading, disabled, label }) {
+interface ActionButtonProps {
+  onClick: () => void;
+  loading: boolean;
+  disabled: boolean;
+  label: string;
+}
+
+function ActionButton({ onClick, loading, disabled, label }: ActionButtonProps) {
   return (
     <button
       onClick={onClick}

@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback, useRef } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { getMe, getUserTransactions } from "../../services/userService";
+import type { AxiosError } from "axios";
+import { getMe, getUserTransactions, type Transaction } from "../../services/userService";
 import { getPortfolioSummary } from "../../services/portfolioService";
 import {
   getUserUnitsForLand,
@@ -22,13 +23,86 @@ import {
 
 const ITEMS_PER_PAGE = 10;
 
-const formatNaira = (v) =>
+const formatNaira = (v?: number | string) =>
   Number(v || 0).toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-const koboToNaira = (k) =>
+const koboToNaira = (k?: number) =>
   (Number(k || 0) / 100).toLocaleString("en-NG", { minimumFractionDigits: 2 });
 
-function BreakdownRow({ label, value, green, strikethrough, muted }) {
+interface PortfolioLand {
+  land_id: string | number;
+  land_name?: string;
+  units_owned: number;
+  price_per_unit_kobo?: number;
+  current_value?: number;
+  available_units?: number;
+  cert_number?: string | null;
+}
+
+interface PortfolioSummaryDisplay {
+  current_portfolio_value?: number;
+  total_invested?: number;
+  total_profit_loss?: number;
+  profit_loss_percent?: number;
+}
+
+interface PortfolioTransaction extends Transaction {
+  reference?: string | number;
+  amount?: number | string;
+  units?: number;
+  land?: string;
+  date?: string;
+}
+
+/* Actual /lands/:id/units response shape — the service's declared
+   UserLandUnitsResponse (`{ units }`) doesn't match what the API really
+   returns here, so this call site asserts its own shape rather than
+   widening the shared service type for every other consumer (same pattern
+   as the admin service call sites, see todo doc item #17). */
+interface UserUnitsPayload {
+  data: {
+    available_units?: number;
+    user_units?: number;
+  };
+}
+
+/* Same reasoning as above — PurchasePreview is intentionally `unknown`
+   in the shared service since the endpoint's shape varies by discount
+   scenario; this is the one call site that needs its concrete fields. */
+interface PurchasePreviewData {
+  discount_label?: string;
+  original_cost_naira: number;
+  total_discount_kobo?: number;
+  referral_discount_kobo?: number;
+  referral_discount_naira?: number;
+  paid_from_rewards_kobo?: number;
+  paid_from_rewards_naira?: number;
+  total_due_naira: number;
+  sufficient_balance: boolean;
+}
+
+type ModalType = "buy" | "sell" | null;
+
+interface ModalState {
+  type: ModalType;
+  land: PortfolioLand | null;
+  units: string;
+  pin: string;
+  useRewards: boolean;
+  processing: boolean;
+  availableUnits: number;
+  userUnits: number;
+}
+
+interface BreakdownRowProps {
+  label: string;
+  value: string;
+  green?: boolean;
+  strikethrough?: boolean;
+  muted?: boolean;
+}
+
+function BreakdownRow({ label, value, green, strikethrough, muted }: BreakdownRowProps) {
   return (
     <div className="flex justify-between items-center py-1">
       <span className={`text-xs ${muted ? "text-white/55" : "text-white/50"}`}>{label}</span>
@@ -42,24 +116,24 @@ function BreakdownRow({ label, value, green, strikethrough, muted }) {
 }
 
 export default function Portfolio() {
-  const [lands, setLands]               = useState([]);
-  const [transactions, setTransactions] = useState([]);
+  const [lands, setLands]               = useState<PortfolioLand[]>([]);
+  const [transactions, setTransactions] = useState<PortfolioTransaction[]>([]);
   const [loading, setLoading]           = useState(true);
   const [hasPin, setHasPin]             = useState(false);
-  const [summary, setSummary]           = useState(null);
+  const [summary, setSummary]           = useState<PortfolioSummaryDisplay | null>(null);
   const [currentPage, setCurrentPage]   = useState(1);
 
-  const MODAL_DEFAULTS = {
+  const MODAL_DEFAULTS: ModalState = {
     type: null, land: null, units: "", pin: "",
     useRewards: true, processing: false,
     availableUnits: 0,
     userUnits: 0,
   };
 
-  const [modal, setModal]       = useState(MODAL_DEFAULTS);
-  const [preview, setPreview]               = useState(null);
+  const [modal, setModal]       = useState<ModalState>(MODAL_DEFAULTS);
+  const [preview, setPreview]               = useState<PurchasePreviewData | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
-  const previewTimer                        = useRef(null);
+  const previewTimer                        = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const router = useRouter();
 
@@ -72,7 +146,7 @@ export default function Portfolio() {
       const u = await getMe();
       setHasPin(!!u.pin_is_set);
     } catch (err) {
-      handleApiError(err);
+      handleApiError(err as Error);
     }
   }, []);
 
@@ -108,7 +182,7 @@ export default function Portfolio() {
         txList.filter((t) => t.type === "Purchase" || t.type === "Sale")
       );
     } catch (err) {
-      handleApiError(err);
+      handleApiError(err as Error);
     }
   }, []);
 
@@ -128,12 +202,12 @@ export default function Portfolio() {
       return;
     }
 
-    clearTimeout(previewTimer.current);
+    if (previewTimer.current) clearTimeout(previewTimer.current);
     previewTimer.current = setTimeout(async () => {
       setPreviewLoading(true);
       try {
-        const preview = await getPurchasePreview(modal.land.land_id, units, modal.useRewards);
-        setPreview(preview);
+        const preview = await getPurchasePreview(modal.land!.land_id, units, modal.useRewards);
+        setPreview(preview as unknown as PurchasePreviewData);
       } catch {
         setPreview(null);
       } finally {
@@ -141,7 +215,7 @@ export default function Portfolio() {
       }
     }, 400);
 
-    return () => clearTimeout(previewTimer.current);
+    return () => { if (previewTimer.current) clearTimeout(previewTimer.current); };
   }, [modal.units, modal.useRewards, modal.type, modal.land]);
 
   // ── Pagination ─────────────────────────────────────────────────────────────
@@ -159,7 +233,7 @@ export default function Portfolio() {
   }, [safePage, currentPage]);
 
   // ── Modal helpers ──────────────────────────────────────────────────────────
-  const openModal = async (type, land) => {
+  const openModal = async (type: "buy" | "sell", land: PortfolioLand) => {
     if (!hasPin) {
       toast.error("Please set a transaction PIN first");
       setTimeout(() => router.push("/settings"), 1500);
@@ -173,7 +247,7 @@ export default function Portfolio() {
       userUnits = land.units_owned ?? 0;
     } else {
       try {
-        const payload  = await getUserUnitsForLand(land.land_id);
+        const payload  = await getUserUnitsForLand(land.land_id) as unknown as UserUnitsPayload;
         availableUnits = payload.data.available_units ?? 0;
         userUnits      = payload.data.user_units      ?? 0;
       } catch {
@@ -197,7 +271,7 @@ export default function Portfolio() {
   };
 
   // ── Stepper helpers ────────────────────────────────────────────────────────
-  const setUnits = (val) => {
+  const setUnits = (val: string | number) => {
     const clamped = Math.min(Math.max(1, Math.floor(Number(val))), maxUnits);
     setModal((p) => ({ ...p, units: String(clamped) }));
   };
@@ -219,7 +293,7 @@ export default function Portfolio() {
   };
 
   // ── Transaction submit ─────────────────────────────────────────────────────
-  const handleTransaction = async (e) => {
+  const handleTransaction = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const units = Number(modal.units);
 
@@ -236,7 +310,7 @@ export default function Portfolio() {
 
     try {
       if (modal.type === "buy") {
-        const d = await purchaseLand(modal.land.land_id, units, modal.pin, modal.useRewards);
+        const d = await purchaseLand(modal.land!.land_id, units, modal.pin, modal.useRewards);
         const savings = (d.total_discount_kobo ?? 0) + (d.paid_from_rewards_kobo ?? 0);
         let msg = "Purchase successful";
         if (savings > 0) msg += ` · Saved ₦${(savings / 100).toLocaleString()}`;
@@ -264,19 +338,20 @@ export default function Portfolio() {
           }, 800);
         }
       } else {
-        await sellLand(modal.land.land_id, units, modal.pin);
+        await sellLand(modal.land!.land_id, units, modal.pin);
         toast.success("Units sold successfully");
       }
 
       await Promise.all([fetchPortfolioAndUser(), fetchAnalytics()]);
       closeModal();
     } catch (err) {
-      const msg = err.response?.data?.message || "";
+      const axiosErr = err as AxiosError<{ message?: string }>;
+      const msg = axiosErr.response?.data?.message || "";
       if (msg.toLowerCase().includes("transaction pin not set")) {
         toast.error("Please set a transaction PIN in settings");
         setTimeout(() => router.push("/settings"), 1500);
       } else {
-        handleApiError(err);
+        handleApiError(err as Error);
       }
     } finally {
       setModal((p) => ({ ...p, processing: false }));
@@ -291,8 +366,8 @@ export default function Portfolio() {
     return (units * Number(modal.land.price_per_unit_kobo || 0)) / 100;
   }, [modal]);
 
-  const formatDate = (d) =>
-    new Date(d).toLocaleString("en-NG", { dateStyle: "medium", timeStyle: "short" });
+  const formatDate = (d?: string) =>
+    new Date(d ?? "").toLocaleString("en-NG", { dateStyle: "medium", timeStyle: "short" });
 
   return (
     <div className="min-h-screen gpu-layer bg-[#0D1F1A] relative" style={{ fontFamily: "var(--font-dm-sans), 'Helvetica Neue', sans-serif" }}>
@@ -406,7 +481,7 @@ export default function Portfolio() {
             ) : (
               <>
                 <div className="space-y-3">
-                  {paginatedTx.map((t, i) => {
+                  {paginatedTx.map((t: PortfolioTransaction, i: number) => {
                     const isPurchase = t.type === "Purchase";
                     return (
                       <div key={t.reference ?? `${t.type}-${t.date}-${i}`}
@@ -589,19 +664,19 @@ export default function Portfolio() {
                       <BreakdownRow
                         label="Original cost"
                         value={`₦${preview.original_cost_naira.toLocaleString("en-NG", { minimumFractionDigits: 2 })}`}
-                        strikethrough={preview.total_discount_kobo > 0}
+                        strikethrough={(preview.total_discount_kobo ?? 0) > 0}
                       />
-                      {preview.referral_discount_kobo > 0 && (
+                      {(preview.referral_discount_kobo ?? 0) > 0 && (
                         <BreakdownRow
                           label="Referral discount"
-                          value={`-₦${preview.referral_discount_naira.toLocaleString("en-NG", { minimumFractionDigits: 2 })}`}
+                          value={`-₦${(preview.referral_discount_naira ?? 0).toLocaleString("en-NG", { minimumFractionDigits: 2 })}`}
                           green
                         />
                       )}
-                      {preview.paid_from_rewards_kobo > 0 && (
+                      {(preview.paid_from_rewards_kobo ?? 0) > 0 && (
                         <BreakdownRow
                           label="From rewards balance"
-                          value={`-₦${preview.paid_from_rewards_naira.toLocaleString("en-NG", { minimumFractionDigits: 2 })}`}
+                          value={`-₦${(preview.paid_from_rewards_naira ?? 0).toLocaleString("en-NG", { minimumFractionDigits: 2 })}`}
                           green
                         />
                       )}
@@ -668,7 +743,7 @@ export default function Portfolio() {
                     !modal.pin ||
                     (modal.type === "buy"  && Number(modal.units) > modal.availableUnits) ||
                     (modal.type === "sell" && Number(modal.units) > modal.userUnits)      ||
-                    (modal.type === "buy"  && preview && !preview.sufficient_balance)
+                    (modal.type === "buy"  && preview != null && !preview.sufficient_balance)
                   }
                   className="flex-1 py-3 rounded-xl font-bold text-[#0D1F1A] transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
                   style={{ background: "linear-gradient(135deg, #C8873A 0%, #E8A850 100%)" }}>
@@ -688,7 +763,15 @@ export default function Portfolio() {
   );
 }
 
-function SummaryCard({ title, value, positive, signed, prefix }) {
+interface SummaryCardProps {
+  title: string;
+  value: string;
+  positive?: boolean;
+  signed?: boolean;
+  prefix?: string;
+}
+
+function SummaryCard({ title, value, positive, signed, prefix }: SummaryCardProps) {
   const color = signed
     ? positive ? "text-emerald-400" : "text-red-400"
     : "text-amber-400";
@@ -749,7 +832,13 @@ function TransactionRowSkeleton() {
   );
 }
 
-function Row({ label, value, accent }) {
+interface RowProps {
+  label: string;
+  value: string | number;
+  accent?: boolean;
+}
+
+function Row({ label, value, accent }: RowProps) {
   return (
     <div className="flex justify-between items-center">
       <span className="text-xs text-white/55 uppercase tracking-wider">{label}</span>
