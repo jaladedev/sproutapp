@@ -19,9 +19,13 @@ declare module "*.jpg";
 declare module "*.jpeg";
 declare module "*.webp";
 
-// No @types/leaflet or @types/leaflet-draw in package.json — both are only
-// ever dynamically imported client-side (see PolygonMapEditor.tsx) and used
-// through `any`-typed handles at that boundary, so a bare ambient module
-// declaration is sufficient here rather than pulling in a types package.
-declare module "leaflet";
-declare module "leaflet-draw";
+// leaflet / leaflet-draw: real types now come from @types/leaflet and
+// @types/leaflet-draw (both installed as devDependencies). Previously this
+// file had blanket `declare module "leaflet";` / `declare module
+// "leaflet-draw";` ambient declarations from before those packages were
+// added — removed, since a bare ambient declaration silently blanks out
+// real .d.ts types for that module (this was actively shadowing the real
+// types and causing every Leaflet-typed symbol to resolve as an error
+// rather than its real shape). See PolygonMapEditor.tsx and
+// app/lands/leaflet-heat.d.ts (which augments the real "leaflet" module,
+// and requires it to exist as a real module rather than a bare one).

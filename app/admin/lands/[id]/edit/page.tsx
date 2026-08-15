@@ -5,6 +5,7 @@ import { compressImage } from "../../../../../utils/compressImage";
 import { useEffect, useState, ChangeEvent, FormEvent, ReactNode, InputHTMLAttributes, SelectHTMLAttributes } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { getAdminLand, updateAdminLand, updateLandPrice, Land } from "../../../../../services/landService";
 import toast from "react-hot-toast";
 import {
@@ -922,7 +923,7 @@ export default function EditLand() {
                 <div className="grid grid-cols-3 gap-3">
                   {existingImages.map((img) => (
                     <div key={img.id} className="relative rounded-xl overflow-hidden aspect-video border border-white/10 group">
-                      <img src={img.image_url} alt="" className="w-full h-full object-cover" />
+                      <Image src={img.image_url} alt="" fill sizes="(max-width: 640px) 33vw, 200px" className="object-cover" />
                       <button type="button" onClick={() => removeExistingImage(img.id)}
                         className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/80">
                         <X size={11} />

@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState, ChangeEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import type * as LType from "leaflet";
 
 // ── Leaflet is loaded lazily inside useEffect to avoid SSR crashes.
 // Never import leaflet or leaflet-draw at the module top-level.
-// No @types/leaflet in package.json, so leaflet objects are typed `any`
-// at the dynamic-import boundary; everything else here is fully typed.
 
+/** Minimal GeoJSON Polygon shape used throughout this file. */
 export interface GeoJSONPolygon {
   type: "Polygon";
   coordinates: number[][][];
@@ -20,9 +20,9 @@ interface PolygonMapEditorProps {
 type InputMode = "draw" | "manual" | "upload";
 
 export default function PolygonMapEditor({ polygon, onChange }: PolygonMapEditorProps) {
-  const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<any>(null);
-  const drawnItemsRef = useRef<any>(null);
+  const mapRef = useRef<HTMLDivElement | null>(null);
+  const mapInstanceRef = useRef<LType.Map | null>(null);
+  const drawnItemsRef = useRef<LType.FeatureGroup | null>(null);
   const [inputMode, setInputMode] = useState<InputMode>("draw");
   const [manualInput, setManualInput] = useState("");
   const [pointsList, setPointsList] = useState<number[][]>([]);
@@ -31,14 +31,21 @@ export default function PolygonMapEditor({ polygon, onChange }: PolygonMapEditor
   useEffect(() => {
     // Dynamically import leaflet only on the client, inside useEffect.
     // This is the correct pattern for any library that touches `window` at import time.
+    let map: LType.Map | undefined;
+
     const init = async () => {
-      const L = (await import("leaflet")).default as any;
+      const L = (await import("leaflet")).default;
       await import("leaflet-draw");
+      // global.d.ts declares an ambient *.css module, so these need no suppression
       await import("leaflet/dist/leaflet.css");
       await import("leaflet-draw/dist/leaflet.draw.css");
 
-      // Fix default icon URLs (broken by webpack asset hashing)
-      delete L.Icon.Default.prototype._getIconUrl;
+      // Fix default icon URLs (broken by webpack asset hashing).
+      // _getIconUrl is a real internal Leaflet property but isn't part of
+      // the public @types/leaflet surface — this is the standard documented
+      // workaround, so the `any` here is deliberate and narrowly scoped.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      delete (L.Icon.Default.prototype as any)._getIconUrl;
       L.Icon.Default.mergeOptions({
         iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
         iconUrl:       "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
@@ -48,7 +55,7 @@ export default function PolygonMapEditor({ polygon, onChange }: PolygonMapEditor
       if (!mapRef.current || mapInstanceRef.current) return;
 
       const center = polygon ? getCenterFromPolygon(polygon) : [6.5244, 3.3792];
-      const map = L.map(mapRef.current).setView(center, polygon ? 15 : 12);
+      map = L.map(mapRef.current).setView(center as LType.LatLngExpression, polygon ? 15 : 12);
       mapInstanceRef.current = map;
 
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -69,19 +76,21 @@ export default function PolygonMapEditor({ polygon, onChange }: PolygonMapEditor
           },
           polyline: false, rectangle: false,
           circle: false, marker: false, circlemarker: false,
-        },
+        } as L.Control.DrawConstructorOptions["draw"],
         edit: { featureGroup: drawnItems },
       });
       map.addControl(drawControl);
 
-      map.on(L.Draw.Event.CREATED, (e: any) => {
+      map.on(L.Draw.Event.CREATED, (e: LType.LeafletEvent) => {
+        const created = e as LType.DrawEvents.Created;
         drawnItems.clearLayers();
-        drawnItems.addLayer(e.layer);
-        onChange(layerToGeoJSON(e.layer));
+        drawnItems.addLayer(created.layer);
+        onChange(layerToGeoJSON(created.layer as LType.Polygon));
       });
 
-      map.on(L.Draw.Event.EDITED, (e: any) => {
-        e.layers.eachLayer((layer: any) => onChange(layerToGeoJSON(layer)));
+      map.on(L.Draw.Event.EDITED, (e: LType.LeafletEvent) => {
+        const edited = e as LType.DrawEvents.Edited;
+        edited.layers.eachLayer((layer: LType.Layer) => onChange(layerToGeoJSON(layer as LType.Polygon)));
       });
 
       map.on(L.Draw.Event.DELETED, () => onChange(null));
@@ -97,8 +106,7 @@ export default function PolygonMapEditor({ polygon, onChange }: PolygonMapEditor
         mapInstanceRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Re-draw when polygon prop changes externally (e.g. cleared by parent)
   useEffect(() => {
@@ -109,18 +117,18 @@ export default function PolygonMapEditor({ polygon, onChange }: PolygonMapEditor
 
   // ── Helpers ──────────────────────────────────────────────────────────────
 
-  const loadExistingPolygon = async (drawnItems: any, geoJsonPolygon: GeoJSONPolygon, map: any) => {
+  const loadExistingPolygon = async (drawnItems: LType.FeatureGroup, geoJsonPolygon: GeoJSONPolygon, map: LType.Map) => {
     if (!geoJsonPolygon?.coordinates?.[0]) return;
-    const L = (await import("leaflet")).default as any;
-    const latLngs = geoJsonPolygon.coordinates[0].map(([lng, lat]) => [lat, lng]);
+    const L = (await import("leaflet")).default;
+    const latLngs = geoJsonPolygon.coordinates[0].map(([lng, lat]) => [lat, lng] as [number, number]);
     const poly = L.polygon(latLngs, { color: "#C8873A", fillOpacity: 0.2 });
     drawnItems.addLayer(poly);
     map.fitBounds(poly.getBounds());
   };
 
-  const layerToGeoJSON = (layer: any): GeoJSONPolygon => {
-    const latLngs = layer.getLatLngs()[0];
-    const coordinates = latLngs.map((ll: any) => [ll.lng, ll.lat]);
+  const layerToGeoJSON = (layer: LType.Polygon): GeoJSONPolygon => {
+    const latLngs = (layer.getLatLngs()[0] as LType.LatLng[]);
+    const coordinates = latLngs.map((ll) => [ll.lng, ll.lat]);
     coordinates.push(coordinates[0]);
     return { type: "Polygon", coordinates: [coordinates] };
   };
@@ -146,7 +154,7 @@ export default function PolygonMapEditor({ polygon, onChange }: PolygonMapEditor
       if (coords.length < 4) throw new Error("Polygon must have at least 4 points");
       const [first, last] = [coords[0], coords[coords.length - 1]];
       if (first[0] !== last[0] || first[1] !== last[1]) throw new Error("Polygon must be closed");
-      onChange(parsed as GeoJSONPolygon);
+      onChange(parsed);
       setManualInput("");
       setInputMode("draw");
     } catch (err) {
@@ -320,7 +328,11 @@ export default function PolygonMapEditor({ polygon, onChange }: PolygonMapEditor
   );
 }
 
-function PointInput({ onAdd }: { onAdd: (lat: string, lng: string) => void }) {
+interface PointInputProps {
+  onAdd: (lat: string, lng: string) => void;
+}
+
+function PointInput({ onAdd }: PointInputProps) {
   const [lat, setLat] = useState("");
   const [lng, setLng] = useState("");
 
