@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   CheckCircle, AlertCircle, Camera,
@@ -61,6 +61,18 @@ export default function LivenessCheck({ onCapture, captured, onRetake, fullHeigh
   // Learned noise floor — measured once per camera session.
   const idleBaselineRef = useRef<number | null>(null);
 
+  // ── Optional face-presence gate (Shape Detection API) ───────────────────────
+  // Chromium-only today; when unsupported, faceCheckSupportedRef stays false
+  // and faceDetectedRef stays true so motion detection behaves exactly as
+  // before — this only ever tightens detection, never blocks on browsers
+  // that can't run it.
+  const faceDetectorRef        = useRef<FaceDetector | null>(null);
+  const faceCheckSupportedRef  = useRef(false);
+  const faceDetectedRef        = useRef(true);
+  const faceCheckBusyRef       = useRef(false);
+  const lastFaceCheckAtRef     = useRef(0);
+  const [noFaceWarning, setNoFaceWarning] = useState(false);
+
   const [phase, setPhase]             = useState<Phase>("idle");
   const [prompts, setPrompts]         = useState<LivenessPrompt[]>([]);
   const [promptIdx, setPromptIdx]     = useState(0);
@@ -106,6 +118,10 @@ export default function LivenessCheck({ onCapture, captured, onRetake, fullHeigh
     detectionOnRef.current = false;
     prevDataRef.current    = null;
     emaRef.current         = 0;
+    faceDetectorRef.current       = null;
+    faceCheckSupportedRef.current = false;
+    faceDetectedRef.current       = true;
+    setNoFaceWarning(false);
   }, []);
 
   useEffect(() => () => stopStream(), [stopStream]);
@@ -192,6 +208,37 @@ export default function LivenessCheck({ onCapture, captured, onRetake, fullHeigh
       sum += (data[p] * 77 + data[p + 1] * 150 + data[p + 2] * 29) >> 8;
     }
     return sum / n; // 0–255
+  }, []);
+
+  // ── Face-presence check (throttled, async, non-blocking) ───────────────────
+  // Runs at most every 500ms so it never competes with the rAF motion loop.
+  const checkFacePresent = useCallback(() => {
+    if (!faceCheckSupportedRef.current || !faceDetectorRef.current) return;
+    if (faceCheckBusyRef.current) return;
+    const now = performance.now();
+    if (now - lastFaceCheckAtRef.current < 500) return;
+    lastFaceCheckAtRef.current = now;
+
+    const video = videoRef.current;
+    if (!video || video.readyState < 2) return;
+
+    faceCheckBusyRef.current = true;
+    faceDetectorRef.current
+      .detect(video)
+      .then(faces => {
+        faceDetectedRef.current = faces.length > 0;
+        setNoFaceWarning(faces.length === 0);
+      })
+      .catch(() => {
+        // Detector faulted (e.g. lost GPU context) — stop relying on it
+        // rather than repeatedly blocking real progress.
+        faceCheckSupportedRef.current = false;
+        faceDetectedRef.current = true;
+        setNoFaceWarning(false);
+      })
+      .finally(() => {
+        faceCheckBusyRef.current = false;
+      });
   }, []);
 
   // ── Selfie capture ─────────────────────────────────────────────────────────
@@ -300,10 +347,10 @@ export default function LivenessCheck({ onCapture, captured, onRetake, fullHeigh
 
   advancePromptRef.current = advancePrompt;
 
-  const isLastPromptRef = useRef(false);
+  const [isLastPrompt, setIsLastPrompt] = useState(false);
   const runAdvancePrompt = useCallback((doneIdx: number) => {
     const currentPrompts = promptsRef.current;
-    isLastPromptRef.current = doneIdx >= currentPrompts.length - 1;
+    setIsLastPrompt(doneIdx >= currentPrompts.length - 1);
     advancePromptRef.current?.(doneIdx);
   }, []);
 
@@ -374,10 +421,17 @@ export default function LivenessCheck({ onCapture, captured, onRetake, fullHeigh
       // Use the lower DETECTION_EMA_ALPHA so the signal is less reactive to jolts.
       emaRef.current = DETECTION_EMA_ALPHA * raw + (1 - DETECTION_EMA_ALPHA) * emaRef.current;
 
+      checkFacePresent();
+
       const pct = Math.min(100, Math.round((emaRef.current / (effectiveThresh as number)) * 80));
       setMotionPct(pct);
 
-      if (emaRef.current >= (effectiveThresh as number)) {
+      // Motion only counts toward the accumulator while a face is actually
+      // in frame — where supported, this stops a waved hand, a passing
+      // person, or an out-of-frame jolt from being read as the prompted
+      // head movement. On browsers without the Shape Detection API,
+      // faceDetectedRef stays true and behavior is unchanged.
+      if (emaRef.current >= (effectiveThresh as number) && faceDetectedRef.current) {
         // Track consecutive run length and peak for jolt detection
         consecutiveFrames += 1;
         peakEma = Math.max(peakEma, emaRef.current);
@@ -406,7 +460,7 @@ export default function LivenessCheck({ onCapture, captured, onRetake, fullHeigh
       rafRef.current = requestAnimationFrame(loop);
     };
     rafRef.current = requestAnimationFrame(loop);
-  }, [measureMotion, measureBrightness, stopStream, runAdvancePrompt]);
+  }, [measureMotion, measureBrightness, stopStream, runAdvancePrompt, checkFacePresent]);
 
   // ── Countdown — drift-proof via Date.now() snapshot ──────────────────────
   const startDetectionCountdown = useCallback((promptIcon: string | undefined, idx: number) => {
@@ -464,6 +518,20 @@ export default function LivenessCheck({ onCapture, captured, onRetake, fullHeigh
         await videoRef.current.play();
       }
 
+      if (typeof window !== "undefined" && window.FaceDetector) {
+        try {
+          faceDetectorRef.current = new window.FaceDetector({ fastMode: true, maxDetectedFaces: 1 });
+          faceCheckSupportedRef.current = true;
+        } catch {
+          faceDetectorRef.current = null;
+          faceCheckSupportedRef.current = false;
+        }
+      } else {
+        faceCheckSupportedRef.current = false;
+      }
+      faceDetectedRef.current = true;
+      setNoFaceWarning(false);
+
       const excluded  = lastUsedIconsRef.current;
       const preferred = shuffle(LIVENESS_PROMPTS.filter(p => !excluded.has(p.icon)));
       const fallback  = shuffle(LIVENESS_PROMPTS.filter(p =>  excluded.has(p.icon)));
@@ -473,7 +541,7 @@ export default function LivenessCheck({ onCapture, captured, onRetake, fullHeigh
       promptsRef.current = chosen;
       setPrompts(chosen);
       setPromptIdx(0);  promptIdxRef.current = 0;
-      isLastPromptRef.current = false;
+      setIsLastPrompt(false);
       setPhase("warmup");
 
       setTimeout(() => {
@@ -496,22 +564,16 @@ export default function LivenessCheck({ onCapture, captured, onRetake, fullHeigh
   const currentPrompt = prompts[promptIdx];
   const thresholdPct  = 65;
 
-  const capturedUrlRef = useRef<string | null>(null);
-  const capturedUrl = useMemo(() => {
-    if (capturedUrlRef.current) {
-      URL.revokeObjectURL(capturedUrlRef.current);
-      capturedUrlRef.current = null;
+  const [capturedUrl, setCapturedUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!captured) {
+      setCapturedUrl(null);
+      return;
     }
-    if (!captured) return null;
     const url = URL.createObjectURL(captured);
-    capturedUrlRef.current = url;
-    return url;
+    setCapturedUrl(url);
+    return () => URL.revokeObjectURL(url);
   }, [captured]);
-
-  // Final cleanup when component unmounts
-  useEffect(() => () => {
-    if (capturedUrlRef.current) URL.revokeObjectURL(capturedUrlRef.current);
-  }, []);
 
   // ── Render ─────────────────────────────────────────────────────────────────
   const isLive      = ["warmup","detecting","success_flash","stillness","retry_warning"].includes(phase);
@@ -605,6 +667,14 @@ export default function LivenessCheck({ onCapture, captured, onRetake, fullHeigh
           </div>
         )}
 
+        {/* No-face-in-frame hint (only where the browser can actually detect this) */}
+        {isDetecting && noFaceWarning && (
+          <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-black/70 text-white text-xs font-semibold px-2.5 py-1.5 rounded-full">
+            <AlertCircle size={12} className="text-amber-400" />
+            Keep your face in view
+          </div>
+        )}
+
         {/* Countdown ring */}
         {isDetecting && (
           <div className="absolute top-3 right-3 w-11 h-11 flex items-center justify-center">
@@ -676,7 +746,7 @@ export default function LivenessCheck({ onCapture, captured, onRetake, fullHeigh
               <CheckCircle size={30} className="text-white" />
             </motion.div>
             <p className="text-white font-bold text-sm">
-              {isLastPromptRef.current ? "All done!" : "Got it! Next action…"}
+              {isLastPrompt ? "All done!" : "Got it! Next action…"}
             </p>
           </motion.div>
         )}

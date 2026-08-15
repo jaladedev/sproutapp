@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { fetchAuthedBlob } from "../../services/mediaService";
 
-export function useAuthImage(url) {
-  const [src, setSrc] = useState(null);
+export function useAuthImage(url: string | null | undefined): string | null {
+  const [src, setSrc] = useState<string | null>(null);
 
   useEffect(() => {
     if (!url) return;
-    let objectUrl;
+    let objectUrl: string | undefined;
 
     fetchAuthedBlob(url)
       .then((blob) => {

@@ -1,24 +1,26 @@
+import type { MetadataRoute } from "next";
+
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://reu.ng";
 const API_URL  = process.env.NEXT_PUBLIC_API_URL;
 
-async function getLandSlugs() {
+async function getLandSlugs(): Promise<string[]> {
   try {
     const res = await fetch(`${API_URL}/land`, { next: { revalidate: 3600 } });
     if (!res.ok) return [];
     const json = await res.json();
     const data = json?.data ?? json ?? [];
     return Array.isArray(data)
-      ? data.map((l) => l.slug ?? String(l.id)).filter(Boolean)
+      ? data.map((l: { slug?: string; id: string | number }) => l.slug ?? String(l.id)).filter(Boolean)
       : [];
   } catch {
     return [];
   }
 }
 
-export default async function sitemap() {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const slugs = await getLandSlugs();
 
-  const staticRoutes = [
+  const staticRoutes: MetadataRoute.Sitemap = [
     {
       url: BASE_URL,
       lastModified: new Date(),
@@ -45,7 +47,7 @@ export default async function sitemap() {
     },
   ];
 
-  const landRoutes = slugs.map((slug) => ({
+  const landRoutes: MetadataRoute.Sitemap = slugs.map((slug) => ({
     url: `${BASE_URL}/lands/${slug}`,
     lastModified: new Date(),
     changeFrequency: "weekly",
