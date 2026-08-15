@@ -3,9 +3,28 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import api from "../../../utils/api";
 import { formatNaira } from "../../../utils/currency";
 import toast from "react-hot-toast";
+import type { AxiosError } from "axios";
+import {
+  getCurrentUser,
+  getListing,
+  getMyEscrows,
+  cancelListing,
+  submitOffer,
+  acceptOffer,
+  rejectOffer,
+  withdrawOffer,
+  getMessages,
+  sendMessage,
+  payEscrow,
+  disputeEscrow,
+  type MarketplaceListing,
+  type MarketplaceOffer,
+  type MarketplaceMessage,
+  type MarketplaceEscrow,
+  type CurrentUser,
+} from "../../../services/marketplaceService";
 import {
   ArrowLeft, MapPin, Package, Tag, MessageSquare,
   Send, Lock, CheckCircle, X, AlertCircle, Clock,
@@ -13,18 +32,29 @@ import {
   ShieldCheck, RefreshCw, Plus, Minus,
 } from "lucide-react";
 
+type ApiError = AxiosError<{ message?: string }>;
+
+function errMessage(err: unknown, fallback: string): string {
+  const axiosErr = err as ApiError;
+  return axiosErr.response?.data?.message || fallback;
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function useCurrentUser() {
-  const [user, setUser] = useState(null);
+function useCurrentUser(): CurrentUser | null {
+  const [user, setUser] = useState<CurrentUser | null>(null);
   useEffect(() => {
-    api.get("/me").then((r) => setUser(r.data?.data ?? null)).catch(() => {});
+    getCurrentUser().then(setUser).catch(() => {});
   }, []);
   return user;
 }
 
-function StatusBadge({ status, large }) {
-  const map = {
+type BadgeStatus =
+  | "active" | "in_escrow" | "sold" | "cancelled"
+  | "awaiting_payment" | "paid" | "completed" | "disputed";
+
+function StatusBadge({ status, large }: { status: string; large?: boolean }) {
+  const map: Record<BadgeStatus, { label: string; cls: string }> = {
     active:           { label: "Active",           cls: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" },
     in_escrow:        { label: "In Escrow",        cls: "bg-amber-500/10 text-amber-400 border-amber-500/20" },
     sold:             { label: "Sold",              cls: "bg-white/5 text-white/55 border-white/10" },
@@ -34,7 +64,7 @@ function StatusBadge({ status, large }) {
     completed:        { label: "Completed",        cls: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" },
     disputed:         { label: "Disputed",         cls: "bg-red-500/10 text-red-400 border-red-500/20" },
   };
-  const s = map[status] ?? map.active;
+  const s = map[status as BadgeStatus] ?? map.active;
   return (
     <span className={`inline-flex items-center rounded-full border font-bold uppercase tracking-wider ${large ? "px-3 py-1 text-xs" : "px-2 py-0.5 text-[10px]"} ${s.cls}`}>
       {s.label}
@@ -42,7 +72,14 @@ function StatusBadge({ status, large }) {
   );
 }
 
-function Panel({ title, icon, children, defaultOpen = true }) {
+function Panel({
+  title, icon, children, defaultOpen = true,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+}) {
   const [open, setOpen] = useState(defaultOpen);
   return (
     <div className="rounded-2xl border border-white/7 bg-white/2.5 overflow-hidden">
@@ -61,10 +98,17 @@ function Panel({ title, icon, children, defaultOpen = true }) {
 
 // ─── Units Stepper ─────────────────────────────────────────────────────────────
 // Reusable stepper with hard max, double-click to fill, clamping on blur
-function UnitsStepper({ value, onChange, max, placeholder }) {
+function UnitsStepper({
+  value, onChange, max, placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  max: number;
+  placeholder?: string;
+}) {
   const numVal = Number(value) || 0;
 
-  const step = (delta) => {
+  const step = (delta: number) => {
     const next = Math.min(Math.max(1, numVal + delta), max);
     onChange(String(next));
   };
@@ -119,7 +163,7 @@ function UnitsStepper({ value, onChange, max, placeholder }) {
 }
 
 // ─── Offer Form ───────────────────────────────────────────────────────────────
-function OfferForm({ listing, onSuccess }) {
+function OfferForm({ listing, onSuccess }: { listing: MarketplaceListing; onSuccess: () => void }) {
   const maxUnits = listing.units_for_sale ?? 0;
 
   const [form, setForm]     = useState({ units: "", offer_price_display: "", message: "" });
@@ -130,7 +174,7 @@ function OfferForm({ listing, onSuccess }) {
     ? (offerKobo * parseInt(form.units)) / 100
     : null;
 
-  const submit = async (e) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const units = parseInt(form.units);
     if (!units || units <= 0)          return toast.error("Enter a valid number of units");
@@ -139,7 +183,7 @@ function OfferForm({ listing, onSuccess }) {
 
     setLoading(true);
     try {
-      await api.post(`/marketplace/${listing.id}/offers`, {
+      await submitOffer(listing.id, {
         units,
         offer_price_kobo: offerKobo,
         message:          form.message || undefined,
@@ -148,7 +192,7 @@ function OfferForm({ listing, onSuccess }) {
       setForm({ units: "", offer_price_display: "", message: "" });
       onSuccess?.();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to submit offer");
+      toast.error(errMessage(err, "Failed to submit offer"));
     } finally {
       setLoading(false);
     }
@@ -225,29 +269,29 @@ function OfferForm({ listing, onSuccess }) {
 }
 
 // ─── Offers List (for seller) ─────────────────────────────────────────────────
-function OffersList({ listing, onUpdate }) {
+function OffersList({ listing, onUpdate }: { listing: MarketplaceListing; onUpdate: () => void }) {
   const offers  = listing.pending_offers ?? [];
-  const [acting, setActing] = useState(null);
+  const [acting, setActing] = useState<string | null>(null);
 
-  const handleAccept = async (offerId) => {
+  const handleAccept = async (offerId: string | number) => {
     setActing(offerId + "_accept");
     try {
-      await api.patch(`/marketplace/${listing.id}/offers/${offerId}/accept`);
+      await acceptOffer(listing.id, offerId);
       toast.success("Offer accepted — escrow created");
       onUpdate();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to accept offer");
+      toast.error(errMessage(err, "Failed to accept offer"));
     } finally { setActing(null); }
   };
 
-  const handleReject = async (offerId) => {
+  const handleReject = async (offerId: string | number) => {
     setActing(offerId + "_reject");
     try {
-      await api.patch(`/marketplace/${listing.id}/offers/${offerId}/reject`);
+      await rejectOffer(listing.id, offerId);
       toast.success("Offer rejected");
       onUpdate();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to reject offer");
+      toast.error(errMessage(err, "Failed to reject offer"));
     } finally { setActing(null); }
   };
 
@@ -261,7 +305,7 @@ function OffersList({ listing, onUpdate }) {
         <div key={offer.id} className="rounded-xl border border-white/10 bg-white/3 p-4">
           <div className="flex items-start justify-between gap-3 mb-2">
             <div>
-              <p className="text-sm font-bold text-white">{offer.buyer?.name}</p>
+              <p className="text-sm font-bold text-white">{offer.buyer?.name as string | undefined}</p>
               <p className="text-xs hover:border-white/35 mt-0.5">
                 {offer.units} units @ ₦{(offer.offer_price_kobo / 100).toLocaleString("en-NG")} / unit
               </p>
@@ -295,22 +339,26 @@ function OffersList({ listing, onUpdate }) {
 }
 
 // ─── Chat (inline, no Panel wrapper — caller wraps) ───────────────────────────
-function ChatPanel({ listing, currentUser }) {
-  const [messages, setMessages] = useState([]);
+interface OptimisticMessage extends MarketplaceMessage {
+  _optimistic?: boolean;
+}
+
+function ChatPanel({ listing, currentUser }: { listing: MarketplaceListing; currentUser: CurrentUser | null }) {
+  const [messages, setMessages] = useState<OptimisticMessage[]>([]);
   const [body, setBody]         = useState("");
   const [sending, setSending]   = useState(false);
   const [loadingMsgs, setLoadingMsgs] = useState(true);
-  const bottomRef = useRef(null);
-  const inputRef  = useRef(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef  = useRef<HTMLInputElement>(null);
   const isSeller  = currentUser?.id === listing.seller_id;
 
   const fetchMessages = useCallback(async () => {
     try {
-      const params = isSeller
-        ? { with: listing.pending_offers?.[0]?.buyer_id }
-        : {};
-      const res = await api.get(`/marketplace/${listing.id}/messages`, { params });
-      setMessages(res.data?.data ?? []);
+      const withUserId = isSeller
+        ? (listing.pending_offers?.[0]?.buyer_id as string | number | undefined)
+        : undefined;
+      const msgs = await getMessages(listing.id, withUserId);
+      setMessages(msgs);
     } catch { /* silent */ } finally {
       setLoadingMsgs(false);
     }
@@ -323,14 +371,14 @@ function ChatPanel({ listing, currentUser }) {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const send = async (e) => {
+  const send = async (e: React.FormEvent | React.KeyboardEvent) => {
     e.preventDefault();
     if (!body.trim()) return;
     setSending(true);
-    const optimisticMsg = {
+    const optimisticMsg: OptimisticMessage = {
       id:         `tmp-${Date.now()}`,
-      sender_id:  currentUser?.id,
-      sender:     currentUser,
+      sender_id:  currentUser?.id ?? "",
+      sender:     currentUser ?? undefined,
       body:       body.trim(),
       created_at: new Date().toISOString(),
       _optimistic: true,
@@ -338,15 +386,16 @@ function ChatPanel({ listing, currentUser }) {
     setMessages((prev) => [...prev, optimisticMsg]);
     setBody("");
     try {
-      const payload = { body: optimisticMsg.body };
-      if (isSeller) payload.receiver_id = listing.pending_offers?.[0]?.buyer_id;
-      await api.post(`/marketplace/${listing.id}/messages`, payload);
+      const receiverId = isSeller
+        ? (listing.pending_offers?.[0]?.buyer_id as string | number | undefined)
+        : undefined;
+      await sendMessage(listing.id, optimisticMsg.body, receiverId);
       // Refetch to replace optimistic with real message
       fetchMessages();
     } catch (err) {
       // Remove optimistic on failure
       setMessages((prev) => prev.filter((m) => m.id !== optimisticMsg.id));
-      toast.error(err.response?.data?.message || "Failed to send");
+      toast.error(errMessage(err, "Failed to send"));
       setBody(optimisticMsg.body);
     } finally {
       setSending(false);
@@ -354,7 +403,7 @@ function ChatPanel({ listing, currentUser }) {
     }
   };
 
-  const handleKeyDown = (e) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       send(e);
@@ -388,7 +437,7 @@ function ChatPanel({ listing, currentUser }) {
                 } ${m._optimistic ? "opacity-60" : ""}`}>
                   {!isMe && (
                     <p className="text-[10px] font-bold text-white/55 mb-0.5">
-                      {m.sender?.name ?? "Seller"}
+                      {(m.sender?.name as string | undefined) ?? "Seller"}
                     </p>
                   )}
                   <p className="text-sm leading-relaxed wrap-break-word">{m.body}</p>
@@ -431,7 +480,13 @@ function ChatPanel({ listing, currentUser }) {
 }
 
 // ─── Escrow Panel ─────────────────────────────────────────────────────────────
-function EscrowPanel({ escrow, currentUser, onUpdate }) {
+function EscrowPanel({
+  escrow, currentUser, onUpdate,
+}: {
+  escrow: MarketplaceEscrow;
+  currentUser: CurrentUser | null;
+  onUpdate: () => void;
+}) {
   const [pin, setPin]       = useState("");
   const [loading, setLoading] = useState(false);
   const isBuyer = escrow.buyer_id === currentUser?.id;
@@ -440,12 +495,12 @@ function EscrowPanel({ escrow, currentUser, onUpdate }) {
     if (!/^\d{4}$/.test(pin)) return toast.error("Enter your 4-digit PIN");
     setLoading(true);
     try {
-      await api.post(`/marketplace/escrow/${escrow.id}/pay`, { transaction_pin: pin });
+      await payEscrow(escrow.id, pin);
       toast.success("Payment successful — trade complete!");
       setPin("");
       onUpdate();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Payment failed");
+      toast.error(errMessage(err, "Payment failed"));
     } finally { setLoading(false); }
   };
 
@@ -453,23 +508,23 @@ function EscrowPanel({ escrow, currentUser, onUpdate }) {
     const reason = window.prompt("Briefly describe the issue:");
     if (!reason) return;
     try {
-      await api.post(`/marketplace/escrow/${escrow.id}/dispute`, { reason });
+      await disputeEscrow(escrow.id, reason);
       toast.success("Dispute raised — our team will review within 24 hours");
       onUpdate();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to raise dispute");
+      toast.error(errMessage(err, "Failed to raise dispute"));
     }
   };
 
   const expiresIn = escrow.expires_at
-    ? Math.max(0, Math.round((new Date(escrow.expires_at) - Date.now()) / 60000))
+    ? Math.max(0, Math.round((new Date(escrow.expires_at).getTime() - Date.now()) / 60000))
     : null;
 
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
         {[
-          ["Units",        escrow.units],
+          ["Units",        String(escrow.units)],
           ["Price / Unit", `₦${(escrow.price_per_unit_kobo / 100).toLocaleString("en-NG")}`],
           ["Total",        `₦${(escrow.total_kobo / 100).toLocaleString("en-NG", { minimumFractionDigits: 2 })}`],
           ["Platform Fee", `₦${(escrow.platform_fee_kobo / 100).toLocaleString("en-NG", { minimumFractionDigits: 2 })}`],
@@ -540,18 +595,18 @@ function EscrowPanel({ escrow, currentUser, onUpdate }) {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function ListingDetailPage() {
-  const { id }      = useParams();
+  const { id }      = useParams<{ id: string }>();
   const router      = useRouter();
   const currentUser = useCurrentUser();
 
-  const [listing, setListing] = useState(null);
-  const [escrow, setEscrow]   = useState(null);
+  const [listing, setListing] = useState<MarketplaceListing | null>(null);
+  const [escrow, setEscrow]   = useState<MarketplaceEscrow | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchListing = useCallback(async () => {
     try {
-      const res = await api.get(`/marketplace/${id}`);
-      setListing(res.data.data);
+      const l = await getListing(id);
+      setListing(l);
     } catch {
       toast.error("Listing not found");
       router.push("/marketplace");
@@ -560,9 +615,8 @@ export default function ListingDetailPage() {
 
   const fetchEscrow = useCallback(async () => {
     try {
-      const res    = await api.get("/marketplace/my/escrows");
-      const escrows = res.data?.data?.data ?? res.data?.data ?? [];
-      const match  = escrows.find((e) => e.listing_id === parseInt(id));
+      const escrows = await getMyEscrows();
+      const match = escrows.find((e) => String(e.listing_id) === String(id));
       setEscrow(match ?? null);
     } catch { /* silent */ }
   }, [id]);
@@ -583,10 +637,27 @@ export default function ListingDetailPage() {
   const image    = land?.images?.[0]?.image_url;
   const isSeller = currentUser?.id === listing.seller_id;
   const isActive = listing.status === "active";
-  const canOffer = !isSeller && isActive && currentUser;
-  const canChat  = currentUser && (
-    isSeller || listing.pending_offers?.some((o) => o.buyer_id === currentUser.id)
+  const canOffer = !isSeller && isActive && !!currentUser;
+  const canChat  = !!currentUser && (
+    isSeller || !!listing.pending_offers?.some((o) => o.buyer_id === currentUser.id)
   );
+
+  const handleCancel = async () => {
+    if (!confirm("Cancel this listing?")) return;
+    try {
+      await cancelListing(listing.id);
+      toast.success("Listing cancelled");
+      router.push("/marketplace");
+    } catch { toast.error("Failed to cancel"); }
+  };
+
+  const handleWithdraw = async (offer: MarketplaceOffer) => {
+    try {
+      await withdrawOffer(listing.id, offer.id);
+      toast.success("Offer withdrawn");
+      refresh();
+    } catch { toast.error("Failed to withdraw"); }
+  };
 
   return (
     <div className="min-h-screen bg-[#0D1F1A]" style={{ fontFamily: "'DM Sans', sans-serif" }}>
@@ -630,7 +701,7 @@ export default function ListingDetailPage() {
 
                 <div className="grid grid-cols-3 gap-3 mb-4">
                   {[
-                    ["Units for Sale",    listing.units_for_sale],
+                    ["Units for Sale",    String(listing.units_for_sale)],
                     ["Asking Price / Unit", formatNaira(listing.asking_price_kobo)],
                     ["Total Value",       `₦${((listing.asking_price_kobo * listing.units_for_sale) / 100).toLocaleString("en-NG")}`],
                   ].map(([label, val]) => (
@@ -643,7 +714,7 @@ export default function ListingDetailPage() {
 
                 <div className="flex items-center gap-2 text-xs text-white/55">
                   <User size={11} />
-                  <span>Listed by <span className="text-white/50 font-semibold">{listing.seller?.name}</span></span>
+                  <span>Listed by <span className="text-white/50 font-semibold">{listing.seller?.name as string | undefined}</span></span>
                   {listing.expires_at && (
                     <>
                       <span className="text-white/10">·</span>
@@ -655,21 +726,14 @@ export default function ListingDetailPage() {
 
                 {listing.description && (
                   <p className="text-sm text-white/45 mt-4 pt-4 border-t border-white/5 leading-relaxed">
-                    {listing.description}
+                    {listing.description as string}
                   </p>
                 )}
 
                 {/* Seller controls */}
                 {isSeller && isActive && (
                   <button
-                    onClick={async () => {
-                      if (!confirm("Cancel this listing?")) return;
-                      try {
-                        await api.delete(`/marketplace/${listing.id}`);
-                        toast.success("Listing cancelled");
-                        router.push("/marketplace");
-                      } catch { toast.error("Failed to cancel"); }
-                    }}
+                    onClick={handleCancel}
                     className="mt-4 w-full py-2.5 rounded-xl border border-red-500/20 text-red-400 text-xs font-bold hover:bg-red-500/10 transition-all">
                     Cancel Listing
                   </button>
@@ -729,13 +793,7 @@ export default function ListingDetailPage() {
                       </div>
                       {offer.status === "pending" && (
                         <button
-                          onClick={async () => {
-                            try {
-                              await api.patch(`/marketplace/${listing.id}/offers/${offer.id}/withdraw`);
-                              toast.success("Offer withdrawn");
-                              refresh();
-                            } catch { toast.error("Failed to withdraw"); }
-                          }}
+                          onClick={() => handleWithdraw(offer)}
                           className="w-full py-2 rounded-lg border border-white/10 text-white/60 text-xs font-bold hover:bg-white/5 transition-all">
                           Withdraw Offer
                         </button>
@@ -769,12 +827,15 @@ export default function ListingDetailPage() {
                 [Wallet,       "Pay from wallet — funds held in escrow"],
                 [ShieldCheck,  "Units transfer automatically on payment"],
                 [RefreshCw,    "Raise a dispute if something goes wrong"],
-              ].map(([Icon, text]) => (
-                <div key={text} className="flex items-center gap-2.5">
-                  <Icon size={12} className="text-amber-500/60 shrink-0" />
-                  <p className="text-xs hover:border-white/35">{text}</p>
-                </div>
-              ))}
+              ].map(([Icon, text]) => {
+                const IconComp = Icon as React.ComponentType<{ size?: number; className?: string }>;
+                return (
+                  <div key={text as string} className="flex items-center gap-2.5">
+                    <IconComp size={12} className="text-amber-500/60 shrink-0" />
+                    <p className="text-xs hover:border-white/35">{text as string}</p>
+                  </div>
+                );
+              })}
               <p className="text-[10px] text-white/20 border-t border-white/5 pt-3">
                 1% platform fee deducted from seller proceeds on completion.
               </p>

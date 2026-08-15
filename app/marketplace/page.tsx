@@ -2,8 +2,12 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import api from "../../utils/api";
 import { formatNaira } from "../../utils/currency";
+import {
+  getListings,
+  type MarketplaceListing,
+  type ListingsMeta,
+} from "../../services/marketplaceService";
 import {
   Search, SlidersHorizontal, MapPin, TrendingUp,
   Package, ArrowRight, Plus, X, ChevronDown,
@@ -11,13 +15,15 @@ import {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function StatusBadge({ status }) {
-  const map = {
+type StatusKey = "active" | "in_escrow" | "sold";
+
+function StatusBadge({ status }: { status: string }) {
+  const map: Record<StatusKey, { label: string; cls: string }> = {
     active:    { label: "Active",    cls: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" },
     in_escrow: { label: "In Escrow", cls: "bg-amber-500/10 text-amber-400 border-amber-500/20" },
     sold:      { label: "Sold",      cls: "bg-white/5 text-white/55 border-white/10" },
   };
-  const s = map[status] ?? map.active;
+  const s = map[status as StatusKey] ?? map.active;
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider ${s.cls}`}>
       {s.label}
@@ -25,10 +31,9 @@ function StatusBadge({ status }) {
   );
 }
 
-function ListingCard({ listing }) {
+function ListingCard({ listing }: { listing: MarketplaceListing }) {
   const land  = listing.land;
   const image = land?.images?.[0]?.image_url;
-  const priceNaira = listing.asking_price_kobo / 100;
 
   return (
     <Link href={`/marketplace/${listing.id}`}
@@ -39,7 +44,7 @@ function ListingCard({ listing }) {
         {image ? (
           <img src={image} alt={land?.title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            onError={(e) => { e.target.src = "/no-image.jpeg"; }} />
+            onError={(e) => { (e.target as HTMLImageElement).src = "/no-image.jpeg"; }} />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <Package size={32} className="text-white/10" />
@@ -84,7 +89,22 @@ function ListingCard({ listing }) {
 }
 
 // ─── Filters panel ────────────────────────────────────────────────────────────
-function FiltersPanel({ filters, onChange, onReset }) {
+
+interface Filters {
+  sort: string;
+  min_price: string;
+  max_price: string;
+}
+
+function FiltersPanel({
+  filters,
+  onChange,
+  onReset,
+}: {
+  filters: Filters;
+  onChange: (key: keyof Filters, value: string) => void;
+  onReset: () => void;
+}) {
   return (
     <div className="rounded-2xl border border-white/10 bg-white/5 p-5 space-y-4">
       <div className="flex items-center justify-between">
@@ -124,28 +144,28 @@ function FiltersPanel({ filters, onChange, onReset }) {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function MarketplacePage() {
-  const [listings, setListings]   = useState([]);
-  const [meta, setMeta]           = useState(null);
+  const [listings, setListings]   = useState<MarketplaceListing[]>([]);
+  const [meta, setMeta]           = useState<ListingsMeta | null>(null);
   const [loading, setLoading]     = useState(true);
   const [search, setSearch]       = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [page, setPage]           = useState(1);
 
-  const [filters, setFilters] = useState({
+  const [filters, setFilters] = useState<Filters>({
     sort: "newest", min_price: "", max_price: "",
   });
 
   const fetchListings = useCallback(async () => {
     setLoading(true);
     try {
-      const params = { page, sort: filters.sort };
-      if (filters.min_price) params.min_price = Number(filters.min_price) * 100;
-      if (filters.max_price) params.max_price = Number(filters.max_price) * 100;
-
-      const res = await api.get("/marketplace", { params });
-      const d   = res.data.data;
-      setListings(d.data ?? d);
-      setMeta(d.meta ?? null);
+      const result = await getListings({
+        page,
+        sort: filters.sort,
+        min_price: filters.min_price ? Number(filters.min_price) * 100 : undefined,
+        max_price: filters.max_price ? Number(filters.max_price) * 100 : undefined,
+      });
+      setListings(result.listings);
+      setMeta(result.meta);
     } catch {
       setListings([]);
     } finally {
@@ -155,7 +175,7 @@ export default function MarketplacePage() {
 
   useEffect(() => { fetchListings(); }, [fetchListings]);
 
-  const updateFilter = (key, value) => {
+  const updateFilter = (key: keyof Filters, value: string) => {
     setFilters((f) => ({ ...f, [key]: value }));
     setPage(1);
   };
@@ -169,7 +189,7 @@ export default function MarketplacePage() {
     search === "" ||
     l.land?.title?.toLowerCase().includes(search.toLowerCase()) ||
     l.land?.location?.toLowerCase().includes(search.toLowerCase()) ||
-    l.seller?.name?.toLowerCase().includes(search.toLowerCase())
+    (l.seller?.name as string | undefined)?.toLowerCase().includes(search.toLowerCase())
   );
 
   return (

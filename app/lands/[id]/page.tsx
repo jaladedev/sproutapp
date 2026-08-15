@@ -12,13 +12,14 @@ import {
 } from "../../../services/landService";
 import { getAccountStatus } from "../../../services/pinService";
 import { getMe } from "../../../services/userService";
-import { getLandSlides } from "../../../utils/images";
+import { getLandSlides, type Slide } from "../../../utils/images";
 import { formatNaira } from "../../../utils/currency";
 import toast from "react-hot-toast";
+import type { AxiosError } from "axios";
 import {
   ArrowLeft, MapPin, Layers, TrendingUp, ShieldCheck,
   Lock, X, AlertCircle, Info, Tag, Wallet, ToggleLeft, ToggleRight,
-  Info as InfoIcon, FileText, Activity, Zap,
+  FileText, Activity, Zap,
   Building2, BarChart3, ChevronDown, ChevronUp,
 } from "lucide-react";
 
@@ -27,14 +28,102 @@ import "yet-another-react-lightbox/styles.css";
 import Thumbnails from "yet-another-react-lightbox/plugins/thumbnails";
 import "yet-another-react-lightbox/plugins/thumbnails.css";
 
+type ApiError = AxiosError<{ message?: string; error?: string }>;
+
+/* ─── Land detail shape ─────────────────────────────────────────────────── *
+ * landService.ts's shared `Land` type is intentionally near-`unknown` since
+ * it also covers the marketplace/admin list endpoints. This detail page
+ * reads a large, stable set of fields specific to `/lands/:id` — pinned
+ * down locally rather than widening the shared type for every other
+ * consumer, matching the pattern established in portfolio/page.tsx (#2).
+ */
+interface LandDetail {
+  id: string | number;
+  title: string;
+  description?: string;
+  location?: string;
+  lga?: string;
+  city?: string;
+  state?: string;
+  plot_identifier?: string;
+  size?: number | string;
+  total_units?: number;
+  available_units?: number;
+  overall_value?: number | string;
+  current_land_value?: number | string;
+  rental_pm?: number | string;
+  rental_pa?: number | string;
+  latest_price?: { price_per_unit_kobo?: number };
+  latestPrice?: { price_per_unit_kobo?: number };
+  current_price_per_unit_kobo?: number;
+  price_per_unit_kobo?: number;
+  pre_launch_price_kobo?: number;
+  launch_price_kobo?: number;
+  allocation_records?: string[];
+  land_titles?: string[];
+  historical_transactions?: string[];
+  comm_lines?: [string, number][];
+  valuations?: { year: number; month?: number; value: number | string }[];
+  neighbouring_transactions?: {
+    plot_size?: number | string;
+    year?: number;
+    value?: number | string;
+    distance_m?: number | string;
+  }[];
+  lat?: number | string;
+  lng?: number | string;
+  slope?: number | string;
+  elevation?: number | string;
+  soil_type?: string;
+  bearing_capacity?: string;
+  hydrology?: string;
+  vegetation?: string;
+  road_type?: string;
+  road_category?: string;
+  road_condition?: string;
+  electricity?: string;
+  water_supply?: string;
+  sewage?: string;
+  other_facilities?: string;
+  dispute_status?: string;
+  tenure?: string;
+  current_owner?: string;
+  taxation?: string;
+  preexisting_landuse?: string;
+  current_landuse?: string;
+  proposed_landuse?: string;
+  zoning?: string;
+  dev_control?: string;
+  images?: { image_url?: string; url?: string; image_path?: string }[];
+  [key: string]: unknown;
+}
+
+interface PurchasePreviewData {
+  discount_label?: string;
+  original_cost_naira: number;
+  total_discount_kobo?: number;
+  first_purchase_discount_kobo?: number;
+  first_purchase_discount_naira?: number;
+  referral_discount_kobo?: number;
+  referral_discount_naira?: number;
+  paid_from_rewards_kobo?: number;
+  paid_from_rewards_naira?: number;
+  total_due_naira: number;
+  sufficient_balance?: boolean;
+  [key: string]: unknown;
+}
+
 /* ─── Constants ─────────────────────────────────────────────────────────── */
 
 const MONTH_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const MIN_PURCHASE_KOBO = 5000 * 100;
 
+type KycStatus = "none" | "pending" | "approved" | "rejected" | "resubmit";
+type ModalType = "purchase" | "sell" | null;
+
 /* ─── Helpers ───────────────────────────────────────────────────────────── */
 
-function getLandPrice(land) {
+function getLandPrice(land: LandDetail): number {
   return (
     land.latest_price?.price_per_unit_kobo ??
     land.latestPrice?.price_per_unit_kobo ??
@@ -44,32 +133,44 @@ function getLandPrice(land) {
   );
 }
 
-function nilOrDash(v) {
+function nilOrDash(v: unknown): boolean {
   if (v === null || v === undefined || v === "") return true;
   const s = String(v).trim().toLowerCase();
   return s === "nil" || s === "-" || s === "none" || s === "null";
 }
 
-function fmt(v) {
+function fmt(v: unknown): string {
   if (nilOrDash(v)) return "—";
   return String(v).trim();
 }
 
-function capitalize(str) {
-  if (!str) return str;
+function capitalize(str?: string | null): string {
+  if (!str) return str ?? "";
   return String(str).charAt(0).toUpperCase() + String(str).slice(1).toLowerCase();
 }
 
-function valuationsToPoints(valuations = []) {
+type ValuationPoint = [year: number, value: number, month: number | null];
+
+function valuationsToPoints(valuations: LandDetail["valuations"] = []): ValuationPoint[] {
   return [...valuations]
     .sort((a, b) => a.year !== b.year ? a.year - b.year : (a.month ?? 0) - (b.month ?? 0))
-    .map(({ year, month, value }) => [year, Number(value), month ?? null]);
+    .map(({ year, month, value }): ValuationPoint => [year, Number(value), month ?? null]);
 }
 
 /* ─── Collapsible Section ───────────────────────────────────────────────── */
-function Section({ title, icon, children, defaultOpen = true, accent = "amber" }) {
+type Accent = "amber" | "emerald" | "blue" | "purple" | "rose";
+
+function Section({
+  title, icon, children, defaultOpen = true, accent = "amber",
+}: {
+  title: string;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+  accent?: Accent;
+}) {
   const [open, setOpen] = useState(defaultOpen);
-  const accentMap = {
+  const accentMap: Record<Accent, { border: string; icon: string }> = {
     amber:   { border: "border-amber-500/20",   icon: "bg-amber-500/10 text-amber-400"     },
     emerald: { border: "border-emerald-500/20",  icon: "bg-emerald-500/10 text-emerald-400" },
     blue:    { border: "border-blue-500/20",     icon: "bg-blue-500/10 text-blue-400"       },
@@ -107,7 +208,15 @@ function Section({ title, icon, children, defaultOpen = true, accent = "amber" }
 }
 
 /* ─── Data Row ──────────────────────────────────────────────────────────── */
-function DataRow({ label, value, highlight, mono, children }) {
+function DataRow({
+  label, value, highlight, mono, children,
+}: {
+  label: string;
+  value?: unknown;
+  highlight?: boolean;
+  mono?: boolean;
+  children?: React.ReactNode;
+}) {
   return (
     <div className="flex items-start justify-between gap-4 py-2 border-b border-white/5 last:border-0">
       <span className="text-xs text-white/50 hover:text-white/60 transition-colors shrink-0 w-44">{label}</span>
@@ -125,8 +234,10 @@ function DataRow({ label, value, highlight, mono, children }) {
 }
 
 /* ─── Tag Pill ──────────────────────────────────────────────────────────── */
-function Pill({ children, color = "default" }) {
-  const colors = {
+type PillColor = "default" | "green" | "amber" | "blue" | "red";
+
+function Pill({ children, color = "default" }: { children: React.ReactNode; color?: PillColor }) {
+  const colors: Record<PillColor, string> = {
     default: "bg-white/5 border-white/10 text-white/50",
     green:   "bg-emerald-500/10 border-emerald-500/20 text-emerald-400",
     amber:   "bg-amber-500/10 border-amber-500/20 text-amber-400",
@@ -141,7 +252,7 @@ function Pill({ children, color = "default" }) {
 }
 
 /* ─── Signal Bar ────────────────────────────────────────────────────────── */
-function SignalBar({ strength }) {
+function SignalBar({ strength }: { strength: number | string }) {
   const pct   = Number(strength) || 0;
   const color = pct >= 70 ? "bg-emerald-400" : pct >= 40 ? "bg-amber-400" : "bg-red-400";
   return (
@@ -155,8 +266,8 @@ function SignalBar({ strength }) {
 }
 
 /* ─── Promo Price Table ─────────────────────────────────────────────────── */
-function PromoPriceTable({ land }) {
-  const TIERS = [
+function PromoPriceTable({ land }: { land: LandDetail }) {
+  const TIERS: { key: "pre_launch_price_kobo" | "launch_price_kobo" | "_current"; label: string }[] = [
     { key: "pre_launch_price_kobo", label: "Pre-Launch Price" },
     { key: "launch_price_kobo",     label: "Launch Price"     },
     { key: "_current",              label: "Current Price"    },
@@ -192,7 +303,7 @@ function PromoPriceTable({ land }) {
               className={`text-sm font-bold tabular-nums ${isCurrent ? "text-amber-400" : "text-white/50"}`}
               style={isCurrent ? { fontFamily: "var(--font-playfair), Georgia, serif" } : {}}
             >
-              ₦{(kobo / 100).toLocaleString()}
+              ₦{(Number(kobo) / 100).toLocaleString()}
             </span>
           </div>
         ))}
@@ -207,10 +318,18 @@ function PromoPriceTable({ land }) {
 }
 
 /* ─── Price Trend Panel ─────────────────────────────────────────────────── */
-function PriceTrendPanel({ valuations = [] }) {
-  const [tooltip, setTooltip]   = useState(null);
+interface Tooltip {
+  idx: number;
+  x: number;
+  y: number;
+  label: string;
+  value: number;
+}
+
+function PriceTrendPanel({ valuations = [] }: { valuations: LandDetail["valuations"] }) {
+  const [tooltip, setTooltip]   = useState<Tooltip | null>(null);
   const [animated, setAnimated] = useState(false);
-  const svgRef = useRef(null);
+  const svgRef = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setAnimated(true), 120);
@@ -230,9 +349,9 @@ function PriceTrendPanel({ valuations = [] }) {
   const maxV   = Math.max(...values) * 1.04;
   const range  = maxV - minV || 1;
 
-  const xOf = (i) => PAD.l + (i / Math.max(points.length - 1, 1)) * plotW;
-  const yOf = (v)  => PAD.t + plotH - ((v - minV) / range) * plotH;
-  const coords = points.map(([, v], i) => [xOf(i), yOf(v)]);
+  const xOf = (i: number) => PAD.l + (i / Math.max(points.length - 1, 1)) * plotW;
+  const yOf = (v: number) => PAD.t + plotH - ((v - minV) / range) * plotH;
+  const coords: [number, number][] = points.map(([, v], i) => [xOf(i), yOf(v)]);
 
   const linePath = coords.reduce((acc, [x, y], i) => {
     if (i === 0) return `M ${x},${y}`;
@@ -256,16 +375,16 @@ function PriceTrendPanel({ valuations = [] }) {
 
   const yTicks = [0, 0.33, 0.66, 1].map((t) => minV + t * range);
 
-  const fmtVal = (v) => {
+  const fmtVal = (v: number) => {
     if (v >= 1_000_000) return `₦${(v / 1_000_000).toFixed(v % 1_000_000 === 0 ? 0 : 2)}M`;
     if (v >= 1_000)     return `₦${(v / 1_000).toFixed(0)}k`;
     return `₦${Math.round(v).toLocaleString()}`;
   };
 
-  const pointLabel = ([year, , month]) =>
+  const pointLabel = ([year, , month]: ValuationPoint) =>
     month ? `${MONTH_SHORT[month - 1]} ${year}` : String(year);
 
-  const handleMouseMove = (e) => {
+  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
     if (!svgRef.current) return;
     const rect = svgRef.current.getBoundingClientRect();
     const mx   = ((e.clientX - rect.left) / rect.width) * W;
@@ -299,7 +418,7 @@ function PriceTrendPanel({ valuations = [] }) {
             </p>
             {yoyGrowth !== null && (
               <span className={`text-sm font-bold ${Number(yoyGrowth) >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                {Number(yoyGrowth) >= 0 ? "▲" : "▼"} {Math.abs(yoyGrowth)}% since prev
+                {Number(yoyGrowth) >= 0 ? "▲" : "▼"} {Math.abs(Number(yoyGrowth))}% since prev
               </span>
             )}
           </div>
@@ -448,7 +567,7 @@ function PriceTrendPanel({ valuations = [] }) {
 }
 
 /* ─── Stat Card ─────────────────────────────────────────────────────────── */
-function StatCard({ label, value, accent }) {
+function StatCard({ label, value, accent }: { label: string; value: React.ReactNode; accent?: boolean }) {
   return (
     <div className="rounded-xl border border-white/10 bg-white/5 p-4">
       <p className="text-xs font-bold uppercase tracking-widest text-white/50 mb-1">{label}</p>
@@ -458,21 +577,24 @@ function StatCard({ label, value, accent }) {
 }
 
 /* ─── KYC Banner ────────────────────────────────────────────────────────── */
-function KycBanner({ kycStatus }) {
+function KycBanner({ kycStatus }: { kycStatus: KycStatus }) {
   if (kycStatus === "approved" || !kycStatus) return null;
-  const config = {
+  type ConfigColor = "purple" | "amber" | "red" | "orange";
+  const configMap: Record<string, { color: ConfigColor; msg: string }> = {
     none:     { color: "purple", msg: "Identity verification is required before you can invest." },
     pending:  { color: "amber",  msg: "Your KYC is under review. Investing will be enabled once approved." },
     rejected: { color: "red",    msg: "Your KYC was rejected. Please resubmit your documents." },
     resubmit: { color: "orange", msg: "KYC resubmission required before you can invest." },
-  }[kycStatus] ?? { color: "purple", msg: "Identity verification required." };
+  };
+  const config = configMap[kycStatus] ?? { color: "purple", msg: "Identity verification required." };
 
-  const colors = {
+  const colorMap: Record<ConfigColor, { border: string; bg: string; text: string; icon: string }> = {
     purple: { border: "border-purple-500/30", bg: "bg-purple-500/5", text: "text-purple-400", icon: "bg-purple-500/20" },
     amber:  { border: "border-amber-500/30",  bg: "bg-amber-500/5",  text: "text-amber-400",  icon: "bg-amber-500/20"  },
     red:    { border: "border-red-500/30",    bg: "bg-red-500/5",    text: "text-red-400",    icon: "bg-red-500/20"    },
     orange: { border: "border-orange-500/30", bg: "bg-orange-500/5", text: "text-orange-400", icon: "bg-orange-500/20" },
-  }[config.color];
+  };
+  const colors = colorMap[config.color];
 
   return (
     <div className={`mb-6 flex items-center gap-4 rounded-2xl border ${colors.border} ${colors.bg} p-4`}>
@@ -494,10 +616,18 @@ function KycBanner({ kycStatus }) {
 }
 
 /* ─── Breakdown Row ─────────────────────────────────────────────────────── */
-function BreakdownRow({ label, value, highlight, strikethrough, green, muted }) {
+function BreakdownRow({
+  label, value, highlight, strikethrough, green,
+}: {
+  label: string;
+  value: React.ReactNode;
+  highlight?: boolean;
+  strikethrough?: boolean;
+  green?: boolean;
+}) {
   return (
     <div className="flex justify-between items-center py-1 gap-3">
-      <span className={`text-xs shrink-0 ${muted ? "text-white/50" : "text-white/50"}`}>{label}</span>
+      <span className="text-xs shrink-0 text-white/50">{label}</span>
       <span className={`text-xs font-semibold text-right truncate ${
         strikethrough ? "line-through text-white/50" :
         green         ? "text-emerald-400" :
@@ -509,7 +639,17 @@ function BreakdownRow({ label, value, highlight, strikethrough, green, muted }) 
 }
 
 /* ─── Photo Grid ────────────────────────────────────────────────────────── */
-function SlideTile({ slide, index, label, style, className = "", onClick, overlayCount }) {
+function SlideTile({
+  slide, label, style, className = "", onClick, overlayCount,
+}: {
+  slide: Slide;
+  index: number;
+  label: string;
+  style?: React.CSSProperties;
+  className?: string;
+  onClick?: () => void;
+  overlayCount?: number;
+}) {
   return (
     <div className={`relative overflow-hidden group cursor-pointer ${className}`} style={style} onClick={onClick}>
       <img
@@ -517,13 +657,14 @@ function SlideTile({ slide, index, label, style, className = "", onClick, overla
         alt={label}
         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
         onError={(e) => {
-          if (!e.target.dataset.errored) {
-            e.target.dataset.errored = "1";
-            e.target.src = "/no-image.jpeg";
+          const img = e.target as HTMLImageElement;
+          if (!img.dataset.errored) {
+            img.dataset.errored = "1";
+            img.src = "/no-image.jpeg";
           }
         }}
       />
-      {overlayCount > 0 ? (
+      {overlayCount && overlayCount > 0 ? (
         <div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(13,31,26,0.70)" }}>
           <span className="text-white text-2xl font-bold" style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
             +{overlayCount}
@@ -541,7 +682,13 @@ function SlideTile({ slide, index, label, style, className = "", onClick, overla
   );
 }
 
-function PhotoGrid({ slides, land, onOpen }) {
+function PhotoGrid({
+  slides, land, onOpen,
+}: {
+  slides: Slide[];
+  land: LandDetail;
+  onOpen: (i: number) => void;
+}) {
   if (!slides.length) return null;
   if (slides.length === 1) {
     return (
@@ -580,25 +727,25 @@ function PhotoGrid({ slides, land, onOpen }) {
    MAIN PAGE
    ═══════════════════════════════════════════════════════════════════════════ */
 export default function LandDetails() {
-  const params = useParams();
+  const params = useParams<{ id: string }>();
   const id     = params?.id;
 
-  const [land, setLand]           = useState(null);
+  const [land, setLand]           = useState<LandDetail | null>(null);
   const [userUnits, setUserUnits] = useState(0);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState("");
 
   const [pinIsSet, setPinIsSet]         = useState(true);
-  const [kycStatus, setKycStatus]       = useState("approved");
+  const [kycStatus, setKycStatus]       = useState<KycStatus>("approved");
   const [statusLoaded, setStatusLoaded] = useState(false);
 
-  const [modalType, setModalType]           = useState(null);
+  const [modalType, setModalType]           = useState<ModalType>(null);
   const [unitsInput, setUnitsInput]         = useState("");
   const [transactionPin, setTransactionPin] = useState("");
   const [useRewards, setUseRewards]         = useState(true);
-  const [preview, setPreview]               = useState(null);
+  const [preview, setPreview]               = useState<PurchasePreviewData | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
-  const [modalError, setModalError]         = useState(null);
+  const [modalError, setModalError]         = useState<string | null>(null);
   const [modalLoading, setModalLoading]     = useState(false);
 
   const [showPinModal, setShowPinModal] = useState(false);
@@ -607,12 +754,12 @@ export default function LandDetails() {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [photoIndex, setPhotoIndex]     = useState(0);
 
-  const previewTimer = useRef(null);
+  const previewTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const fetchLand = useCallback(async () => {
     try {
-      const land = await getLand(id);
-      setLand(land);
+      const l = await getLand(id) as unknown as LandDetail;
+      setLand(l);
     } catch {
       setError("Unable to load land details.");
     } finally {
@@ -623,7 +770,8 @@ export default function LandDetails() {
   const fetchUserUnits = useCallback(async () => {
     try {
       const payload = await getUserUnitsForLand(id);
-      setUserUnits(payload?.data?.user_units ?? 0);
+      const nested = (payload as { data?: { user_units?: number } })?.data;
+      setUserUnits(nested?.user_units ?? 0);
     } catch {
       setUserUnits(0);
     }
@@ -633,12 +781,12 @@ export default function LandDetails() {
     try {
       const d = await getAccountStatus();
       setPinIsSet(!!d.pin_is_set);
-      setKycStatus(d.kyc_status ?? "none");
+      setKycStatus((d.kyc_status as KycStatus) ?? "none");
     } catch {
       try {
         const u = await getMe();
         setPinIsSet(u.pin_is_set ?? !!u.transaction_pin);
-        setKycStatus(u.kyc_status ?? (u.is_kyc_verified ? "approved" : "none"));
+        setKycStatus((u.kyc_status as KycStatus) ?? (u.is_kyc_verified ? "approved" : "none"));
       } catch {}
     } finally {
       setStatusLoaded(true);
@@ -660,8 +808,8 @@ export default function LandDetails() {
     previewTimer.current = setTimeout(async () => {
       setPreviewLoading(true);
       try {
-        const preview = await getPurchasePreview(id, units, useRewards);
-        setPreview(preview);
+        const p = await getPurchasePreview(id, units, useRewards) as unknown as PurchasePreviewData;
+        setPreview(p);
       } catch {
         setPreview(null);
       } finally {
@@ -685,7 +833,7 @@ export default function LandDetails() {
     };
   }, [modalType, showPinModal, showKycModal, lightboxOpen]);
 
-  const openModal = (type) => {
+  const openModal = (type: Exclude<ModalType, null>) => {
     if (kycStatus !== "approved") { setShowKycModal(true); return; }
     if (!pinIsSet)                { setShowPinModal(true); return; }
     setModalType(type);
@@ -747,7 +895,8 @@ export default function LandDetails() {
       await fetchUserUnits();
       closeModal();
     } catch (err) {
-      const msg = err.response?.data?.message || err.response?.data?.error || err.message;
+      const axiosErr = err as ApiError;
+      const msg = axiosErr.response?.data?.message || axiosErr.response?.data?.error || axiosErr.message;
       if (msg?.toLowerCase().includes("pin not set")) { closeModal(); setShowPinModal(true); return; }
       setModalError(msg || "Transaction failed. Please try again.");
     } finally {
@@ -922,7 +1071,7 @@ export default function LandDetails() {
             <DataRow label="Number of Units"   value={land.total_units?.toLocaleString() ?? "—"} />
             <DataRow label="Size per Unit"
               value={land.size && land.total_units
-                ? `${(land.size / land.total_units).toFixed(4)} sqm`
+                ? `${(Number(land.size) / land.total_units).toFixed(4)} sqm`
                 : "—"} />
             <DataRow label="Price per Unit"    value={priceKobo > 0 ? formatNaira(priceKobo) : "—"} highlight />
             <DataRow label="Current Land Value"
@@ -1252,26 +1401,26 @@ export default function LandDetails() {
                         <BreakdownRow
                           label="Original cost"
                           value={`₦${preview.original_cost_naira.toLocaleString("en-NG", { minimumFractionDigits: 2 })}`}
-                          strikethrough={preview.total_discount_kobo > 0}
+                          strikethrough={(preview.total_discount_kobo ?? 0) > 0}
                         />
-                        {preview.first_purchase_discount_kobo > 0 && (
+                        {(preview.first_purchase_discount_kobo ?? 0) > 0 && (
                           <BreakdownRow
                             label="First-purchase discount"
-                            value={`-₦${preview.first_purchase_discount_naira.toLocaleString("en-NG", { minimumFractionDigits: 2 })}`}
+                            value={`-₦${preview.first_purchase_discount_naira?.toLocaleString("en-NG", { minimumFractionDigits: 2 })}`}
                             green
                           />
                         )}
-                        {preview.referral_discount_kobo > 0 && (
+                        {(preview.referral_discount_kobo ?? 0) > 0 && (
                           <BreakdownRow
                             label="Referral discount"
-                            value={`-₦${preview.referral_discount_naira.toLocaleString("en-NG", { minimumFractionDigits: 2 })}`}
+                            value={`-₦${preview.referral_discount_naira?.toLocaleString("en-NG", { minimumFractionDigits: 2 })}`}
                             green
                           />
                         )}
-                        {preview.paid_from_rewards_kobo > 0 && (
+                        {(preview.paid_from_rewards_kobo ?? 0) > 0 && (
                           <BreakdownRow
                             label="From rewards balance"
-                            value={`-₦${preview.paid_from_rewards_naira.toLocaleString("en-NG", { minimumFractionDigits: 2 })}`}
+                            value={`-₦${preview.paid_from_rewards_naira?.toLocaleString("en-NG", { minimumFractionDigits: 2 })}`}
                             green
                           />
                         )}
@@ -1360,7 +1509,7 @@ export default function LandDetails() {
                   disabled={
                     modalLoading || !unitsInput || Number(unitsInput) <= 0 || !transactionPin ||
                     belowMinPurchase ||
-                    (modalType === "purchase" && preview && !preview.sufficient_balance) ||
+                    !!(modalType === "purchase" && preview && !preview.sufficient_balance) ||
                     (modalType === "sell"     && Number(unitsInput) > userUnits)          ||
                     (modalType === "purchase" && Number(unitsInput) > (land.available_units ?? 0))
                   }
@@ -1439,12 +1588,14 @@ export default function LandDetails() {
                   Complete KYC First
                 </h2>
                 <p className="text-white/60 text-sm mb-6 leading-relaxed">
-                  {{
-                    none:     "Identity verification is required before you can invest.",
-                    pending:  "Your KYC is under review. Please wait for approval.",
-                    rejected: "Your KYC was rejected. Please resubmit your documents.",
-                    resubmit: "KYC resubmission is required before investing.",
-                  }[kycStatus] ?? "Identity verification is required."}
+                  {(
+                    {
+                      none:     "Identity verification is required before you can invest.",
+                      pending:  "Your KYC is under review. Please wait for approval.",
+                      rejected: "Your KYC was rejected. Please resubmit your documents.",
+                      resubmit: "KYC resubmission is required before investing.",
+                    } as Record<string, string>
+                  )[kycStatus] ?? "Identity verification is required."}
                 </p>
                 <div className="space-y-3">
                   {["none", "rejected", "resubmit"].includes(kycStatus) && (

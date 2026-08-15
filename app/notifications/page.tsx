@@ -4,11 +4,20 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Bell, CheckCheck, Clock, CheckCircle } from "lucide-react";
 import api from "../../utils/api";
-import { markAllNotificationsRead, markNotificationRead } from "../../services/notificationService";
+import {
+  markAllNotificationsRead,
+  markNotificationRead,
+  type AppNotification,
+} from "../../services/notificationService";
 
 // ── Inline fetch (bypasses notificationService's paginator-only shape) ────────
+// notificationService.fetchNotifications() assumes the paginator always
+// nests under `.data`; this page has always defensively handled either
+// shape, so it keeps its own fetch rather than routing through the shared
+// cache-backed helper (which also isn't a fit here since this page wants a
+// fresh list on every mark-read, not the service's memoized cache).
 
-async function apiFetchNotifications() {
+async function apiFetchNotifications(): Promise<AppNotification[]> {
   // GET /notifications → { success, notifications: <paginator> }
   // paginator shape: { data: [...], total, current_page, ... }
   const res = await api.get("/notifications");
@@ -17,12 +26,14 @@ async function apiFetchNotifications() {
   return Array.isArray(payload) ? payload : (payload?.data ?? []);
 }
 
+type Filter = "all" | "unread";
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState([]);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading]             = useState(true);
-  const [filter, setFilter]               = useState("all");
+  const [filter, setFilter]               = useState<Filter>("all");
   const router = useRouter();
 
   const loadNotifications = useCallback(async () => {
@@ -49,7 +60,7 @@ export default function NotificationsPage() {
     }
   };
 
-  const handleMarkAsRead = async (id) => {
+  const handleMarkAsRead = async (id: string | number) => {
     try {
       await markNotificationRead(id);
       // Optimistic update
@@ -99,10 +110,12 @@ export default function NotificationsPage() {
 
         {/* Filter tabs */}
         <div className="flex gap-1 mb-6 p-1 rounded-xl border border-white/10 bg-white/5 w-fit">
-          {[
-            { key: "all",    label: `All (${notifications.length})` },
-            { key: "unread", label: `Unread (${unreadCount})` },
-          ].map((tab) => (
+          {(
+            [
+              { key: "all",    label: `All (${notifications.length})` },
+              { key: "unread", label: `Unread (${unreadCount})` },
+            ] as { key: Filter; label: string }[]
+          ).map((tab) => (
             <button key={tab.key} onClick={() => setFilter(tab.key)}
               className="px-4 py-2 rounded-lg text-xs font-bold transition-all"
               style={filter === tab.key
@@ -140,6 +153,8 @@ export default function NotificationsPage() {
           <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
             {filtered.map((n) => {
               const unread = !n.read_at;
+              const units = n.data?.units as number | string | undefined;
+              const amountKobo = n.data?.amount_kobo as number | undefined;
               return (
                 <div key={n.id}
                   onClick={() => unread && handleMarkAsRead(n.id)}
@@ -161,15 +176,15 @@ export default function NotificationsPage() {
 
                       <div className="flex-1 min-w-0">
                         <p className={`text-sm leading-snug ${unread ? "font-semibold text-white" : "text-white/50"}`}>
-                          {n.data?.message || n.data?.title || "New activity"}
+                          {(n.data?.message as string | undefined) || (n.data?.title as string | undefined) || "New activity"}
                         </p>
 
                         {/* Transaction detail line */}
-                        {(n.data?.units || n.data?.amount_kobo) && (
+                        {(units || amountKobo) && (
                           <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.35)" }}>
-                            {n.data.units ? `${n.data.units} units` : ""}
-                            {n.data.units && n.data.amount_kobo ? " · " : ""}
-                            {n.data.amount_kobo ? `₦${(n.data.amount_kobo / 100).toLocaleString()}` : ""}
+                            {units ? `${units} units` : ""}
+                            {units && amountKobo ? " · " : ""}
+                            {amountKobo ? `₦${(amountKobo / 100).toLocaleString()}` : ""}
                           </p>
                         )}
 

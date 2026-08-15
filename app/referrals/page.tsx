@@ -1,21 +1,31 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getReferralsDashboard, claimReferralReward } from "../../services/referralsService";
+import {
+  getReferralsDashboard,
+  claimReferralReward,
+  type ReferralsDashboard,
+  type Referral,
+  type Reward,
+  type RewardType,
+} from "../../services/referralsService";
 import toast from "react-hot-toast";
+import type { AxiosError } from "axios";
 import {
   Gift, Copy, Check, Users, CheckCircle,
   Clock, Wallet, Zap, Info, Share2, TrendingUp,
   Star, DollarSign
 } from "lucide-react";
 
+type ApiError = AxiosError<{ message?: string }>;
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function deriveReferralsFromRewards(rewards = []) {
-  const seen = new Set();
+function deriveReferralsFromRewards(rewards: Reward[] = []): Referral[] {
+  const seen = new Set<string | number>();
   return rewards
-    .filter((r) => r.referral)
-    .reduce((acc, r) => {
+    .filter((r): r is Reward & { referral: Referral } => !!r.referral)
+    .reduce<Referral[]>((acc, r) => {
       if (!seen.has(r.referral.id)) {
         seen.add(r.referral.id);
         acc.push(r.referral);
@@ -33,7 +43,7 @@ function koboToNaira(kobo = 0) {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function StatusBadge({ status }) {
+function StatusBadge({ status }: { status: string }) {
   if (status === "completed") {
     return (
       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border text-emerald-400 bg-[#112418] border-[#1a3a22]">
@@ -48,13 +58,21 @@ function StatusBadge({ status }) {
   );
 }
 
-const REWARD_LABELS = {
+const REWARD_LABELS: Record<RewardType, { icon: string; label: string }> = {
   cashback:    { icon: "💰", label: "Cashback Reward" },
   discount:    { icon: "🎟️", label: "Discount Reward" },
   bonus_units: { icon: "🎁", label: "Bonus Units" },
 };
 
-function buildRewardsSummary(rewards = []) {
+interface RewardsSummary {
+  totalKobo: number;
+  claimedKobo: number;
+  unclaimedKobo: number;
+  discountCount: number;
+  bonusUnits: number;
+}
+
+function buildRewardsSummary(rewards: Reward[] = []): RewardsSummary {
   let totalKobo = 0, claimedKobo = 0, unclaimedKobo = 0,
       discountCount = 0, bonusUnits = 0;
   for (const r of rewards) {
@@ -70,7 +88,17 @@ function buildRewardsSummary(rewards = []) {
 }
 
 // ─── Stat card definitions ────────────────────────────────────────────────────
-const STAT_CARDS = [
+interface StatCard {
+  label: string;
+  key: keyof ReferralsDashboard;
+  icon: React.ReactNode;
+  color: string;
+  bg: string;
+  ring: string;
+  fmt?: "naira";
+}
+
+const STAT_CARDS: StatCard[] = [
   { label: "Total Referrals", key: "total_referrals",     icon: <Users size={18} />,      color: "#C8873A", bg: "#261d0e", ring: "#3d2c14" },
   { label: "Completed",       key: "completed_referrals", icon: <CheckCircle size={18} />, color: "#22c55e", bg: "#122614", ring: "#1a3a22" },
   { label: "Pending",         key: "pending_referrals",   icon: <Clock size={18} />,       color: "#F59E0B", bg: "#251d0a", ring: "#3d2e10" },
@@ -81,7 +109,7 @@ const STAT_CARDS = [
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function ReferralDashboard() {
-  const [dashboard, setDashboard] = useState(null);
+  const [dashboard, setDashboard] = useState<ReferralsDashboard | null>(null);
   const [loading, setLoading]     = useState(true);
   const [copied, setCopied]       = useState(false);
 
@@ -92,7 +120,7 @@ export default function ReferralDashboard() {
       const data = await getReferralsDashboard();
 
       const derivedReferrals =
-        data.referrals?.length > 0
+        data.referrals && data.referrals.length > 0
           ? data.referrals
           : deriveReferralsFromRewards(data.rewards);
 
@@ -162,13 +190,14 @@ export default function ReferralDashboard() {
     }
   };
 
-  const claimReward = async (rewardId) => {
+  const claimReward = async (rewardId: string | number) => {
     try {
       await claimReferralReward(rewardId);
       toast.success("Reward claimed!");
       fetchDashboard();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to claim reward");
+      const axiosErr = err as ApiError;
+      toast.error(axiosErr.response?.data?.message || "Failed to claim reward");
     }
   };
 
@@ -248,7 +277,7 @@ export default function ReferralDashboard() {
         {/* ── Stat Cards ── */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-8">
           {STAT_CARDS.map((card) => {
-            const raw = dashboard?.[card.key] || 0;
+            const raw = Number(dashboard?.[card.key] ?? 0);
             const display = card.fmt === "naira" ? `₦${koboToNaira(raw)}` : raw;
             return (
               <div
@@ -350,8 +379,8 @@ export default function ReferralDashboard() {
                       key={r.id}
                       className={`text-xs px-2 py-0.5 rounded-md font-mono ${
                         r.claimed
-                          ? "bg-[#192a25] text-[#8ab9a9]"  
-                          : "bg-[#111e28] text-sky-300"     
+                          ? "bg-[#192a25] text-[#8ab9a9]"
+                          : "bg-[#111e28] text-sky-300"
                       }`}
                     >
                       {r.discount_percentage}% off
@@ -382,7 +411,7 @@ export default function ReferralDashboard() {
         </div>
 
         {/* ── Rewards List ── */}
-        {dashboard?.rewards?.length > 0 && (
+        {dashboard?.rewards && dashboard.rewards.length > 0 && (
           <div className="rounded-2xl border border-[#1e3530] bg-[#132922] overflow-hidden mb-6">
             <div className="flex items-center gap-3 px-5 sm:px-6 py-5 border-b border-[#193028] bg-[#142D25]">
               <div className="w-9 h-9 rounded-xl bg-[#241a0e] flex items-center justify-center" style={{ boxShadow: "0 0 0 1px #3d2c14" }}>
@@ -418,7 +447,7 @@ export default function ReferralDashboard() {
                       </p>
                       {reward.referral?.referred_user?.name && (
                         <p className="text-xs text-[#8ab9a9] mt-1">
-                          From: {reward.referral.referred_user.name}
+                          From: {reward.referral.referred_user.name as string}
                         </p>
                       )}
                       {reward.claimed && reward.claimed_at && (
@@ -449,7 +478,7 @@ export default function ReferralDashboard() {
         )}
 
         {/* ── Referrals Table ── */}
-        {dashboard?.referrals?.length > 0 ? (
+        {dashboard?.referrals && dashboard.referrals.length > 0 ? (
           <div className="rounded-2xl border border-[#1e3530] bg-[#132922] overflow-hidden mb-6">
             <div className="flex items-center gap-3 px-5 sm:px-6 py-5 border-b border-[#193028] bg-[#142D25]">
               <div className="w-9 h-9 rounded-xl bg-[#132818] flex items-center justify-center" style={{ boxShadow: "0 0 0 1px #1a3a22" }}>
@@ -480,7 +509,7 @@ export default function ReferralDashboard() {
               <div
                 key={referral.id}
                 className={`transition-colors hover:bg-[#162d26] ${
-                  i < dashboard.referrals.length - 1 ? "border-b border-[#193028]" : ""
+                  i < dashboard.referrals!.length - 1 ? "border-b border-[#193028]" : ""
                 }`}
               >
                 {/* Desktop row */}

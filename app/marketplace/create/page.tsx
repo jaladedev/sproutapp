@@ -3,12 +3,20 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import api from "../../../utils/api";
 import { formatNaira } from "../../../utils/currency";
 import toast from "react-hot-toast";
-import { ArrowLeft, Package, Tag, Calendar, FileText, AlertCircle } from "lucide-react";
+import type { AxiosError } from "axios";
+import {
+  getUserLandHoldings,
+  createListing,
+  type UserLandHolding,
+  type MarketplaceListing,
+} from "../../../services/marketplaceService";
+import { ArrowLeft, Package, Tag, FileText, AlertCircle } from "lucide-react";
 
-function DarkInput({ className = "", ...props }) {
+type ApiError = AxiosError<{ message?: string; errors?: Record<string, string[]> }>;
+
+function DarkInput({ className = "", ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
       className={`w-full bg-white/5 border border-white/10 hover:border-white/20 focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 text-white placeholder-white/20 px-4 py-3 rounded-xl text-sm outline-none transition-all ${className}`}
@@ -17,7 +25,13 @@ function DarkInput({ className = "", ...props }) {
   );
 }
 
-function FormField({ label, hint, children }) {
+function FormField({
+  label, hint, children,
+}: {
+  label: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
   return (
     <div>
       <label className="block text-xs font-bold uppercase tracking-widest text-white/55 mb-2">{label}</label>
@@ -27,27 +41,35 @@ function FormField({ label, hint, children }) {
   );
 }
 
+interface FormState {
+  land_id: string;
+  units_for_sale: string;
+  asking_price_kobo_display: string; // user types naira, we convert
+  description: string;
+  expires_at: string;
+}
+
 export default function CreateListingPage() {
   const router = useRouter();
-  const [myLands, setMyLands]   = useState([]);
+  const [myLands, setMyLands]   = useState<UserLandHolding[]>([]);
   const [loading, setLoading]   = useState(false);
   const [fetching, setFetching] = useState(true);
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<FormState>({
     land_id: "",
     units_for_sale: "",
-    asking_price_kobo_display: "", // user types naira, we convert
+    asking_price_kobo_display: "",
     description: "",
     expires_at: "",
   });
 
-  const [selectedLand, setSelectedLand] = useState(null);
+  const [selectedLand, setSelectedLand] = useState<MarketplaceListing["land"] | null>(null);
 
   useEffect(() => {
     const fetch = async () => {
       try {
-        const res = await api.get("/user/lands");
-        setMyLands(res.data?.data ?? []);
+        const holdings = await getUserLandHoldings();
+        setMyLands(holdings);
       } catch {
         toast.error("Failed to load your land holdings");
       } finally {
@@ -57,7 +79,7 @@ export default function CreateListingPage() {
     fetch();
   }, []);
 
-  const handleLandChange = (landId) => {
+  const handleLandChange = (landId: string) => {
     const holding = myLands.find((l) => String(l.land_id) === String(landId));
     setSelectedLand(holding?.land ?? null);
     setForm((f) => ({ ...f, land_id: landId, units_for_sale: "" }));
@@ -70,7 +92,7 @@ export default function CreateListingPage() {
     ? (askingKobo * parseInt(form.units_for_sale)) / 100
     : null;
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!form.land_id)            return toast.error("Select a property");
@@ -83,7 +105,7 @@ export default function CreateListingPage() {
 
     setLoading(true);
     try {
-      await api.post("/marketplace", {
+      await createListing({
         land_id:           parseInt(form.land_id),
         units_for_sale:    parseInt(form.units_for_sale),
         asking_price_kobo: askingKobo,
@@ -93,10 +115,11 @@ export default function CreateListingPage() {
       toast.success("Listing created successfully");
       router.push("/marketplace");
     } catch (err) {
-      if (err.response?.data?.errors) {
-        Object.values(err.response.data.errors).flat().forEach((m) => toast.error(m));
+      const axiosErr = err as ApiError;
+      if (axiosErr.response?.data?.errors) {
+        Object.values(axiosErr.response.data.errors).flat().forEach((m) => toast.error(m));
       } else {
-        toast.error(err.response?.data?.message || "Failed to create listing");
+        toast.error(axiosErr.response?.data?.message || "Failed to create listing");
       }
     } finally {
       setLoading(false);
@@ -129,7 +152,7 @@ export default function CreateListingPage() {
         ) : myLands.length === 0 ? (
           <div className="rounded-2xl border border-white/10 bg-white/5 p-8 text-center">
             <Package size={36} className="text-white/10 mx-auto mb-3" />
-            <p className="text-white/60 text-sm mb-4">You don't own any land units yet.</p>
+            <p className="text-white/60 text-sm mb-4">You don&apos;t own any land units yet.</p>
             <Link href="/lands"
               className="inline-flex items-center gap-1.5 text-sm font-bold text-amber-500 hover:text-amber-400 transition-colors">
               Browse Properties
@@ -154,9 +177,10 @@ export default function CreateListingPage() {
                     <option value="">Choose from your holdings…</option>
                     {myLands.map((holding) => {
                       const land = holding.land;
+                      if (!land) return null;
                       return (
-                        <option key={land.id} value={holding.land_id}>
-                          {land.title} — {holding.units} units owned
+                        <option key={String(land.id)} value={String(holding.land_id)}>
+                          {land.title as string} — {holding.units} units owned
                         </option>
                       );
                     })}
@@ -191,7 +215,7 @@ export default function CreateListingPage() {
                       let val = parseInt(e.target.value) || 0;
                       if (val > availableUnits) val = availableUnits; // clamp to max
                       if (val < 1) val = 1; // optional: clamp to min
-                      setForm((f) => ({ ...f, units_for_sale: val }));
+                      setForm((f) => ({ ...f, units_for_sale: String(val) }));
                     }}
                     placeholder="e.g. 10"
                     disabled={!selectedLand}
