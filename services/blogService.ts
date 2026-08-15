@@ -1,5 +1,54 @@
 import api from "../utils/api";
 
+/* ── Public blog types (used by app/blog list + [slug] pages, which fetch
+   directly against NEXT_PUBLIC_API_URL rather than through this service's
+   axios client — kept here as the shared shape so both pages agree). ── */
+
+export interface BlogCategory {
+  id: number | string;
+  name: string;
+  slug: string;
+  posts_count?: number;
+}
+
+export interface BlogTag {
+  id: number | string;
+  name: string;
+  slug: string;
+}
+
+export interface BlogAuthor {
+  id?: number | string;
+  name: string;
+  [key: string]: unknown;
+}
+
+export interface BlogPost {
+  id: number | string;
+  slug: string;
+  title: string;
+  excerpt?: string;
+  content?: string;
+  cover_image_url?: string;
+  read_time_minutes?: number;
+  views?: number;
+  published_at?: string;
+  category?: BlogCategory;
+  tags?: BlogTag[];
+  author?: BlogAuthor;
+  seo_title?: string;
+  seo_description?: string;
+  [key: string]: unknown;
+}
+
+export interface BlogListMeta {
+  data?: BlogPost[];
+  total?: number;
+  last_page?: number;
+  current_page?: number;
+  [key: string]: unknown;
+}
+
 /* ── Posts ───────────────────────────────────────────────────────────── */
 
 export async function getAdminBlogPosts(params: string): Promise<unknown> {

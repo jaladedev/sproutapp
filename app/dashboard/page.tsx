@@ -3,11 +3,17 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../context/AuthContext";
+import type { AuthUser } from "../../context/AuthContext";
 import toast from "react-hot-toast";
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "../../utils/queryKeys";
-import { getUserStats, getUserTransactions } from "../../services/userService";
-import { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import {
+  getUserStats,
+  getUserTransactions,
+  type UserStats,
+  type Transaction,
+} from "../../services/userService";
+import { useEffect, useState, useCallback, useRef, useMemo, type ReactNode } from "react";
 import {
   TrendingUp, Wallet, MapPin, Activity,
   ArrowUpRight, LayoutGrid, ChevronRight,
@@ -20,7 +26,17 @@ const TX_DISPLAY_LIMIT = 8;
 
 const GOLD_TEXT_STYLE = { color: "#E8A850" };
 
-const statusCfg = (status = "") => {
+// dashboard/wallet display extends the shared Transaction shape with the
+// fields this page actually reads off it.
+interface DashboardTransaction extends Transaction {
+  amount?: number | string;
+  land?: string;
+  units?: number;
+  date?: string;
+  created_at?: string;
+}
+
+const statusCfg = (status: string = "") => {
   const s = status?.toLowerCase() ?? "";
   if (s.includes("success") || s.includes("complete"))
     return { cls: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20", dot: "bg-emerald-400" };
@@ -29,16 +45,16 @@ const statusCfg = (status = "") => {
   return { cls: "bg-red-500/10 text-red-400 border-red-500/20", dot: "bg-red-400" };
 };
 
-const amountMeta = (type = "") => {
+const amountMeta = (type: string = "") => {
   const t = type?.toLowerCase() ?? "";
   if (t.includes("deposit") || t.includes("sale"))
     return { sign: "+", color: "text-emerald-400", isCredit: true };
   if (t.includes("withdraw") || t.includes("purchase") || t.includes("invest"))
     return { sign: "−", color: "text-red-400", isCredit: false };
-  return { sign: "", color: "text-white/70", isCredit: null };
+  return { sign: "", color: "text-white/70", isCredit: null as boolean | null };
 };
 
-const formatDate = (date) =>
+const formatDate = (date?: string | number | Date | null) =>
   date
     ? new Date(date).toLocaleString("en-NG", {
         month: "short", day: "numeric",
@@ -53,28 +69,28 @@ const getGreeting = () => {
   return "Good evening";
 };
 
-const isFoundingMember = (user) =>
-  user?.id && Number(user.id) <= FOUNDING_MEMBER_MAX_ID;
+const isFoundingMember = (user: AuthUser | null | undefined) =>
+  !!user?.id && Number(user.id) <= FOUNDING_MEMBER_MAX_ID;
 
-function useCountUp(target, duration = 1100, enabled = true) {
+function useCountUp(target: number, duration = 1100, enabled = true) {
   const [value, setValue] = useState(0);
-  const raf = useRef(null);
+  const raf = useRef<number | null>(null);
 
   useEffect(() => {
-    cancelAnimationFrame(raf.current);
+    if (raf.current != null) cancelAnimationFrame(raf.current);
     setValue(0);
 
     if (!enabled || target === 0) { setValue(target); return; }
 
     const start = performance.now();
-    const tick = (now) => {
+    const tick = (now: number) => {
       const p    = Math.min((now - start) / duration, 1);
       const ease = 1 - Math.pow(1 - p, 3);
       setValue(Math.round(target * ease));
       if (p < 1) raf.current = requestAnimationFrame(tick);
     };
     raf.current = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf.current);
+    return () => { if (raf.current != null) cancelAnimationFrame(raf.current); };
   }, [target, duration, enabled]);
 
   return value;
@@ -86,7 +102,7 @@ function useCountUp(target, duration = 1100, enabled = true) {
 // you need to compare). Other pages doing similar manual fetching
 // (wallet, marketplace, portfolio, etc.) can follow this same pattern —
 // see todo doc item #4.
-function useDashboardData(enabled) {
+function useDashboardData(enabled: boolean) {
   const statsQuery = useQuery({
     queryKey: queryKeys.userStats(),
     queryFn: ({ signal }) => getUserStats(signal),
@@ -102,8 +118,8 @@ function useDashboardData(enabled) {
   // 401s are already handled globally by the axios refresh/redirect
   // interceptor — don't also surface them as an inline "stats failed to
   // load" error state here.
-  const isRealError = (query) =>
-    query.isError && query.error?.response?.status !== 401;
+  const isRealError = (query: typeof statsQuery | typeof txQuery) =>
+    query.isError && (query.error as { response?: { status?: number } } | null)?.response?.status !== 401;
 
   const refetch = useCallback(() => {
     statsQuery.refetch();
@@ -115,7 +131,7 @@ function useDashboardData(enabled) {
     stats:        statsQuery.data ?? null,
     statsError:   isRealError(statsQuery),
     loadingStats: statsQuery.isFetching,
-    transactions: txQuery.data ?? [],
+    transactions: (txQuery.data ?? []) as DashboardTransaction[],
     txError:      isRealError(txQuery),
     loadingTx:    txQuery.isFetching,
     refetch,
@@ -123,7 +139,7 @@ function useDashboardData(enabled) {
 }
 
 export default function Dashboard() {
-  const { user, loading: loadingUser } = useAuth();
+  const { user, loading: loadingUser } = useAuth() ?? {};
   const router = useRouter();
 
   const [mounted, setMounted]           = useState(false);
@@ -323,7 +339,7 @@ function SkeletonCard() {
   );
 }
 
-function StatErrorCard({ onRetry }) {
+function StatErrorCard({ onRetry }: { onRetry: () => void }) {
   return (
     <div className="col-span-2 lg:col-span-3 rounded-2xl border border-[#3d1f1f] bg-[#1f1414] min-h-32 flex flex-col items-center justify-center gap-3 p-5 text-center">
       <WifiOff size={20} className="text-red-400/60" />
@@ -338,14 +354,25 @@ function StatErrorCard({ onRetry }) {
   );
 }
 
-function StatCard({ icon, label, value, accent, href, mounted, isCount, sub }) {
+interface StatCardProps {
+  icon: ReactNode;
+  label: string;
+  value: number | string;
+  accent: "amber" | "emerald" | "blue";
+  href?: string;
+  mounted: boolean;
+  isCount?: boolean;
+  sub?: string;
+}
+
+function StatCard({ icon, label, value, accent, href, mounted, isCount, sub }: StatCardProps) {
   const palette = {
     amber:   { glow: "#251d0e", icon: "#C8873A", ring: "#362211" },
     emerald: { glow: "#0f2118", icon: "#4ade80", ring: "#132d1f" },
     blue:    { glow: "#0f1826", icon: "#60a5fa", ring: "#131d38" },
   };
   const a   = palette[accent] ?? palette.amber;
-  const num = parseFloat(value) || 0;
+  const num = parseFloat(String(value)) || 0;
 
   const intPart  = Math.floor(num);
   const fracPart = isCount ? null : (num % 1).toFixed(2).slice(1);
@@ -387,7 +414,15 @@ function StatCard({ icon, label, value, accent, href, mounted, isCount, sub }) {
   return href ? <Link href={href}>{inner}</Link> : <div>{inner}</div>;
 }
 
-function QuickCard({ title, desc, href, icon, accent }) {
+interface QuickCardProps {
+  title: string;
+  desc: string;
+  href: string;
+  icon: ReactNode;
+  accent: string;
+}
+
+function QuickCard({ title, desc, href, icon, accent }: QuickCardProps) {
   return (
     <Link
       href={href}
@@ -416,7 +451,14 @@ function QuickCard({ title, desc, href, icon, accent }) {
   );
 }
 
-function TransactionsSection({ transactions, loading, error, onRetry }) {
+interface TransactionsSectionProps {
+  transactions: DashboardTransaction[];
+  loading: boolean;
+  error: boolean;
+  onRetry: () => void;
+}
+
+function TransactionsSection({ transactions, loading, error, onRetry }: TransactionsSectionProps) {
   if (loading) {
     return (
       <div className="rounded-2xl border border-[#1e3530] bg-[#132922] overflow-hidden">

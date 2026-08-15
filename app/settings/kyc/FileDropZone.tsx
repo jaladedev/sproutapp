@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, type ChangeEvent, type DragEvent } from "react";
 import { X, Camera, ImageIcon, Loader2 } from "lucide-react";
 import CropModal from "./CropModal";
 
@@ -9,11 +9,16 @@ const MAX_BYTES     = MAX_MB * 1024 * 1024;
 const TARGET_BYTES  = 1.8 * 1024 * 1024; // compress down to ~1.8 MB
 const ACCEPTED      = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
+interface SizeInfo {
+  original: string;
+  compressed: string | null;
+}
+
 /**
  * Compress an image File to below TARGET_BYTES.
  * Returns a new File (same name, image/jpeg).
  */
-async function compressImage(file) {
+async function compressImage(file: File): Promise<File> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
@@ -22,7 +27,7 @@ async function compressImage(file) {
       URL.revokeObjectURL(url);
 
       let { width, height } = img;
-      let quality = 0.85;
+      const quality = 0.85;
 
       // Scale down if very large dimensions
       const MAX_DIM = 1920;
@@ -36,9 +41,10 @@ async function compressImage(file) {
       canvas.width  = width;
       canvas.height = height;
       const ctx = canvas.getContext("2d");
+      if (!ctx) { reject(new Error("Canvas context unavailable")); return; }
       ctx.drawImage(img, 0, 0, width, height);
 
-      const attempt = (q) => {
+      const attempt = (q: number) => {
         canvas.toBlob(
           (blob) => {
             if (!blob) { reject(new Error("Compression failed")); return; }
@@ -73,6 +79,16 @@ async function compressImage(file) {
   });
 }
 
+interface FileDropZoneProps {
+  label: string;
+  sublabel?: string;
+  name: string;
+  required?: boolean;
+  value?: File | null;
+  onChange: (name: string, file: File | null) => void;
+  onError?: (name: string, message: string) => void;
+}
+
 export default function FileDropZone({
   label,
   sublabel,
@@ -81,13 +97,13 @@ export default function FileDropZone({
   value,
   onChange,
   onError,
-}) {
-  const galleryRef = useRef();
-  const cameraRef  = useRef();
+}: FileDropZoneProps) {
+  const galleryRef = useRef<HTMLInputElement>(null);
+  const cameraRef  = useRef<HTMLInputElement>(null);
   const [drag, setDrag]           = useState(false);
   const [compressing, setCompressing] = useState(false);
-  const [sizeInfo, setSizeInfo]   = useState(null); // { original, compressed }
-  const [pendingFile, setPendingFile] = useState(null); // file awaiting crop confirmation
+  const [sizeInfo, setSizeInfo]   = useState<SizeInfo | null>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null); // file awaiting crop confirmation
 
   const preview = useMemo(
     () => (value ? URL.createObjectURL(value) : null),
@@ -97,7 +113,7 @@ export default function FileDropZone({
 
   // Entry point for a freshly picked/captured file — type-checks, then
   // hands off to the crop modal before anything is compressed or stored.
-  const selectFile = (file) => {
+  const selectFile = (file: File) => {
     if (!ACCEPTED.includes(file.type)) {
       onError?.(name, `Only JPG, PNG, WebP or GIF images are allowed.`);
       return;
@@ -106,7 +122,7 @@ export default function FileDropZone({
   };
 
   // Runs on the cropped output — sizes it and compresses if needed.
-  const processFile = async (file) => {
+  const processFile = async (file: File) => {
     const originalMB = (file.size / 1024 / 1024).toFixed(2);
 
     // Already within limit — use as-is
@@ -142,14 +158,14 @@ export default function FileDropZone({
     }
   };
 
-  const onDrop = (e) => {
+  const onDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setDrag(false);
     const file = e.dataTransfer.files[0];
     if (file) selectFile(file);
   };
 
-  const handleFile = (e) => {
+  const handleFile = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) selectFile(file);
     e.target.value = "";

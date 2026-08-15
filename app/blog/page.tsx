@@ -2,22 +2,28 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { Search, Tag, Folder, Clock, Eye, ArrowRight, X } from "lucide-react";
+import { Search, Tag, Folder, Clock, Eye, X } from "lucide-react";
+import type {
+  BlogPost,
+  BlogCategory,
+  BlogTag,
+  BlogListMeta,
+} from "../../services/blogService";
 
-const appname      = process.env.NEXT_PUBLIC_APP_NAME || "REU.ng";
+const appname = process.env.NEXT_PUBLIC_APP_NAME || "REU.ng";
 const API = process.env.NEXT_PUBLIC_API_URL;
 
-const fmtDate = (d) =>
+const fmtDate = (d?: string | null) =>
   d ? new Date(d).toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" }) : "";
 
-async function apiFetch(path) {
+async function apiFetch<T = unknown>(path: string): Promise<T> {
   const res = await fetch(`${API}${path}`);
   if (!res.ok) throw new Error("fetch failed");
   return res.json();
 }
 
 /* ─── Post card ─────────────────────────────────────────────────────────── */
-function PostCard({ post }) {
+function PostCard({ post }: { post: BlogPost }) {
   return (
     <Link href={`/blog/${post.slug}`} className="group block">
       <article className="rounded-2xl border border-white/7 bg-white/[2.5%] overflow-hidden hover:border-white/14 hover:bg-white/4 transition-all duration-300 h-full flex flex-col">
@@ -97,35 +103,37 @@ function SkeletonCard() {
   );
 }
 
+type FilterType = "category" | "tag";
+
 /* ─── Main page ─────────────────────────────────────────────────────────── */
 export default function BlogPage() {
-  const [posts, setPosts]           = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [tags, setTags]             = useState([]);
+  const [posts, setPosts]           = useState<BlogPost[]>([]);
+  const [categories, setCategories] = useState<BlogCategory[]>([]);
+  const [tags, setTags]             = useState<BlogTag[]>([]);
   const [loading, setLoading]       = useState(true);
   const [search, setSearch]         = useState("");
   const [activeCategory, setActiveCategory] = useState("");
   const [activeTag, setActiveTag]           = useState("");
   const [page, setPage]             = useState(1);
-  const [meta, setMeta]             = useState(null);
+  const [meta, setMeta]             = useState<BlogListMeta | null>(null);
 
   // Fetch categories and tags once
   useEffect(() => {
-    apiFetch("/blog/categories").then((r) => setCategories(r.data ?? [])).catch(() => {});
-    apiFetch("/blog/tags").then((r) => setTags(r.data ?? [])).catch(() => {});
+    apiFetch<{ data?: BlogCategory[] }>("/blog/categories").then((r) => setCategories(r.data ?? [])).catch(() => {});
+    apiFetch<{ data?: BlogTag[] }>("/blog/tags").then((r) => setTags(r.data ?? [])).catch(() => {});
   }, []);
 
   const fetchPosts = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ per_page: "9", page });
+      const params = new URLSearchParams({ per_page: "9", page: String(page) });
       if (search)         params.set("search",   search);
       if (activeCategory) params.set("category", activeCategory);
       if (activeTag)      params.set("tag",      activeTag);
 
-      const res = await apiFetch(`/blog?${params}`);
+      const res = await apiFetch<{ data?: BlogListMeta }>(`/blog?${params}`);
       setPosts(res.data?.data ?? []);
-      setMeta(res.data);
+      setMeta(res.data ?? null);
     } catch {
       setPosts([]);
     } finally {
@@ -136,7 +144,7 @@ export default function BlogPage() {
   useEffect(() => { fetchPosts(); }, [fetchPosts]);
 
   // Reset page on filter change
-  const setFilter = (type, value) => {
+  const setFilter = (type: FilterType, value: string) => {
     setPage(1);
     if (type === "category") { setActiveCategory(value); setActiveTag(""); }
     if (type === "tag")      { setActiveTag(value);      setActiveCategory(""); }
@@ -271,7 +279,7 @@ export default function BlogPage() {
         )}
 
         {/* Pagination */}
-        {meta && meta.last_page > 1 && (
+        {meta && meta.last_page && meta.last_page > 1 && (
           <div className="flex items-center justify-center gap-2 mt-10">
             <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
@@ -283,7 +291,7 @@ export default function BlogPage() {
               {page} / {meta.last_page}
             </span>
             <button
-              onClick={() => setPage((p) => Math.min(meta.last_page, p + 1))}
+              onClick={() => setPage((p) => Math.min(meta.last_page as number, p + 1))}
               disabled={page === meta.last_page}
               className="px-4 py-2 rounded-xl text-xs font-bold border border-white/10 text-white/60 hover:border-white/20 hover:text-white/70 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
               Next

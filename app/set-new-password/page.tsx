@@ -1,13 +1,25 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ChangeEvent, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Lock, Eye, EyeOff, Loader2, CheckCircle } from "lucide-react";
+import type { AxiosError } from "axios";
 import { resetPassword } from "../../services/authService";
 import toast from "react-hot-toast";
 
+interface ApiErrorData {
+  message?: string;
+  error?: string;
+}
+
+interface PasswordForm {
+  password: string;
+  password_confirmation: string;
+  [key: string]: unknown;
+}
+
 export default function SetNewPassword() {
-  const [form, setForm] = useState({ password: "", password_confirmation: "" });
+  const [form, setForm] = useState<PasswordForm>({ password: "", password_confirmation: "" });
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -23,12 +35,14 @@ export default function SetNewPassword() {
       toast.error("Please complete the verification process first.");
       router.push("/forgot-password");
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) =>
+    setForm({ ...form, [e.target.name]: e.target.value });
 
-  const passwordsMatch = form.password && form.password_confirmation && form.password === form.password_confirmation;
-  const passwordsDontMatch = form.password_confirmation && !passwordsMatch;
+  const passwordsMatch = !!form.password && !!form.password_confirmation && form.password === form.password_confirmation;
+  const passwordsDontMatch = !!form.password_confirmation && !passwordsMatch;
 
   // Password strength
   const strength = (() => {
@@ -44,7 +58,7 @@ export default function SetNewPassword() {
   const strengthLabel = ["", "Weak", "Fair", "Good", "Strong"][strength];
   const strengthColor = ["", "#ef4444", "#f59e0b", "#22c55e", "#22c55e"][strength];
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(""); setMessage("");
 
@@ -57,14 +71,15 @@ export default function SetNewPassword() {
 
     try {
       setLoading(true);
-      await resetPassword(email, form);
+      await resetPassword(email ?? "", form);
       const successMsg = "Password reset successful! Redirecting to login...";
       setMessage(successMsg); toast.success(successMsg);
       localStorage.removeItem("reset_email");
       localStorage.removeItem("otp_verified");
       setTimeout(() => router.push("/login"), 2000);
     } catch (err) {
-      const msg = err.response?.data?.message || err.response?.data?.error || "Failed to reset password.";
+      const axiosErr = err as AxiosError<ApiErrorData>;
+      const msg = axiosErr.response?.data?.message || axiosErr.response?.data?.error || "Failed to reset password.";
       setError(msg); toast.error(msg);
     } finally {
       setLoading(false);

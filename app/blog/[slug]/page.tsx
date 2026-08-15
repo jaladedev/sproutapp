@@ -4,27 +4,29 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { getMe } from "@/services/userService";
+import type { MeResponse } from "@/services/userService";
+import type { BlogPost } from "@/services/blogService";
 import { ArrowLeft, Clock, Eye, Folder, Tag, Calendar } from "lucide-react";
 
 const API = process.env.NEXT_PUBLIC_API_URL;
 
-const fmtDate = (d) =>
+const fmtDate = (d?: string | null) =>
   d ? new Date(d).toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" }) : "";
 
 export default function BlogPostPage() {
-  const { slug }            = useParams();
-  const [post, setPost]     = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError]   = useState("");
-  const [user, setUser] = useState(null);
+  const { slug }               = useParams<{ slug: string }>();
+  const [post, setPost]        = useState<BlogPost | null>(null);
+  const [loading, setLoading]  = useState(true);
+  const [error, setError]      = useState("");
+  const [user, setUser]        = useState<MeResponse | null>(null);
 
   useEffect(() => {
-  getMe()
-    .then(u => setUser(u))
-    .catch(() => setUser(null));
-}, []);
+    getMe()
+      .then(u => setUser(u))
+      .catch(() => setUser(null));
+  }, []);
 
-const isLoggedIn = !!user;
+  const isLoggedIn = !!user;
 
   useEffect(() => {
     fetch(`${API}/blog/${slug}`)
@@ -54,9 +56,6 @@ const isLoggedIn = !!user;
       </div>
     );
   }
-
-  const seoTitle       = post.seo_title       || post.title;
-  const seoDescription = post.seo_description || post.excerpt;
 
   return (
     <div className="min-h-screen bg-[#0D1F1A] relative"
@@ -129,11 +128,11 @@ const isLoggedIn = !!user;
         {/* Body — render HTML from the backend */}
         <div
           className="prose-blog"
-          dangerouslySetInnerHTML={{ __html: post.content }}
+          dangerouslySetInnerHTML={{ __html: post.content ?? "" }}
         />
 
         {/* Tags */}
-        {post.tags?.length > 0 && (
+        {post.tags && post.tags.length > 0 && (
           <div className="mt-10 pt-8 border-t border-white/6">
             <p className="text-[10px] font-black uppercase tracking-[0.22em] text-white/25 mb-3">Tags</p>
             <div className="flex flex-wrap gap-2">

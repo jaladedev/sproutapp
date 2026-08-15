@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { Shield, ArrowLeft } from "lucide-react";
 
@@ -5,7 +7,7 @@ const appname      = process.env.NEXT_PUBLIC_APP_NAME || "REU.ng";
 const appurl       = process.env.NEXT_PUBLIC_APP_URL  || "api.reu.ng";
 const privacyEmail = `privacy@${appname.toLowerCase()}`;
 
-export const metadata = {
+export const metadata: Metadata = {
   title: `Privacy Policy | ${appname}`,
   description: `Learn how ${appname} collects, uses, and protects your personal information when you use our land investment platform.`,
   alternates: { canonical: `${appurl}/privacy` },
@@ -20,7 +22,13 @@ export const metadata = {
 
 const LAST_UPDATED = "February 10, 2026";
 
-function getSections(appname, privacyEmail) {
+interface PrivacySection {
+  number: string;
+  title: string;
+  content: ReactNode;
+}
+
+function getSections(appname: string, privacyEmail: string): PrivacySection[] {
   return [
     {
       number: "1",

@@ -1,26 +1,45 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, type ReactNode } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import type { AxiosError } from "axios";
 import api from "../../../../utils/api";
 import {
   ArrowLeft, Download, ShieldCheck, MapPin,
-  Award, CheckCircle2, ExternalLink, Loader2,
+  CheckCircle2, ExternalLink, Loader2,
   AlertCircle,
 } from "lucide-react";
 
 /* ─── Helpers ───────────────────────────────────────────────────────────── */
-const fmtDate = (d) =>
+const fmtDate = (d?: string | null) =>
   d ? new Date(d).toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" }) : "—";
 
-const fmtNaira = (v) =>
+const fmtNaira = (v?: number | string | null) =>
   v != null ? `₦${Number(v).toLocaleString("en-NG", { minimumFractionDigits: 2 })}` : "—";
 
 const appname  = process.env.NEXT_PUBLIC_APP_NAME  || "REU.ng";
 
+interface Certificate {
+  status: "active" | "revoked" | string;
+  owner_name?: string;
+  units?: number | string;
+  property_title?: string;
+  property_location?: string;
+  cert_number: string;
+  plot_identifier?: string;
+  tenure?: string;
+  purchase_reference?: string;
+  total_invested?: number | string;
+  issued_at?: string;
+  lga?: string;
+  state?: string;
+  digital_signature?: string;
+  [key: string]: unknown;
+}
+
 /* ─── Certificate Seal SVG ──────────────────────────────────────────────── */
-function Seal({ size = 96 }) {
+function Seal({ size = 96 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 96 96" fill="none">
       <circle cx="48" cy="48" r="46" stroke="#C8873A" strokeWidth="1.5" strokeOpacity="0.5" />
@@ -40,7 +59,14 @@ function Seal({ size = 96 }) {
 }
 
 /* ─── Detail Row ────────────────────────────────────────────────────────── */
-function DetailRow({ label, value, mono = false, highlight = false }) {
+interface DetailRowProps {
+  label: string;
+  value?: ReactNode;
+  mono?: boolean;
+  highlight?: boolean;
+}
+
+function DetailRow({ label, value, mono = false, highlight = false }: DetailRowProps) {
   return (
     <div className="flex items-start justify-between gap-4 py-2.5 border-b border-white/5 last:border-0">
       <span className="text-[10px] font-black uppercase tracking-[0.18em] text-white/55 shrink-0 w-40 mt-0.5">
@@ -59,9 +85,9 @@ function DetailRow({ label, value, mono = false, highlight = false }) {
 
 /* ─── Main Page ─────────────────────────────────────────────────────────── */
 export default function CertificatePage() {
-  const { certNumber } = useParams();
+  const { certNumber } = useParams<{ certNumber: string }>();
 
-  const [cert, setCert]               = useState(null);
+  const [cert, setCert]               = useState<Certificate | null>(null);
   const [loading, setLoading]         = useState(true);
   const [error, setError]             = useState("");
   const [downloading, setDownloading] = useState(false);
@@ -104,11 +130,12 @@ export default function CertificatePage() {
       document.body.removeChild(anchor);
       URL.revokeObjectURL(url);
     } catch (err) {
+      const axiosErr = err as AxiosError;
       const msg =
-        err.response?.status === 401 ? "Session expired — please log in again." :
-        err.response?.status === 403 ? "You don't have access to this certificate." :
-        err.response?.status === 404 ? "Certificate not found." :
-        err.message || "Download failed. Please try again.";
+        axiosErr.response?.status === 401 ? "Session expired — please log in again." :
+        axiosErr.response?.status === 403 ? "You don't have access to this certificate." :
+        axiosErr.response?.status === 404 ? "Certificate not found." :
+        axiosErr.message || "Download failed. Please try again.";
 
       setDownloadError(msg);
     } finally {

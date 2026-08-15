@@ -1,24 +1,31 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Mail, ArrowLeft, Loader2 } from "lucide-react";
+import type { AxiosError } from "axios";
 import { requestPasswordResetCode } from "../../services/authService";
 import FormError from "../components/FormError";
 import toast from "react-hot-toast";
 
+interface ApiErrorData {
+  message?: string;
+  error?: string;
+  errors?: Record<string, string | string[]>;
+}
+
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
-  const [fieldErrors, setFieldErrors] = useState({});
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string | string[]>>({});
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const appname = process.env.NEXT_PUBLIC_APP_NAME || "REU.ng";
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(""); setMessage(""); setFieldErrors({});
     setLoading(true);
@@ -31,10 +38,11 @@ export default function ForgotPassword() {
       localStorage.setItem("reset_email", email);
       setTimeout(() => router.push("/reset-verify"), 1500);
     } catch (err) {
-      const msg = err.response?.data?.message || err.response?.data?.error || "Failed to send reset code.";
+      const axiosErr = err as AxiosError<ApiErrorData>;
+      const msg = axiosErr.response?.data?.message || axiosErr.response?.data?.error || "Failed to send reset code.";
       setError(msg);
       toast.error(msg);
-      if (err.response?.data?.errors) setFieldErrors(err.response.data.errors);
+      if (axiosErr.response?.data?.errors) setFieldErrors(axiosErr.response.data.errors);
     } finally {
       setLoading(false);
     }
