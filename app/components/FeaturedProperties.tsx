@@ -6,7 +6,20 @@ import Image from "next/image";
 import { MapPin, ArrowRight, ChevronLeft, ChevronRight, Home } from "lucide-react";
 import { getLandImage } from "../../utils/images";
 
-export default function FeaturedProperties({ lands }) {
+export interface FeaturedLand {
+  id: string | number;
+  title: string;
+  location: string;
+  current_price_per_unit_kobo?: number;
+  sold_percentage?: number;
+  [key: string]: unknown;
+}
+
+interface FeaturedPropertiesProps {
+  lands: FeaturedLand[];
+}
+
+export default function FeaturedProperties({ lands }: FeaturedPropertiesProps) {
   const [current, setCurrent] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
 
@@ -70,7 +83,7 @@ export default function FeaturedProperties({ lands }) {
                   <span className="bg-amber-500 text-[#0D1F1A] text-xs font-bold px-3 py-1 rounded-full">
                     Featured
                   </span>
-                  {land.sold_percentage > 0 && (
+                  {(land.sold_percentage ?? 0) > 0 && (
                     <span className="bg-white/20 backdrop-blur-sm text-white text-xs px-3 py-1 rounded-full">
                       {land.sold_percentage}% sold
                     </span>

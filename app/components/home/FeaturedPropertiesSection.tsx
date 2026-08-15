@@ -1,12 +1,10 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import FeaturedProperties from "../FeaturedProperties";
+import FeaturedProperties, { FeaturedLand } from "../FeaturedProperties";
 import { SectionLabel, SectionHeading } from "./SectionPrimitives";
 
 interface FeaturedPropertiesSectionProps {
-  // Loosely typed: FeaturedProperties.jsx (which this renders) is not yet
-  // converted to TS and has no shared Land interface to import here.
-  lands: Record<string, unknown>[];
+  lands: FeaturedLand[];
 }
 
 export default function FeaturedPropertiesSection({ lands }: FeaturedPropertiesSectionProps) {

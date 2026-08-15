@@ -1,5 +1,6 @@
 "use client";
 
+/// <reference path="./leaflet-heat.d.ts" />
 import React, { useEffect, useRef, useCallback } from "react";
 import {
   MapContainer,
@@ -15,6 +16,51 @@ import dynamic from "next/dynamic";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
+// react-leaflet v5's bundled component types don't resolve cleanly against
+// this project's React 19 type defs (RefAttributes/IntrinsicAttributes
+// mismatch) — same incompatibility PolygonMapEditor.tsx documents for raw
+// leaflet. Re-typed here as permissive components rather than fighting a
+// third-party types/React-version mismatch; runtime behavior is unchanged.
+const MapContainerX = MapContainer as unknown as React.ComponentType<any>;
+const TileLayerX = TileLayer as unknown as React.ComponentType<any>;
+const MarkerX = Marker as unknown as React.ComponentType<any>;
+const PopupX = Popup as unknown as React.ComponentType<any>;
+const PolygonX = Polygon as unknown as React.ComponentType<any>;
+const LayersControlX = LayersControl as unknown as React.ComponentType<any> & {
+  BaseLayer: React.ComponentType<any>;
+};
+
+/* ===================== SHARED TYPES ===================== */
+
+type LatLngTuple = [number, number];
+// Leaflet's own type exports collide with the `export as namespace L` UMD
+// declaration once react-leaflet is also in scope, so these are derived
+// from runtime values instead of imported directly (same workaround
+// PolygonMapEditor.tsx documents for this repo's leaflet setup).
+type DivIcon = ReturnType<typeof L.divIcon>;
+type LeafletLayer = ReturnType<typeof L.layerGroup>;
+type LatLngLike = LatLngTuple | { lat: number; lng: number };
+
+interface MapLand {
+  id: string | number;
+  title: string;
+  location: string;
+  lat?: number | string;
+  lng?: number | string;
+  latest_price?: { price_per_unit_kobo?: number };
+  latestPrice?: { price_per_unit_kobo?: number };
+  price_per_unit_kobo?: number;
+  geometry_geojson?: { type?: string; coordinates?: number[][][] };
+  coordinates?: string;
+  polygon?: unknown;
+  [key: string]: unknown;
+}
+
+interface FlyTarget {
+  lat: number;
+  lng: number;
+}
+
 /* ===================== DYNAMIC CLUSTER ===================== */
 const MarkerClusterGroup = dynamic(
   () => import("react-leaflet-cluster").then((m) => m.default || m),
@@ -27,6 +73,10 @@ let heatLoaded = false;
 function useLeafletHeat() {
   useEffect(() => {
     if (heatLoaded) return;
+    // leaflet.heat ships no types and its module declaration isn't picked
+    // up through a dynamic import() specifier; see leaflet-heat.d.ts for
+    // the runtime shape it patches onto `L`.
+    // @ts-expect-error - untyped plugin module, see comment above
     import("leaflet.heat").then(() => {
       heatLoaded = true;
     });
@@ -34,13 +84,13 @@ function useLeafletHeat() {
 }
 
 /* ===================== ICON CACHE ===================== */
-const iconCache = new Map();
+const iconCache = new Map<string, DivIcon>();
 
 /* ===================== HELPERS ===================== */
 
-const koboToNaira = (kobo) => Number(kobo) / 100;
+const koboToNaira = (kobo: number | string): number => Number(kobo) / 100;
 
-function getLandPrice(land) {
+function getLandPrice(land: MapLand): number {
   return (
     land.latest_price?.price_per_unit_kobo ??
     land.latestPrice?.price_per_unit_kobo ??
@@ -49,20 +99,22 @@ function getLandPrice(land) {
   );
 }
 
-function getPriceColor(naira) {
+function getPriceColor(naira: number): string {
   if (naira < 200_000) return "#22c55e";
   if (naira < 500_000) return "#f59e0b";
   return "#ef4444";
 }
 
-function decodeEWKB(hex) {
+function decodeEWKB(hex: string): LatLngTuple[] | null {
   if (!hex || typeof hex !== "string") return null;
   try {
-    const buf = new Uint8Array(hex.match(/.{1,2}/g).map((b) => parseInt(b, 16)));
+    const matched = hex.match(/.{1,2}/g);
+    if (!matched) return null;
+    const buf = new Uint8Array(matched.map((b) => parseInt(b, 16)));
     const view = new DataView(buf.buffer);
     const le = buf[0] === 1;
-    const rd32 = (o) => view.getUint32(o, le);
-    const rdF64 = (o) => view.getFloat64(o, le);
+    const rd32 = (o: number) => view.getUint32(o, le);
+    const rdF64 = (o: number) => view.getFloat64(o, le);
     const wkbType = rd32(1);
     const hasSRID = (wkbType & 0x20000000) !== 0;
     let offset = 5;
@@ -72,7 +124,7 @@ function decodeEWKB(hex) {
     if (numRings < 1) return null;
     const numPoints = rd32(offset);
     offset += 4;
-    const points = [];
+    const points: LatLngTuple[] = [];
     for (let i = 0; i < numPoints; i++) {
       const x = rdF64(offset);
       offset += 8;
@@ -91,10 +143,10 @@ function decodeEWKB(hex) {
   }
 }
 
-function parsePolygon(land) {
+function parsePolygon(land: MapLand): LatLngTuple[] | null {
   const geo = land.geometry_geojson;
   if (geo?.type === "Polygon" && Array.isArray(geo.coordinates))
-    return geo.coordinates[0].map(([lng, lat]) => [lat, lng]);
+    return geo.coordinates[0].map(([lng, lat]) => [lat, lng] as LatLngTuple);
 
   if (
     geo?.type === "Polygon" &&
@@ -105,44 +157,66 @@ function parsePolygon(land) {
     if (decoded) return decoded;
   }
 
-  const raw = land.polygon;
+  const raw = land.polygon as
+    | { type?: string; coordinates?: number[][][] }
+    | string
+    | Array<[number, number]>
+    | Array<{ lat?: number; lng?: number; latitude?: number; longitude?: number }>
+    | null
+    | undefined;
   if (!raw) return null;
 
-  if (raw?.type === "Polygon" && Array.isArray(raw.coordinates))
-    return raw.coordinates[0].map(([lng, lat]) => [lat, lng]);
+  if (
+    typeof raw === "object" &&
+    !Array.isArray(raw) &&
+    raw.type === "Polygon" &&
+    Array.isArray(raw.coordinates)
+  )
+    return raw.coordinates[0].map(([lng, lat]) => [lat, lng] as LatLngTuple);
 
   if (typeof raw === "string") {
     const inner = raw.match(/POLYGON\s*\(\(([^)]+)\)/i)?.[1];
     if (!inner) return null;
     return inner.split(",").map((pair) => {
       const [lng, lat] = pair.trim().split(/\s+/).map(Number);
-      return [lat, lng];
+      return [lat, lng] as LatLngTuple;
     });
   }
 
   if (Array.isArray(raw) && raw.length > 0) {
     const first = raw[0];
-    if (Array.isArray(first)) return raw.map(([lat, lng]) => [lat, lng]);
-    if (first?.lat != null) return raw.map((p) => [+p.lat, +p.lng]);
-    if (first?.latitude != null)
-      return raw.map((p) => [+p.latitude, +p.longitude]);
+    if (Array.isArray(first)) return (raw as Array<[number, number]>).map(([lat, lng]) => [lat, lng] as LatLngTuple);
+    const firstObj = first as { lat?: number; lng?: number; latitude?: number; longitude?: number };
+    if (firstObj?.lat != null)
+      return (raw as Array<{ lat: number; lng: number }>).map((p) => [+p.lat, +p.lng] as LatLngTuple);
+    if (firstObj?.latitude != null)
+      return (raw as Array<{ latitude: number; longitude: number }>).map(
+        (p) => [+p.latitude, +p.longitude] as LatLngTuple
+      );
   }
 
   return null;
 }
 
-function centroid(points) {
+function centroid(points: LatLngTuple[]): LatLngTuple {
   const lat = points.reduce((s, p) => s + p[0], 0) / points.length;
   const lng = points.reduce((s, p) => s + p[1], 0) / points.length;
   return [lat, lng];
 }
 
-function createMarkerIcon({ priceKobo, isActive }) {
+function createMarkerIcon({
+  priceKobo,
+  isActive,
+}: {
+  priceKobo: number;
+  isActive: boolean;
+}): DivIcon {
   const naira = koboToNaira(priceKobo);
   const color = getPriceColor(naira);
   const key = `${color}-${isActive ? 1 : 0}`;
 
-  if (iconCache.has(key)) return iconCache.get(key);
+  const cached = iconCache.get(key);
+  if (cached) return cached;
 
   const icon = isActive
     ? L.divIcon({
@@ -174,7 +248,25 @@ function createMarkerIcon({ priceKobo, isActive }) {
 
 /* ===================== FLY + POPUP CONTROLLER ===================== */
 
-function FlyAndPopup({ flyTarget, activeLandId, markerRefs, polygonRefs }) {
+interface MarkerRefLike {
+  openPopup: () => void;
+}
+interface PolygonRefLike {
+  openPopup: (latlng: LatLngLike) => void;
+  getBounds: () => { getCenter: () => LatLngLike };
+}
+
+function FlyAndPopup({
+  flyTarget,
+  activeLandId,
+  markerRefs,
+  polygonRefs,
+}: {
+  flyTarget: FlyTarget | null | undefined;
+  activeLandId: string | number | null | undefined;
+  markerRefs: React.MutableRefObject<Record<string, MarkerRefLike>>;
+  polygonRefs: React.MutableRefObject<Record<string, PolygonRefLike>>;
+}) {
   const map = useMap();
 
   useEffect(() => {
@@ -201,7 +293,9 @@ function FlyAndPopup({ flyTarget, activeLandId, markerRefs, polygonRefs }) {
     };
 
     map.once("zoomend", openPopup);
-    return () => map.off("zoomend", openPopup);
+    return () => {
+      map.off("zoomend", openPopup);
+    };
   }, [flyTarget, activeLandId, map]);
 
   return null;
@@ -209,7 +303,13 @@ function FlyAndPopup({ flyTarget, activeLandId, markerRefs, polygonRefs }) {
 
 /* ===================== MOVE END HANDLER ===================== */
 
-function MoveEndHandler({ onMoveEnd, onZoomChange }) {
+function MoveEndHandler({
+  onMoveEnd,
+  onZoomChange,
+}: {
+  onMoveEnd?: (bounds: ReturnType<typeof L.latLngBounds>) => void;
+  onZoomChange?: (zoom: number) => void;
+}) {
   const map = useMap();
 
   useEffect(() => {
@@ -219,7 +319,9 @@ function MoveEndHandler({ onMoveEnd, onZoomChange }) {
       onZoomChange?.(map.getZoom());
     };
     map.on("moveend", handler);
-    return () => map.off("moveend", handler);
+    return () => {
+      map.off("moveend", handler);
+    };
   }, [map, onMoveEnd, onZoomChange]);
 
   return null;
@@ -227,9 +329,9 @@ function MoveEndHandler({ onMoveEnd, onZoomChange }) {
 
 /* ===================== HEATMAP ===================== */
 
-function HeatmapLayer({ lands }) {
+function HeatmapLayer({ lands }: { lands: MapLand[] }) {
   const map = useMap();
-  const layerRef = useRef(null);
+  const layerRef = useRef<LeafletLayer | null>(null);
 
   useEffect(() => {
     if (!map) return;
@@ -241,7 +343,7 @@ function HeatmapLayer({ lands }) {
 
     const points = lands
       .filter((l) => l.lat && l.lng)
-      .map((l) => [+l.lat, +l.lng, 0.6]);
+      .map((l) => [+l.lat!, +l.lng!, 0.6] as [number, number, number]);
     if (!points.length) return;
 
     const heat = L.heatLayer(points, { radius: 45, blur: 25, maxZoom: 17 });
@@ -258,7 +360,7 @@ function HeatmapLayer({ lands }) {
 
 /* ===================== POPUP CARD ===================== */
 
-function LandPopup({ land }) {
+function LandPopup({ land }: { land: MapLand }) {
   const priceKobo = getLandPrice(land);
   const priceNaira = koboToNaira(priceKobo);
 
@@ -328,6 +430,22 @@ function LandPopup({ land }) {
 
 /* ===================== MAIN MAP ===================== */
 
+interface LandMapProps {
+  defaultCenter: LatLngTuple;
+  landsWithPoints: MapLand[];
+  landsWithPolygons: MapLand[];
+  allLandsWithCoords: MapLand[];
+  activeLandId?: string | number | null;
+  hoverLandId?: string | number | null;
+  flyTarget?: FlyTarget | null;
+  showHeatmap?: boolean;
+  onMoveEnd?: (bounds: ReturnType<typeof L.latLngBounds>) => void;
+  onZoomChange?: (zoom: number) => void;
+  // Accepted for caller parity (fullscreen mode passes it) but unused —
+  // the map always sizes to its own "h-full w-full" internally.
+  className?: string;
+}
+
 export default function LandMap({
   defaultCenter,
   landsWithPoints,
@@ -339,26 +457,26 @@ export default function LandMap({
   showHeatmap,
   onMoveEnd,
   onZoomChange,
-}) {
+}: LandMapProps) {
   useLeafletHeat();
 
-  const markerRefs = useRef({});
-  const polygonRefs = useRef({});
+  const markerRefs = useRef<Record<string, MarkerRefLike>>({});
+  const polygonRefs = useRef<Record<string, PolygonRefLike>>({});
 
-  const setMarkerRef = useCallback((id, ref) => {
+  const setMarkerRef = useCallback((id: string | number, ref: MarkerRefLike | null) => {
     if (ref) markerRefs.current[id] = ref;
   }, []);
 
-  const setCentroidRef = useCallback((id, ref) => {
+  const setCentroidRef = useCallback((id: string | number, ref: MarkerRefLike | null) => {
     if (ref) markerRefs.current[`${id}-centroid`] = ref;
   }, []);
 
-  const setPolygonRef = useCallback((id, ref) => {
+  const setPolygonRef = useCallback((id: string | number, ref: PolygonRefLike | null) => {
     if (ref) polygonRefs.current[id] = ref;
   }, []);
 
   return (
-    <MapContainer
+    <MapContainerX
       center={defaultCenter}
       zoom={8}
       className="h-full w-full"
@@ -374,30 +492,30 @@ export default function LandMap({
         polygonRefs={polygonRefs}
       />
 
-      <LayersControl position="topleft">
-        <LayersControl.BaseLayer checked name="Street">
-          <TileLayer
+      <LayersControlX position="topleft">
+        <LayersControlX.BaseLayer checked name="Street">
+          <TileLayerX
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution="© OpenStreetMap contributors"
             detectRetina={true}
             maxZoom={19}
           />
-        </LayersControl.BaseLayer>
-        <LayersControl.BaseLayer name="Satellite">
-          <TileLayer
+        </LayersControlX.BaseLayer>
+        <LayersControlX.BaseLayer name="Satellite">
+          <TileLayerX
             url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
             attribution="© Esri"
             maxZoom={19}
           />
-        </LayersControl.BaseLayer>
-        <LayersControl.BaseLayer name="Terrain">
-          <TileLayer
+        </LayersControlX.BaseLayer>
+        <LayersControlX.BaseLayer name="Terrain">
+          <TileLayerX
             url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
             attribution="© OpenTopoMap"
             maxZoom={17}
           />
-        </LayersControl.BaseLayer>
-      </LayersControl>
+        </LayersControlX.BaseLayer>
+      </LayersControlX>
 
       {/* POINT MARKERS */}
       {!showHeatmap && (
@@ -406,22 +524,22 @@ export default function LandMap({
             const isActive = activeLandId === land.id;
             const isHovered = hoverLandId === land.id;
             return (
-              <Marker
+              <MarkerX
                 key={land.id}
-                position={[+land.lat, +land.lng]}
+                position={[+land.lat!, +land.lng!]}
                 icon={createMarkerIcon({
                   priceKobo: getLandPrice(land),
                   isActive: isActive || isHovered,
                 })}
-                ref={(ref) => setMarkerRef(land.id, ref)}
+                ref={(ref: any) => setMarkerRef(land.id, ref)}
                 zIndexOffset={isActive ? 1000 : 0}
                 title={land.title}
                 alt={land.title}
               >
-                <Popup offset={[0, -20]} closeButton={false} className="land-popup">
+                <PopupX offset={[0, -20]} closeButton={false} className="land-popup">
                   <LandPopup land={land} />
-                </Popup>
-              </Marker>
+                </PopupX>
+              </MarkerX>
             );
           })}
         </MarkerClusterGroup>
@@ -439,7 +557,7 @@ export default function LandMap({
 
           return (
             <React.Fragment key={land.id}>
-              <Polygon
+              <PolygonX
                 positions={points}
                 pathOptions={{
                   color: highlight ? "#E8A850" : "#f59e0b",
@@ -448,34 +566,34 @@ export default function LandMap({
                   weight: highlight ? 3 : 1.5,
                   opacity: 1,
                 }}
-                ref={(ref) => setPolygonRef(land.id, ref)}
+                ref={(ref: any) => setPolygonRef(land.id, ref)}
               >
-                <Popup closeButton={false} className="land-popup">
+                <PopupX closeButton={false} className="land-popup">
                   <LandPopup land={land} />
-                </Popup>
-              </Polygon>
+                </PopupX>
+              </PolygonX>
 
-              <Marker
+              <MarkerX
                 position={center}
                 icon={createMarkerIcon({
                   priceKobo: getLandPrice(land),
                   isActive: highlight,
                 })}
-                ref={(ref) => setCentroidRef(land.id, ref)}
+                ref={(ref: any) => setCentroidRef(land.id, ref)}
                 zIndexOffset={highlight ? 1000 : 0}
                 title={land.title}
                 alt={land.title}
               >
-                <Popup offset={[0, -20]} closeButton={false} className="land-popup">
+                <PopupX offset={[0, -20]} closeButton={false} className="land-popup">
                   <LandPopup land={land} />
-                </Popup>
-              </Marker>
+                </PopupX>
+              </MarkerX>
             </React.Fragment>
           );
         })}
 
       {/* HEATMAP */}
       {showHeatmap && <HeatmapLayer lands={allLandsWithCoords} />}
-    </MapContainer>
+    </MapContainerX>
   );
 }

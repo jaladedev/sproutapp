@@ -2,12 +2,24 @@
 
 import Link from "next/link";
 import { MapPin, Mail, Phone } from "lucide-react";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth, AuthUser } from "../../context/AuthContext";
 import Image from "next/image";
+import type { ReactNode } from "react";
 
 const appname = process.env.NEXT_PUBLIC_APP_NAME || "REU.ng";
 
-const footerLinks = [
+interface FooterLink {
+  label: string;
+  href: string;
+  authOnly?: boolean;
+}
+
+interface FooterLinkColumn {
+  heading: string;
+  links: FooterLink[];
+}
+
+const footerLinks: FooterLinkColumn[] = [
   {
     heading: "Account",
     links: [
@@ -34,7 +46,7 @@ const footerLinks = [
 ];
 
 export default function Footer() {
-  const { user } = useAuth();
+  const { user } = useAuth() ?? {};
 
   return (
     <footer
@@ -101,7 +113,7 @@ export default function Footer() {
   );
 }
 
-function BrandBlock({ user, appname }) {
+function BrandBlock({ user, appname }: { user: AuthUser | null | undefined; appname: string }) {
   return (
     <div>
       <Link href={user ? "/dashboard" : "/"} className="inline-flex items-center mb-4 group">
@@ -114,11 +126,13 @@ function BrandBlock({ user, appname }) {
       </p>
 
       <div className="space-y-2.5">
-        {[
-          { icon: <MapPin size={12} />, text: "Ibadan, Oyo State, Nigeria"         },
-          { icon: <Mail size={12} />,   text: `hello@${appname.toLowerCase()}` },
-          { icon: <Phone size={12} />,  text: "+234 808 132 5657"                   },
-        ].map((item) => (
+        {(
+          [
+            { icon: <MapPin size={12} />, text: "Ibadan, Oyo State, Nigeria" },
+            { icon: <Mail size={12} />, text: `hello@${appname.toLowerCase()}` },
+            { icon: <Phone size={12} />, text: "+234 808 132 5657" },
+          ] as { icon: ReactNode; text: string }[]
+        ).map((item) => (
           <div key={item.text} className="flex items-center gap-2 text-xs" style={{ color: "rgba(255,255,255,0.7)" }}>
             <span className="shrink-0" style={{ color: "#C8873A" }}>{item.icon}</span>
             <span className="truncate">{item.text}</span>
@@ -129,7 +143,7 @@ function BrandBlock({ user, appname }) {
   );
 }
 
-function LinkColumns({ user }) {
+function LinkColumns({ user }: { user: AuthUser | null | undefined }) {
   return (
     <>
       {footerLinks.map((col) => {

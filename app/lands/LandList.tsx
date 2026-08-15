@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { getLandList } from "../../services/landService";
-import { getMe } from "../../services/userService";
+import { getMe, MeResponse } from "../../services/userService";
 import { getLandImage } from "../../utils/images";
 import { koboToNaira } from "../../utils/currency";
 import { useDebounce } from "../../utils/useDebounce";
@@ -15,6 +15,30 @@ import {
 import { isAuthed } from "../../utils/tokenStore";
 import Image from "next/image";
 
+// ─── Shared land shape ────────────────────────────────────────────────────────
+
+interface Land {
+  id: string | number;
+  title: string;
+  location: string;
+  lat?: number | string;
+  lng?: number | string;
+  latest_price?: { price_per_unit_kobo?: number };
+  latestPrice?: { price_per_unit_kobo?: number };
+  current_price_per_unit_kobo?: number;
+  price_per_unit_kobo?: number;
+  launch_price_kobo?: number;
+  is_available?: boolean;
+  available_units?: number;
+  geometry_geojson?: { type?: string; coordinates?: number[][][] };
+  polygon?: unknown;
+  [key: string]: unknown;
+}
+
+interface MapBounds {
+  contains: (point: [number, number]) => boolean;
+}
+
 // ─── Dynamic map (no SSR) ─────────────────────────────────────────────────────
 const MapWithNoSSR = dynamic(
   () => import("./_LandMap").then((m) => m.default),
@@ -23,7 +47,7 @@ const MapWithNoSSR = dynamic(
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function getLandPrice(land) {
+function getLandPrice(land: Land): number {
   return (
     land.latest_price?.price_per_unit_kobo ??
     land.latestPrice?.price_per_unit_kobo ??
@@ -33,16 +57,16 @@ function getLandPrice(land) {
   );
 }
 
-function hasPolygon(land) {
+function hasPolygon(land: Land): boolean {
   if (land.geometry_geojson?.type === "Polygon") return true;
-  const p = land.polygon;
+  const p = land.polygon as { type?: string } | string | unknown[] | null | undefined;
   if (!p) return false;
   if (typeof p === "string") return p.toUpperCase().includes("POLYGON");
-  if (p?.type === "Polygon") return true;
+  if (!Array.isArray(p) && p?.type === "Polygon") return true;
   return Array.isArray(p) && p.length >= 3;
 }
 
-function getPriceTag(priceKobo) {
+function getPriceTag(priceKobo: number): { label: string; color: string } {
   const n = koboToNaira(priceKobo);
   if (n < 200_000) return { label: "Budget",    color: "#22c55e" };
   if (n < 500_000) return { label: "Mid-Range", color: "#f59e0b" };
@@ -51,7 +75,7 @@ function getPriceTag(priceKobo) {
 
 // ─── Auth-prompt modal ────────────────────────────────────────────────────────
 
-function AuthPromptModal({ onClose }) {
+function AuthPromptModal({ onClose }: { onClose: () => void }) {
   return (
     <div
       className="fixed inset-0 z-99999 flex items-center justify-center px-5"
@@ -116,17 +140,20 @@ function AuthPromptModal({ onClose }) {
 
 // ─── Logged-in PIN / KYC banner ───────────────────────────────────────────────
 
-function AccountBanner({ pinIsSet, kycStatus }) {
+function AccountBanner({ pinIsSet, kycStatus }: { pinIsSet: boolean; kycStatus: string }) {
   const needsPin = !pinIsSet;
   const needsKyc = kycStatus !== "approved";
   if (!needsPin && !needsKyc) return null;
 
-  const kycMessage = {
-    none:     "KYC not submitted. Verify your identity before you can transact.",
-    pending:  "KYC is under review. You'll be able to transact once approved.",
-    rejected: "KYC was rejected. Please resubmit your documents.",
-    resubmit: "KYC resubmission required before you can transact.",
-  }[kycStatus] ?? "Identity verification required.";
+  const kycMessage: string =
+    (
+      {
+        none:     "KYC not submitted. Verify your identity before you can transact.",
+        pending:  "KYC is under review. You'll be able to transact once approved.",
+        rejected: "KYC was rejected. Please resubmit your documents.",
+        resubmit: "KYC resubmission required before you can transact.",
+      } as Record<string, string>
+    )[kycStatus] ?? "Identity verification required.";
 
   return (
     <div className="mb-8 space-y-3">
@@ -207,13 +234,14 @@ function GuestCtaBanner() {
 // ─── Trust badges ─────────────────────────────────────────────────────────────
 
 function TrustBar() {
+  const items: [typeof BadgeCheck, string][] = [
+    [BadgeCheck, "Verified Titles"],
+    [ShieldCheck, "Legally Backed"],
+    [TrendingUp,  "15–30% Projected ROI"],
+  ];
   return (
     <div className="flex flex-wrap gap-x-5 gap-y-2 items-center mb-6">
-      {[
-        [BadgeCheck, "Verified Titles"],
-        [ShieldCheck, "Legally Backed"],
-        [TrendingUp,  "15–30% Projected ROI"],
-      ].map(([Icon, label]) => (
+      {items.map(([Icon, label]) => (
         <span key={label} className="flex items-center gap-1.5 text-xs text-white/75">
           <Icon size={12} className="text-emerald-400" />
           {label}
@@ -225,7 +253,7 @@ function TrustBar() {
 
 // ─── Search bar ───────────────────────────────────────────────────────────────
 
-function SearchBar({ value, onChange }) {
+function SearchBar({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
     <div className="relative mb-8">
       <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/55 pointer-events-none" />
@@ -244,11 +272,11 @@ function SearchBar({ value, onChange }) {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function LandList() {
-  const [lands, setLands]               = useState([]);
-  const [visibleLands, setVisibleLands] = useState([]);
-  const [activeLandId, setActiveLandId] = useState(null);
-  const [hoverLandId, setHoverLandId]   = useState(null);
-  const [flyTarget, setFlyTarget]       = useState(null);
+  const [lands, setLands]               = useState<Land[]>([]);
+  const [visibleLands, setVisibleLands] = useState<Land[]>([]);
+  const [activeLandId, setActiveLandId] = useState<string | number | null>(null);
+  const [hoverLandId, setHoverLandId]   = useState<string | number | null>(null);
+  const [flyTarget, setFlyTarget]       = useState<{ lat: number; lng: number } | null>(null);
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState("");
   const [isFullScreen, setIsFullScreen] = useState(false);
@@ -256,7 +284,7 @@ export default function LandList() {
   const [currentZoom, setCurrentZoom]   = useState(8);
   const [searchQuery, setSearchQuery]   = useState("");
 
-  const [user, setUser]                 = useState(null);
+  const [user, setUser]                 = useState<MeResponse | null>(null);
   const [authLoaded, setAuthLoaded]     = useState(false);
 
   const [pinIsSet, setPinIsSet]         = useState(true);
@@ -265,14 +293,14 @@ export default function LandList() {
 
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
 
-  const mapSectionRef = useRef(null);
+  const mapSectionRef = useRef<HTMLDivElement | null>(null);
 
   // ── Fetch lands ────────────────────────────────────────────────────────────
   useEffect(() => {
     getLandList()
       .then((list) => {
-        setLands(list);
-        setVisibleLands(list);
+        setLands(list as unknown as Land[]);
+        setVisibleLands(list as unknown as Land[]);
       })
       .catch(() => setError("Failed to load properties."))
       .finally(() => setLoading(false));
@@ -305,12 +333,12 @@ export default function LandList() {
   const allLandsWithCoords = useMemo(() => [...landsWithPoints, ...landsWithPolygons], [landsWithPoints, landsWithPolygons]);
 
   // ── Filter by map bounds ───────────────────────────────────────────────────
-  const filterByBounds = useCallback((bounds) => {
+  const filterByBounds = useCallback((bounds: MapBounds) => {
     setVisibleLands(
       lands.filter((l) => {
         if (l.lat && l.lng) return bounds.contains([+l.lat, +l.lng]);
         if (hasPolygon(l) && Array.isArray(l.polygon))
-          return l.polygon.some((p) => bounds.contains([p.lat, p.lng]));
+          return (l.polygon as Array<{ lat: number; lng: number }>).some((p) => bounds.contains([p.lat, p.lng]));
         return false;
       })
     );
@@ -325,7 +353,7 @@ export default function LandList() {
   }, [isFullScreen]);
 
   // ── Focus land on map ──────────────────────────────────────────────────────
-  const focusLandOnMap = useCallback((land) => {
+  const focusLandOnMap = useCallback((land: Land) => {
     if (showHeatmap) setShowHeatmap(false);
     if (isFullScreen) setIsFullScreen(false);
     setFlyTarget(null);
@@ -333,8 +361,9 @@ export default function LandList() {
     setTimeout(() => {
       mapSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       setTimeout(() => {
-        const lat = land.lat ?? land.polygon?.[0]?.lat;
-        const lng = land.lng ?? land.polygon?.[0]?.lng;
+        const polygon = land.polygon as Array<{ lat: number; lng: number }> | undefined;
+        const lat = land.lat ?? polygon?.[0]?.lat;
+        const lng = land.lng ?? polygon?.[0]?.lng;
         setActiveLandId(land.id);
         if (lat && lng) setFlyTarget({ lat: +lat, lng: +lng });
         setTimeout(() => setActiveLandId(null), 6000);
@@ -354,7 +383,7 @@ export default function LandList() {
   }, [visibleLands, searchQuery]);
 
   // ── Auth gate ──────────────────────────────────────────────────────────────
-  const requireAuth = useCallback((action) => {
+  const requireAuth = useCallback((action?: () => void) => {
     if (!user) { setShowAuthPrompt(true); return; }
     action?.();
   }, [user]);
@@ -383,13 +412,13 @@ export default function LandList() {
     );
   }
 
-  const defaultCenter = allLandsWithCoords.length
-    ? [+allLandsWithCoords[0].lat, +allLandsWithCoords[0].lng]
+  const defaultCenter: [number, number] = allLandsWithCoords.length
+    ? [+allLandsWithCoords[0].lat!, +allLandsWithCoords[0].lng!]
     : [9.082, 8.6753];
 
   const allMapPoints = [
-    ...landsWithPoints.map((l) => [+l.lat, +l.lng]),
-    ...landsWithPolygons.filter((l) => l.lat && l.lng).map((l) => [+l.lat, +l.lng]),
+    ...landsWithPoints.map((l) => [+l.lat!, +l.lng!] as [number, number]),
+    ...landsWithPolygons.filter((l) => l.lat && l.lng).map((l) => [+l.lat!, +l.lng!] as [number, number]),
   ];
 
   const mapProps = {

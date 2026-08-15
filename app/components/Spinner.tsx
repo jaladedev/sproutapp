@@ -1,10 +1,4 @@
 // Shared loading-spinner primitive.
-//
-// Standardizes the `border-2 border-{color} border-t-transparent rounded-full
-// animate-spin` markup that was duplicated ad hoc (different sizes, border
-// widths, and inline vs constructed class strings) across admin pages —
-// see TODO.md #14. Colors are a fixed literal set (not interpolated) so
-// Tailwind's class scanner can always find them at build time.
 
 type SpinnerSize = "xs" | "sm" | "md" | "lg";
 type SpinnerColor = "amber" | "red" | "purple" | "cyan" | "emerald" | "blue" | "white";

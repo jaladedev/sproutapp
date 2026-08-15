@@ -5,6 +5,7 @@ import HowItWorksSection from "./components/home/HowItWorksSection";
 import ReturnsSection from "./components/home/ReturnsSection";
 import WhyUsSection from "./components/home/WhyUsSection";
 import FeaturedPropertiesSection from "./components/home/FeaturedPropertiesSection";
+import type { FeaturedLand } from "./components/FeaturedProperties";
 import LiquiditySection from "./components/home/LiquiditySection";
 import ComplianceSection from "./components/home/ComplianceSection";
 import FaqPageSection from "./components/home/FaqPageSection";
@@ -109,7 +110,7 @@ function JsonLd() {
 }
 
 // ─── ISR fetch ────────────────────────────────────────────────────────────────
-async function getLands(): Promise<Record<string, unknown>[]> {
+async function getLands(): Promise<FeaturedLand[]> {
   try {
     const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/land`, { next: { revalidate: 3600 } });
     if (!res.ok) return [];

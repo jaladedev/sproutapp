@@ -11,7 +11,12 @@ import Image from "next/image";
 
 const appname = process.env.NEXT_PUBLIC_APP_NAME || "REU.ng";
 
-const links = [
+interface NavLink {
+  name: string;
+  path: string;
+}
+
+const links: NavLink[] = [
   { name: "Home",        path: "/dashboard"   },
   { name: "Lands",       path: "/lands"       },
   { name: "Wallet",      path: "/wallet"      },
@@ -24,7 +29,7 @@ const links = [
 
 export default function Header() {
   const pathname = usePathname();
-  const { user, logout } = useAuth();
+  const { user, logout } = useAuth() ?? {};
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => { setMenuOpen(false); }, [pathname]);
@@ -36,7 +41,7 @@ export default function Header() {
 
   const handleLogout = () => {
     setMenuOpen(false);
-    logout();
+    logout?.();
     toast.success("Logged out successfully. See you soon!");
   };
 
