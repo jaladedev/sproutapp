@@ -13,11 +13,65 @@ import {
 import {
   fetchTickets, fetchTicket, createTicket, createGuestTicket,
   replyToTicket, fetchFaqs, sendChatMessage,
-} from "../../services/supportService.ts";
+  type SupportTicket, type ChatMessage as ServiceChatMessage,
+} from "../../services/supportService";
 import toast from "react-hot-toast";
 import { useAuth } from "../../context/AuthContext";
 import api from "../../utils/api";
 import LiveChatView from "./LiveChatView";
+
+/* ── Local types ───────────────────────────────────────────────────────────── */
+interface TicketMessage {
+  id?: string | number;
+  body: string;
+  sender_type: "user" | "agent" | "ai" | string;
+  created_at?: string;
+  attachment_path?: string | null;
+}
+
+interface TicketDetailData extends SupportTicket {
+  reference?: string;
+  created_at?: string;
+  updated_at?: string;
+  messages?: TicketMessage[];
+}
+
+interface TicketListPage {
+  data?: TicketDetailData[];
+  [key: string]: unknown;
+}
+
+interface FaqItem {
+  id?: string | number;
+  category: string;
+  question: string;
+  answer: string;
+}
+
+interface FaqGroupsMap {
+  [category: string]: FaqItem[];
+}
+
+interface NewTicketFormState {
+  subject: string;
+  category: string;
+  message: string;
+  priority: string;
+}
+
+interface GuestFormState {
+  name: string;
+  email: string;
+  subject: string;
+  category: string;
+  message: string;
+}
+
+interface AiUiMessage {
+  role: "user" | "assistant";
+  content: string;
+  isError?: boolean;
+}
 
 /* ── Design tokens ─────────────────────────────────────────────────────────── */
 const BG        = "#0A1A13";
@@ -51,7 +105,7 @@ const CATEGORIES = [
   { value: "other",      label: "Other",                icon: <MoreHorizontal size={13} />, color: "text-white/60 bg-white/5 border-white/10"                 },
 ];
 
-const catCfg = (v) => CATEGORIES.find(c => c.value === v) || CATEGORIES[5];
+const catCfg = (v?: string) => CATEGORIES.find(c => c.value === v) || CATEGORIES[5];
 
 /* ── Status config ─────────────────────────────────────────────────────────── */
 const statusCfg = (s = "") => ({
@@ -67,25 +121,25 @@ const priorityCfg = (p = "") => ({
   low:    { cls: "text-white/20 bg-white/2 border-white/6", label: "Low"    },
 }[p] || { cls: "hover:border-white/35 bg-white/4 border-white/10", label: "Normal" });
 
-const fmtDate = (d) =>
+const fmtDate = (d?: string) =>
   d ? new Date(d).toLocaleString("en-NG", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
 
 /* ── File helpers ──────────────────────────────────────────────────────────── */
-function getFileType(path) {
+function getFileType(path?: string | null) {
   if (!path) return null;
-  const ext = path.split(".").pop().toLowerCase();
+  const ext = (path.split(".").pop() ?? "").toLowerCase();
   if (["jpg","jpeg","png","gif","webp"].includes(ext)) return "image";
   if (["mp4","webm"].includes(ext)) return "video";
   if (ext === "pdf") return "pdf";
   return "file";
 }
 
-function getFileName(path) {
+function getFileName(path?: string | null) {
   if (!path) return "attachment";
-  return path.split("/").pop();
+  return path.split("/").pop() ?? "attachment";
 }
 
-function downloadBlob(url, name) {
+function downloadBlob(url: string, name: string) {
   const a = document.createElement("a");
   a.href = url;
   a.download = name;
@@ -93,7 +147,14 @@ function downloadBlob(url, name) {
 }
 
 /* ── Pill button ───────────────────────────────────────────────────────────── */
-function Pill({ active, onClick, children, "data-tab": dataTab }) {
+interface PillProps {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+  "data-tab"?: string;
+}
+
+function Pill({ active, onClick, children, "data-tab": dataTab }: PillProps) {
   return (
     <button
       onClick={onClick}
@@ -109,8 +170,13 @@ function Pill({ active, onClick, children, "data-tab": dataTab }) {
 }
 
 /* ── Attachment component (user-facing) ────────────────────────────────────── */
-function AttachmentLink({ ticketId, message }) {
-  const [blobUrl, setBlobUrl]   = useState(null);
+interface AttachmentLinkProps {
+  ticketId: string | number;
+  message: TicketMessage;
+}
+
+function AttachmentLink({ ticketId, message }: AttachmentLinkProps) {
+  const [blobUrl, setBlobUrl]   = useState<string | null>(null);
   const [loading, setLoading]   = useState(false);
   const [lightbox, setLightbox] = useState(false);
   const fileType = getFileType(message.attachment_path);
@@ -225,10 +291,12 @@ function AttachmentLink({ ticketId, message }) {
 /* ══════════════════════════════════════════════════════════════════════════════
    ROOT PAGE
 ══════════════════════════════════════════════════════════════════════════════ */
+type SupportView = "init" | "list" | "new" | "detail" | "faq" | "contact" | "chat" | "live";
+
 export default function SupportPage() {
-  const { user, loading: authLoading } = useAuth();
-  const [view, setView]               = useState("init");
-  const [selectedId, setSelectedId]   = useState(null);
+  const { user, loading: authLoading } = useAuth() ?? {};
+  const [view, setView]               = useState<SupportView>("init");
+  const [selectedId, setSelectedId]   = useState<string | number | null>(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -241,16 +309,16 @@ export default function SupportPage() {
     </div>
   );
 
-  const openDetail = (id) => { setSelectedId(id); setView("detail"); };
+  const openDetail = (id: string | number) => { setSelectedId(id); setView("detail"); };
 
-  const authTabs  = [
+  const authTabs: { id: SupportView; icon: React.ReactNode; label: string }[]  = [
     // { id: "chat",    icon: <Bot size={14} />,        label: "AI Chat"    },
     // { id: "live",    icon: <UserCheck size={14} />,   label: "Live Agent"}, 
     { id: "list",    icon: <Ticket size={14} />,     label: "My Tickets" },
     { id: "new",     icon: <Plus size={14} />,        label: "New Ticket" },
     { id: "faq",     icon: <HelpCircle size={14} />,  label: "FAQ"        },
   ];
-  const guestTabs = [
+  const guestTabs: { id: SupportView; icon: React.ReactNode; label: string }[] = [
     { id: "faq",     icon: <HelpCircle size={14} />, label: "FAQ"        },
     { id: "contact", icon: <MailOpen size={14} />,    label: "Contact Us" },
   ];
@@ -327,7 +395,7 @@ export default function SupportPage() {
       {/* {view === "chat"    && <AiChatView />} */}
       {/* {view === "live"    && <LiveChatView onSwitchToAi={() => setView("chat")} />} */}
       {view === "list"    && <TicketList onOpen={openDetail} onNew={() => setView("new")} />}
-      {view === "new"     && <NewTicketForm onSuccess={(id) => { setSelectedId(id); setView("detail"); }} />}
+      {view === "new"     && <NewTicketForm onSuccess={(id: string | number) => { setSelectedId(id); setView("detail"); }} />}
       {view === "detail"  && <TicketDetail id={selectedId} onBack={() => setView("list")} />}
       {view === "faq"     && <FaqView onContact={() => setView("contact")} />}
       {view === "contact" && <GuestContactForm />}
@@ -339,26 +407,35 @@ export default function SupportPage() {
 /* ══════════════════════════════════════════════════════════════════════════════
    TICKET LIST
 ══════════════════════════════════════════════════════════════════════════════ */
-function TicketList({ onOpen, onNew }) {
-  const { user }              = useAuth();
-  const [data, setData]       = useState(null);
+interface TicketListProps {
+  onOpen: (id: string | number) => void;
+  onNew: () => void;
+}
+
+function TicketList({ onOpen, onNew }: TicketListProps) {
+  const { user }              = useAuth() ?? {};
+  // fetchTickets() is typed as Promise<SupportTicket[]> in the shared service,
+  // but the API actually returns a Laravel paginator ({ data: [...] }) here —
+  // asserted locally rather than widening the shared service type (matches
+  // the pattern established for other unknown-return services, see TODO #17).
+  const [data, setData]       = useState<TicketListPage | null>(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter]   = useState("all");
 
   const load = async () => {
     if (!user) return;
     setLoading(true);
-    try { setData(await fetchTickets()); }
+    try { setData(await fetchTickets() as unknown as TicketListPage); }
     catch { toast.error("Could not load tickets."); }
     finally { setLoading(false); }
   };
 
   useEffect(() => { load(); }, [user]);
 
-  const tickets  = data?.data || [];
+  const tickets: TicketDetailData[] = data?.data || [];
   const filtered = filter === "all" ? tickets : tickets.filter(t => t.status === filter);
 
-  const statusCounts = ["open","waiting","resolved","closed"].reduce((acc, s) => {
+  const statusCounts = ["open","waiting","resolved","closed"].reduce((acc: Record<string, number>, s) => {
     acc[s] = tickets.filter(t => t.status === s).length;
     return acc;
   }, {});
@@ -485,15 +562,16 @@ function TicketList({ onOpen, onNew }) {
 /* ══════════════════════════════════════════════════════════════════════════════
    NEW TICKET FORM
 ══════════════════════════════════════════════════════════════════════════════ */
-function NewTicketForm({ onSuccess }) {
-  const [form, setForm]       = useState({ subject: "", category: "", message: "", priority: "normal" });
-  const [file, setFile]       = useState(null);
+function NewTicketForm({ onSuccess }: { onSuccess: (id: string | number) => void }) {
+  const [form, setForm]       = useState<NewTicketFormState>({ subject: "", category: "", message: "", priority: "normal" });
+  const [file, setFile]       = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
-  const fileRef               = useRef(null);
+  const fileRef               = useRef<HTMLInputElement | null>(null);
 
-  const handleChange = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
+    setForm(f => ({ ...f, [e.target.name]: e.target.value }));
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
     try {
@@ -593,7 +671,7 @@ function NewTicketForm({ onSuccess }) {
                 : "Click to attach a file or screenshot"}
             </button>
             <input ref={fileRef} type="file" className="hidden" accept="image/*,.pdf"
-              onChange={e => setFile(e.target.files?.[0] || null)} />
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFile(e.target.files?.[0] || null)} />
           </div>
 
           <button type="submit" disabled={loading}
@@ -610,18 +688,19 @@ function NewTicketForm({ onSuccess }) {
 /* ══════════════════════════════════════════════════════════════════════════════
    TICKET DETAIL
 ══════════════════════════════════════════════════════════════════════════════ */
-function TicketDetail({ id, onBack }) {
-  const { user }              = useAuth();
-  const [ticket, setTicket]   = useState(null);
+function TicketDetail({ id, onBack }: { id: string | number | null; onBack: () => void }) {
+  const { user }              = useAuth() ?? {};
+  const [ticket, setTicket]   = useState<TicketDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [reply, setReply]     = useState("");
-  const [file, setFile]       = useState(null);
+  const [file, setFile]       = useState<File | null>(null);
   const [sending, setSending] = useState(false);
-  const fileRef               = useRef(null);
-  const bottomRef             = useRef(null);
+  const fileRef               = useRef<HTMLInputElement | null>(null);
+  const bottomRef             = useRef<HTMLDivElement | null>(null);
 
   const load = async () => {
-    try { setTicket(await fetchTicket(id)); }
+    if (id == null) return;
+    try { setTicket(await fetchTicket(id) as TicketDetailData); }
     catch { toast.error("Could not load ticket."); }
     finally { setLoading(false); }
   };
@@ -629,9 +708,9 @@ function TicketDetail({ id, onBack }) {
   useEffect(() => { if (id) load(); }, [id]);
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [ticket?.messages]);
 
-  const handleReply = async (e) => {
+  const handleReply = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!reply.trim()) return;
+    if (!reply.trim() || id == null) return;
     setSending(true);
     try {
       await replyToTicket(id, { message: reply, attachment: file });
@@ -652,7 +731,7 @@ function TicketDetail({ id, onBack }) {
 
   const s        = statusCfg(ticket.status);
   const cat      = catCfg(ticket.category);
-  const isClosed = ["resolved", "closed"].includes(ticket.status);
+  const isClosed = ["resolved", "closed"].includes(ticket.status ?? "");
 
   return (
     <div className="space-y-4">
@@ -699,7 +778,7 @@ function TicketDetail({ id, onBack }) {
         </div>
 
         <div className="px-5 py-5 space-y-5 overflow-y-auto" style={{ maxHeight: 460 }}>
-          {ticket.messages?.map((m, i) => {
+          {ticket.messages?.map((m: TicketMessage, i: number) => {
             const isUser  = m.sender_type === "user";
             const isAgent = m.sender_type === "agent";
             return (
@@ -777,7 +856,7 @@ function TicketDetail({ id, onBack }) {
                   {file ? "Change file" : "Attach file"}
                 </button>
                 <input ref={fileRef} type="file" className="hidden" accept="image/*,.pdf"
-                  onChange={e => setFile(e.target.files?.[0] || null)} />
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFile(e.target.files?.[0] || null)} />
                 <button type="submit" disabled={sending || !reply.trim()}
                   className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs text-[#0A1A13] transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40"
                   style={{ background: grad }}>
@@ -801,7 +880,7 @@ function TicketDetail({ id, onBack }) {
 /* ══════════════════════════════════════════════════════════════════════════════
    FAQ VIEW
 ══════════════════════════════════════════════════════════════════════════════ */
-const FAQ_CATEGORY_ICONS = {
+const FAQ_CATEGORY_ICONS: Record<string, { icon: React.ReactNode; color: string }> = {
   account:    { icon: <User size={13} />,       color: "text-violet-400 bg-violet-500/10 border-violet-500/20"   },
   payment:    { icon: <CreditCard size={13} />, color: "text-blue-400 bg-blue-500/10 border-blue-500/20"         },
   withdrawal: { icon: <Landmark size={13} />,   color: "text-cyan-400 bg-cyan-500/10 border-cyan-500/20"         },
@@ -810,23 +889,23 @@ const FAQ_CATEGORY_ICONS = {
   general:    { icon: <HelpCircle size={13} />, color: "text-white/60 bg-white/5 border-white/10"                },
 };
 
-function FaqView({ onContact }) {
-  const { user }                  = useAuth();
-  const [faqs, setFaqs]           = useState({});
+function FaqView({ onContact }: { onContact: () => void }) {
+  const { user }                  = useAuth() ?? {};
+  const [faqs, setFaqs]           = useState<FaqGroupsMap>({});
   const [loading, setLoading]     = useState(true);
   const [search, setSearch]       = useState("");
-  const [expanded, setExpanded]   = useState(null);
+  const [expanded, setExpanded]   = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState("all");
 
   useEffect(() => {
     fetchFaqs()
-      .then(setFaqs)
+      .then((data) => setFaqs(data as unknown as FaqGroupsMap))
       .catch(() => toast.error("Could not load FAQs."))
       .finally(() => setLoading(false));
   }, []);
 
   const categories = Object.keys(faqs);
-  const allFaqs    = Object.values(faqs).flat();
+  const allFaqs: FaqItem[] = Object.values(faqs).flat();
 
   const filtered = allFaqs.filter(f => {
     const matchCat    = activeTab === "all" || f.category === activeTab;
@@ -920,7 +999,7 @@ function FaqView({ onContact }) {
             </p>
           </div>
           {user ? (
-            <button onClick={() => document.querySelector("[data-tab='new']")?.click()}
+            <button onClick={() => (document.querySelector("[data-tab='new']") as HTMLElement | null)?.click()}
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm text-[#0A1A13] shrink-0 transition-all hover:scale-[1.02]"
               style={{ background: grad }}>
               <Plus size={14} /> New Ticket
@@ -942,16 +1021,17 @@ function FaqView({ onContact }) {
    GUEST CONTACT FORM
 ══════════════════════════════════════════════════════════════════════════════ */
 function GuestContactForm() {
-  const [form, setForm]           = useState({ name: "", email: "", subject: "", category: "", message: "" });
-  const [file, setFile]           = useState(null);
+  const [form, setForm]           = useState<GuestFormState>({ name: "", email: "", subject: "", category: "", message: "" });
+  const [file, setFile]           = useState<File | null>(null);
   const [loading, setLoading]     = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [reference, setReference] = useState("");
-  const fileRef                   = useRef(null);
+  const fileRef                   = useRef<HTMLInputElement | null>(null);
 
-  const handleChange = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
+    setForm(f => ({ ...f, [e.target.name]: e.target.value }));
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
     try {
@@ -1081,7 +1161,7 @@ function GuestContactForm() {
               {file ? file.name : "Click to attach a screenshot or file"}
             </button>
             <input ref={fileRef} type="file" className="hidden" accept="image/*,.pdf"
-              onChange={e => setFile(e.target.files?.[0] || null)} />
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFile(e.target.files?.[0] || null)} />
           </div>
 
           <button type="submit" disabled={loading}
@@ -1108,8 +1188,8 @@ const FAQ_QUICK_REPLIES = [
 ];
 
 function AiChatView() {
-  const { user } = useAuth();
-  const [messages, setMessages] = useState([
+  const { user } = useAuth() ?? {};
+  const [messages, setMessages] = useState<AiUiMessage[]>([
     {
       role: "assistant",
       content: `Hi ${user?.name?.split(" ")[0] || "there"}! I'm your ${process.env.NEXT_PUBLIC_APP_NAME} assistant. Ask me anything about your account, investments, deposits, KYC, or anything else.`,
@@ -1118,26 +1198,26 @@ function AiChatView() {
   const [input, setInput]               = useState("");
   const [loading, setLoading]           = useState(false);
   const [chipsVisible, setChipsVisible] = useState(true);
-  const bottomRef                       = useRef(null);
-  const textareaRef                     = useRef(null);
+  const bottomRef                       = useRef<HTMLDivElement | null>(null);
+  const textareaRef                     = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  const send = async (text) => {
+  const send = async (text?: string) => {
     const content = (text || input).trim();
     if (!content || loading) return;
     setInput("");
     setChipsVisible(false);
 
-    const next = [...messages, { role: "user", content }];
+    const next: AiUiMessage[] = [...messages, { role: "user", content }];
     setMessages(next);
     setLoading(true);
 
     try {
       const history = next.slice(-12).map(m => ({ role: m.role, content: m.content }));
-      const reply   = await sendChatMessage(history);
+      const reply   = await sendChatMessage(history as unknown as ServiceChatMessage[]);
       setMessages(prev => [...prev, { role: "assistant", content: reply }]);
     } catch {
       setMessages(prev => [...prev, {
@@ -1151,7 +1231,7 @@ function AiChatView() {
     }
   };
 
-  const handleKey = (e) => {
+  const handleKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
   };
 
@@ -1172,7 +1252,7 @@ function AiChatView() {
         </div>
         {/* ← ADD THIS: human handoff button */}
         <button
-          onClick={() => document.querySelector("[data-tab='live']")?.click()}
+          onClick={() => (document.querySelector("[data-tab='live']") as HTMLElement | null)?.click()}
           className="hidden sm:flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl transition-all shrink-0"
           style={{ color: MUTED, border: `1px solid ${BORDER}` }}
           onMouseEnter={e => { e.currentTarget.style.color = "#fff"; e.currentTarget.style.borderColor = BORDER_HV; }}

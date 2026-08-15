@@ -1,6 +1,15 @@
-import axios from "axios";
+import axios, { type AxiosError, type AxiosRequestConfig, type InternalAxiosRequestConfig } from "axios";
 import { isAuthed, clearAuthedFlag } from "./tokenStore";
 import { PUBLIC_ROUTES, isPublicRoute } from "./routes";
+
+// A specific call site doing a genuinely idempotent write can opt in to
+// retry via `{ retryable: true }` in its request config — see the retry
+// section below.
+interface RetryableRequestConfig extends InternalAxiosRequestConfig {
+  retryable?: boolean;
+  _retry?: boolean;
+  _retryCount?: number;
+}
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
@@ -25,7 +34,7 @@ const api = axios.create({
 // cookie rides along automatically via withCredentials. This interceptor
 // now only needs to handle the FormData content-type quirk.
 
-api.interceptors.request.use((config) => {
+api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   if (config.data instanceof FormData) {
     delete config.headers["Content-Type"];
   }
@@ -35,9 +44,9 @@ api.interceptors.request.use((config) => {
 // ── Refresh state ─────────────────────────────────────────────────────────────
 
 let isRefreshing = false;
-let refreshQueue = [];
+let refreshQueue: { resolve: () => void; reject: (error: unknown) => void }[] = [];
 
-function processQueue(error) {
+function processQueue(error: unknown) {
   refreshQueue.forEach(({ resolve, reject }) => (error ? reject(error) : resolve()));
   refreshQueue = [];
 }
@@ -63,17 +72,17 @@ function isPublicPage() {
 const MAX_RETRIES = 2;
 const RETRY_BASE_DELAY_MS = 500;
 
-function isRetryableError(error) {
+function isRetryableError(error: AxiosError): boolean {
   const status = error.response?.status;
   const method = (error.config?.method || "get").toLowerCase();
   const isNetworkError = !error.response; // offline, timeout, DNS, CORS
   const isTransientStatus = typeof status === "number" && status >= 500 && status <= 599;
   const isSafeMethod = method === "get";
-  const optedIn = error.config?.retryable === true;
+  const optedIn = (error.config as RetryableRequestConfig | undefined)?.retryable === true;
   return (isNetworkError || isTransientStatus) && (isSafeMethod || optedIn);
 }
 
-const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 /**
  * Shared refresh implementation used by both the reactive 401 interceptor
@@ -98,13 +107,13 @@ export function fetchCsrfCookie() {
   return axios.get(`${API_ROOT}/sanctum/csrf-cookie`, { withCredentials: true });
 }
 
-export function refreshAccessToken() {
+export function refreshAccessToken(): Promise<number | null> {
   if (!isAuthed()) return Promise.reject(new Error("No session to refresh"));
 
   if (isRefreshing) {
-    return new Promise((resolve, reject) => {
+    return new Promise<void>((resolve, reject) => {
       refreshQueue.push({ resolve, reject });
-    });
+    }).then(() => null);
   }
 
   isRefreshing = true;
@@ -116,7 +125,7 @@ export function refreshAccessToken() {
       { withCredentials: true, timeout: 10_000 }
     )
     .then((res) => {
-      const expiresAt = res.data?.expires_at ?? null;
+      const expiresAt: number | null = res.data?.expires_at ?? null;
       processQueue(null);
       return expiresAt;
     })
@@ -134,8 +143,9 @@ export function refreshAccessToken() {
 
 api.interceptors.response.use(
   (res) => res,
-  async (error) => {
-    const original = error.config;
+  async (error: AxiosError) => {
+    const original = error.config as RetryableRequestConfig | undefined;
+    if (!original) return Promise.reject(error);
 
     // Retry transient failures first — independent of the 401/refresh flow
     // below, and applies regardless of whether this was a 401 or not.

@@ -6,10 +6,28 @@ import {
   WifiOff, Clock, CheckCheck, AlertCircle, UserCheck,
   PhoneOff, ChevronDown, Sparkles, MessageSquare,
 } from "lucide-react";
-import Pusher from "pusher-js";
+import Pusher, { type Channel } from "pusher-js";
+import type { ChannelAuthorizerGenerator } from "pusher-js/types/src/core/auth/deprecated_channel_authorizer";
+import type { ChannelAuthorizationCallback } from "pusher-js/types/src/core/auth/options";
 import toast from "react-hot-toast";
 import { useAuth } from "../../context/AuthContext";
 import api from "../../utils/api";
+
+interface LiveChatMessage {
+  id: string | number;
+  body: string;
+  sender_type: "user" | "agent" | "system" | string;
+  created_at: string;
+  optimistic?: boolean;
+}
+
+interface LiveChatTicket {
+  id: string | number;
+  reference?: string;
+}
+
+type Phase = "request" | "queued" | "chat" | "ended";
+type WsStatus = "connecting" | "connected" | "disconnected";
 
 /* ── Design tokens ────────────────────── */
 const BG        = "#0A1A13";
@@ -30,27 +48,31 @@ const inp =
 /* ── Broadcasting auth — routed through our axios instance so the httpOnly
    session cookie is sent automatically (withCredentials), instead of
    reading the (now-inaccessible) token out of document.cookie. ── */
-function broadcastAuthorizer(channel) {
+const broadcastAuthorizer: ChannelAuthorizerGenerator = (channel: Channel) => {
   return {
-    authorize: (socketId, callback) => {
+    authorize: (socketId: string, callback: ChannelAuthorizationCallback) => {
       api
         .post("/broadcasting/auth", { socket_id: socketId, channel_name: channel.name })
-        .then((res) => callback(false, res.data))
-        .catch((err) => callback(true, err));
+        .then((res) => callback(null, res.data))
+        .catch((err) => callback(err, null));
     },
   };
-}
+};
 
 /* ── Pusher singleton ─────────────────────────────────────────────────────── */
-let pusherInstance = null;
+let pusherInstance: Pusher | null = null;
 
-function getPusher() {
+function getPusher(): Pusher {
   if (!pusherInstance) {
     // Strip any protocol prefix so it works whether env var has it or not
     const rawHost = process.env.NEXT_PUBLIC_REVERB_HOST ?? "";
     const wsHost  = rawHost.replace(/^https?:\/\//, "").replace(/\/$/, "");
 
-    pusherInstance = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY, {
+    pusherInstance = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY ?? "", {
+      // `cluster` is typed as required by pusher-js's Options even for
+      // self-hosted (Reverb) setups where wsHost is used instead and
+      // cluster is never actually read — empty string is a safe no-op.
+      cluster: "",
       wsHost,
       wsPort:            Number(process.env.NEXT_PUBLIC_REVERB_PORT ?? 80),
       wssPort:           Number(process.env.NEXT_PUBLIC_REVERB_PORT ?? 443),
@@ -69,28 +91,33 @@ function getPusher() {
      onSwitchToAi  — callback to switch back to AI chat tab
      initialTicket — optional existing ticket to resume
 ══════════════════════════════════════════════════════════════════════════════ */
-export default function LiveChatView({ onSwitchToAi, initialTicket = null }) {
-  const { user }                    = useAuth();
-  const [phase, setPhase]           = useState(initialTicket ? "chat" : "request");
+interface LiveChatViewProps {
+  onSwitchToAi: () => void;
+  initialTicket?: (LiveChatTicket & { messages?: LiveChatMessage[] }) | null;
+}
+
+export default function LiveChatView({ onSwitchToAi, initialTicket = null }: LiveChatViewProps) {
+  const { user }                    = useAuth() ?? {};
+  const [phase, setPhase]           = useState<Phase>(initialTicket ? "chat" : "request");
   // phases: 'request' | 'queued' | 'chat' | 'ended'
 
-  const [ticket, setTicket]         = useState(initialTicket);
-  const [messages, setMessages]     = useState(initialTicket?.messages ?? []);
+  const [ticket, setTicket]         = useState<LiveChatTicket | null>(initialTicket);
+  const [messages, setMessages]     = useState<LiveChatMessage[]>(initialTicket?.messages ?? []);
   const [input, setInput]           = useState("");
-  const [file, setFile]             = useState(null);
+  const [file, setFile]             = useState<File | null>(null);
   const [sending, setSending]       = useState(false);
   const [agentTyping, setAgentTyping] = useState(false);
   const [userTyping, setUserTyping]  = useState(false);
-  const [queuePos, setQueuePos]     = useState(null);
-  const [agentName, setAgentName]   = useState(null);
-  const [wsStatus, setWsStatus]     = useState("connecting");
+  const [queuePos, setQueuePos]     = useState<number | null>(null);
+  const [agentName, setAgentName]   = useState<string | null>(null);
+  const [wsStatus, setWsStatus]     = useState<WsStatus>("connecting");
   // wsStatus: 'connecting' | 'connected' | 'disconnected'
 
-  const channelRef   = useRef(null);
-  const bottomRef    = useRef(null);
-  const fileRef      = useRef(null);
-  const typingTimer  = useRef(null);
-  const textareaRef  = useRef(null);
+  const channelRef   = useRef<Channel | null>(null);
+  const bottomRef    = useRef<HTMLDivElement | null>(null);
+  const fileRef      = useRef<HTMLInputElement | null>(null);
+  const typingTimer  = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const textareaRef  = useRef<HTMLTextAreaElement | null>(null);
 
   // ── Scroll to bottom on new messages ────────────────────────────────────────
   useEffect(() => {
@@ -102,12 +129,12 @@ export default function LiveChatView({ onSwitchToAi, initialTicket = null }) {
     const checkExistingSession = async () => {
       try {
         const res = await api.get("/support/tickets");
-        const tickets = res.data?.data?.data ?? res.data?.data ?? [];
+        const tickets: Record<string, unknown>[] = res.data?.data?.data ?? res.data?.data ?? [];
 
         // Find the most recent live chat ticket that's still active
-        const existing = tickets.find(t =>
+        const existing = tickets.find((t: Record<string, unknown>) =>
           t.chat_mode === "live" &&
-          ["open", "waiting"].includes(t.status)
+          ["open", "waiting"].includes(t.status as string)
         );
 
         if (!existing) return;
@@ -154,7 +181,7 @@ export default function LiveChatView({ onSwitchToAi, initialTicket = null }) {
     pusher.connection.bind("connecting",    () => setWsStatus("connecting"));
 
     // New message from agent
-    channel.bind("message.sent", (data) => {
+    channel.bind("message.sent", (data: Record<string, any>) => {
       if (data.sender_type !== "user") {
         setMessages(prev => [...prev, {
           id:          data.id,
@@ -167,14 +194,14 @@ export default function LiveChatView({ onSwitchToAi, initialTicket = null }) {
     });
 
     // Typing indicator
-    channel.bind("typing", (data) => {
+    channel.bind("typing", (data: Record<string, any>) => {
       if (data.sender === "agent") {
         setAgentTyping(data.is_typing);
       }
     });
 
     // Status changes (queued, agent_joined, ended)
-    channel.bind("status.changed", (data) => {
+    channel.bind("status.changed", (data: Record<string, any>) => {
       if (data.status === "queued") {
         setQueuePos(data.queue_pos);
         setPhase("queued");
@@ -212,7 +239,7 @@ export default function LiveChatView({ onSwitchToAi, initialTicket = null }) {
   // ── Request live agent ───────────────────────────────────────────────────────
   const [reqForm, setReqForm] = useState({ subject: "", category: "", message: "" });
 
-  const handleRequest = async (e) => {
+  const handleRequest = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSending(true);
     try {
@@ -237,7 +264,7 @@ export default function LiveChatView({ onSwitchToAi, initialTicket = null }) {
     if (fileRef.current) fileRef.current.value = "";
 
     // Optimistic UI
-    const optimistic = {
+    const optimistic: LiveChatMessage = {
       id:          Date.now(),
       body,
       sender_type: "user",
@@ -252,7 +279,7 @@ export default function LiveChatView({ onSwitchToAi, initialTicket = null }) {
       fd.append("body", body);
       if (file) fd.append("attachment", file);
 
-      const res = await api.post(`/support/live-chat/${ticket.id}/message`, fd, {
+      const res = await api.post(`/support/live-chat/${ticket!.id}/message`, fd, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
@@ -269,31 +296,31 @@ export default function LiveChatView({ onSwitchToAi, initialTicket = null }) {
   };
 
   // ── Typing indicator ─────────────────────────────────────────────────────────
-  const sendTyping = useCallback(async (isTyping) => {
+  const sendTyping = useCallback(async (isTyping: boolean) => {
     if (!ticket?.id) return;
     try {
       await api.post(`/support/live-chat/${ticket.id}/typing`, { is_typing: isTyping });
     } catch {}
   }, [ticket?.id]);
 
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
     if (!userTyping) {
       setUserTyping(true);
       sendTyping(true);
     }
-    clearTimeout(typingTimer.current);
+    if (typingTimer.current) clearTimeout(typingTimer.current);
     typingTimer.current = setTimeout(() => {
       setUserTyping(false);
       sendTyping(false);
     }, 1500);
   };
 
-  const handleKey = (e) => {
+  const handleKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
   };
 
-  const fmtTime = (d) => d
+  const fmtTime = (d?: string) => d
     ? new Date(d).toLocaleTimeString("en-NG", { hour: "2-digit", minute: "2-digit" })
     : "";
 
@@ -471,7 +498,7 @@ export default function LiveChatView({ onSwitchToAi, initialTicket = null }) {
           </div>
         )}
 
-        {messages.map((m, i) => {
+        {messages.map((m: LiveChatMessage, i: number) => {
           const isUser   = m.sender_type === "user";
           const isSystem = m.sender_type === "system";
 
@@ -555,7 +582,7 @@ export default function LiveChatView({ onSwitchToAi, initialTicket = null }) {
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs w-fit"
               style={{ background: SURFACE, border: `1px solid ${BORDER}`, color: MUTED }}>
               <Paperclip size={11} />
-              <span className="max-w-[160px] truncate">{file.name}</span>
+              <span className="max-w-40 truncate">{file.name}</span>
               <button onClick={() => { setFile(null); if (fileRef.current) fileRef.current.value = ""; }}
                 className="text-white/20 hover:text-red-400 transition-colors">
                 <X size={11} />
@@ -570,7 +597,7 @@ export default function LiveChatView({ onSwitchToAi, initialTicket = null }) {
               <Paperclip size={15} />
             </button>
             <input ref={fileRef} type="file" className="hidden" accept="image/*,.pdf"
-              onChange={e => setFile(e.target.files?.[0] || null)} />
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFile(e.target.files?.[0] || null)} />
 
             <textarea
               ref={textareaRef}
