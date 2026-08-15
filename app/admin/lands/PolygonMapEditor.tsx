@@ -1,26 +1,38 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, ChangeEvent } from "react";
 
 // ── Leaflet is loaded lazily inside useEffect to avoid SSR crashes.
 // Never import leaflet or leaflet-draw at the module top-level.
+// No @types/leaflet in package.json, so leaflet objects are typed `any`
+// at the dynamic-import boundary; everything else here is fully typed.
 
-export default function PolygonMapEditor({ polygon, onChange }) {
-  const mapRef = useRef(null);
-  const mapInstanceRef = useRef(null);
-  const drawnItemsRef = useRef(null);
-  const [inputMode, setInputMode] = useState("draw");
+export interface GeoJSONPolygon {
+  type: "Polygon";
+  coordinates: number[][][];
+}
+
+interface PolygonMapEditorProps {
+  polygon: GeoJSONPolygon | null;
+  onChange: (polygon: GeoJSONPolygon | null) => void;
+}
+
+type InputMode = "draw" | "manual" | "upload";
+
+export default function PolygonMapEditor({ polygon, onChange }: PolygonMapEditorProps) {
+  const mapRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<any>(null);
+  const drawnItemsRef = useRef<any>(null);
+  const [inputMode, setInputMode] = useState<InputMode>("draw");
   const [manualInput, setManualInput] = useState("");
-  const [pointsList, setPointsList] = useState([]);
+  const [pointsList, setPointsList] = useState<number[][]>([]);
   const [error, setError] = useState("");
 
   useEffect(() => {
     // Dynamically import leaflet only on the client, inside useEffect.
     // This is the correct pattern for any library that touches `window` at import time.
-    let map;
-
     const init = async () => {
-      const L = (await import("leaflet")).default;
+      const L = (await import("leaflet")).default as any;
       await import("leaflet-draw");
       await import("leaflet/dist/leaflet.css");
       await import("leaflet-draw/dist/leaflet.draw.css");
@@ -36,7 +48,7 @@ export default function PolygonMapEditor({ polygon, onChange }) {
       if (!mapRef.current || mapInstanceRef.current) return;
 
       const center = polygon ? getCenterFromPolygon(polygon) : [6.5244, 3.3792];
-      map = L.map(mapRef.current).setView(center, polygon ? 15 : 12);
+      const map = L.map(mapRef.current).setView(center, polygon ? 15 : 12);
       mapInstanceRef.current = map;
 
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -62,14 +74,14 @@ export default function PolygonMapEditor({ polygon, onChange }) {
       });
       map.addControl(drawControl);
 
-      map.on(L.Draw.Event.CREATED, (e) => {
+      map.on(L.Draw.Event.CREATED, (e: any) => {
         drawnItems.clearLayers();
         drawnItems.addLayer(e.layer);
         onChange(layerToGeoJSON(e.layer));
       });
 
-      map.on(L.Draw.Event.EDITED, (e) => {
-        e.layers.eachLayer((layer) => onChange(layerToGeoJSON(layer)));
+      map.on(L.Draw.Event.EDITED, (e: any) => {
+        e.layers.eachLayer((layer: any) => onChange(layerToGeoJSON(layer)));
       });
 
       map.on(L.Draw.Event.DELETED, () => onChange(null));
@@ -85,7 +97,8 @@ export default function PolygonMapEditor({ polygon, onChange }) {
         mapInstanceRef.current = null;
       }
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Re-draw when polygon prop changes externally (e.g. cleared by parent)
   useEffect(() => {
@@ -96,23 +109,23 @@ export default function PolygonMapEditor({ polygon, onChange }) {
 
   // ── Helpers ──────────────────────────────────────────────────────────────
 
-  const loadExistingPolygon = async (drawnItems, geoJsonPolygon, map) => {
+  const loadExistingPolygon = async (drawnItems: any, geoJsonPolygon: GeoJSONPolygon, map: any) => {
     if (!geoJsonPolygon?.coordinates?.[0]) return;
-    const L = (await import("leaflet")).default;
+    const L = (await import("leaflet")).default as any;
     const latLngs = geoJsonPolygon.coordinates[0].map(([lng, lat]) => [lat, lng]);
     const poly = L.polygon(latLngs, { color: "#C8873A", fillOpacity: 0.2 });
     drawnItems.addLayer(poly);
     map.fitBounds(poly.getBounds());
   };
 
-  const layerToGeoJSON = (layer) => {
+  const layerToGeoJSON = (layer: any): GeoJSONPolygon => {
     const latLngs = layer.getLatLngs()[0];
-    const coordinates = latLngs.map((ll) => [ll.lng, ll.lat]);
+    const coordinates = latLngs.map((ll: any) => [ll.lng, ll.lat]);
     coordinates.push(coordinates[0]);
     return { type: "Polygon", coordinates: [coordinates] };
   };
 
-  const getCenterFromPolygon = (p) => {
+  const getCenterFromPolygon = (p: GeoJSONPolygon | null): [number, number] => {
     if (!p?.coordinates?.[0]) return [6.5244, 3.3792];
     const coords = p.coordinates[0];
     return [
@@ -133,15 +146,15 @@ export default function PolygonMapEditor({ polygon, onChange }) {
       if (coords.length < 4) throw new Error("Polygon must have at least 4 points");
       const [first, last] = [coords[0], coords[coords.length - 1]];
       if (first[0] !== last[0] || first[1] !== last[1]) throw new Error("Polygon must be closed");
-      onChange(parsed);
+      onChange(parsed as GeoJSONPolygon);
       setManualInput("");
       setInputMode("draw");
     } catch (err) {
-      setError(err.message);
+      setError(err instanceof Error ? err.message : "Invalid GeoJSON");
     }
   };
 
-  const handleAddPoint = (lat, lng) => {
+  const handleAddPoint = (lat: string, lng: string) => {
     setError("");
     if (!lat || !lng) { setError("Both latitude and longitude are required"); return; }
     const latNum = parseFloat(lat), lngNum = parseFloat(lng);
@@ -156,15 +169,15 @@ export default function PolygonMapEditor({ polygon, onChange }) {
     setInputMode("draw");
   };
 
-  const handleFileUpload = (e) => {
+  const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
     setError("");
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
-        const json = JSON.parse(event.target.result);
-        let poly;
+        const json = JSON.parse(event.target?.result as string);
+        let poly: GeoJSONPolygon;
         if (json.type === "Feature" && json.geometry?.type === "Polygon") poly = json.geometry;
         else if (json.type === "Polygon") poly = json;
         else if (json.type === "FeatureCollection" && json.features?.[0]?.geometry?.type === "Polygon") poly = json.features[0].geometry;
@@ -172,13 +185,13 @@ export default function PolygonMapEditor({ polygon, onChange }) {
         onChange(poly);
         setInputMode("draw");
       } catch (err) {
-        setError("Invalid GeoJSON: " + err.message);
+        setError("Invalid GeoJSON: " + (err instanceof Error ? err.message : "unknown error"));
       }
     };
     reader.readAsText(file);
   };
 
-  const tabs = [
+  const tabs: { id: InputMode; label: string }[] = [
     { id: "draw",   label: "Draw on Map" },
     { id: "manual", label: "Paste JSON"  },
     { id: "upload", label: "Upload File" },
@@ -307,7 +320,7 @@ export default function PolygonMapEditor({ polygon, onChange }) {
   );
 }
 
-function PointInput({ onAdd }) {
+function PointInput({ onAdd }: { onAdd: (lat: string, lng: string) => void }) {
   const [lat, setLat] = useState("");
   const [lng, setLng] = useState("");
 

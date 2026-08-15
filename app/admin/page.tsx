@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { getAdminDashboardStats, type AdminDashboardStats } from "../../services/adminService";
 import toast from "react-hot-toast";
+import { PageSpinner } from "../components/Spinner";
 import {
   MapPin, ShieldCheck, Gift, Wallet, FileText,
   ArrowRight, TrendingUp, Clock, CheckCircle,
@@ -42,15 +43,7 @@ export default function AdminDashboard() {
   const koboToNaira = (kobo: number) => (kobo / 100).toLocaleString();
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-[#0D1F1A] flex items-center justify-center"
-        style={{ fontFamily: "var(--font-dm-sans), 'Helvetica Neue', sans-serif" }}>
-        <div className="text-center">
-          <div className="w-10 h-10 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-white/60 text-sm">Loading dashboard...</p>
-        </div>
-      </div>
-    );
+    return <PageSpinner color="amber" label="Loading dashboard..." fullScreen />;
   }
 
   interface StatCardData {
@@ -537,4 +530,4 @@ function ManagementRow({ href, icon, title, subtitle, accent, highlight }: Manag
       <ArrowRight size={14} className="text-white/20 group-hover:text-white/50 group-hover:translate-x-1 transition-all shrink-0" />
     </Link>
   );
-}
+} ``
