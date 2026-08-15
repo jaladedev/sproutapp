@@ -112,7 +112,10 @@ function JsonLd() {
 // ─── ISR fetch ────────────────────────────────────────────────────────────────
 async function getLands(): Promise<FeaturedLand[]> {
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/land`, { next: { revalidate: 3600 } });
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/land`, {
+      next: { revalidate: 3600 },
+      signal: AbortSignal.timeout(8000),
+    });
     if (!res.ok) return [];
     const json = await res.json();
     const data = json?.data || json || [];

@@ -5,7 +5,10 @@ const API_URL  = process.env.NEXT_PUBLIC_API_URL;
 
 async function getLandSlugs(): Promise<string[]> {
   try {
-    const res = await fetch(`${API_URL}/land`, { next: { revalidate: 3600 } });
+    const res = await fetch(`${API_URL}/land`, {
+      next: { revalidate: 3600 },
+      signal: AbortSignal.timeout(8000),
+    });
     if (!res.ok) return [];
     const json = await res.json();
     const data = json?.data ?? json ?? [];

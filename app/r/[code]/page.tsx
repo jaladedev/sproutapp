@@ -15,7 +15,7 @@ export async function generateMetadata({ params }: { params: Promise<{ code?: st
   try {
     const res = await fetch(
       `${process.env.NEXT_PUBLIC_API_URL}/referrals/info/${code}`,
-      { next: { revalidate: 3600 } }
+      { next: { revalidate: 3600 }, signal: AbortSignal.timeout(8000) }
     );
     if (res.ok) {
       const json = await res.json();
