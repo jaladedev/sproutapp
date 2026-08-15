@@ -2,15 +2,17 @@
 
 import dynamic from "next/dynamic";
 import { compressImage } from "../../../../../utils/compressImage";
-import { useEffect, useState } from "react";
+import { useEffect, useState, ChangeEvent, FormEvent, ReactNode, InputHTMLAttributes, SelectHTMLAttributes } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { getAdminLand, updateAdminLand, updateLandPrice } from "../../../../../services/landService";
+import { getAdminLand, updateAdminLand, updateLandPrice, Land } from "../../../../../services/landService";
 import toast from "react-hot-toast";
 import {
   MapPin, FileText, Layers, DollarSign, ArrowLeft, Save, X,
   Building2, ShieldCheck, Activity, Zap, BarChart3, Plus, Trash2,
 } from "lucide-react";
+import { useConfirm } from "../../../../../stores/useUIStore";
+import type { GeoJSONPolygon } from "../../PolygonMapEditor";
 
 const MONTHS = [
   "January","February","March","April","May","June",
@@ -21,9 +23,48 @@ const PolygonMapEditor = dynamic(() => import("../../PolygonMapEditor"), { ssr: 
 const CURRENT_YEAR = new Date().getFullYear();
 const YEARS = Array.from({ length: CURRENT_YEAR - 1900 + 2 }, (_, i) => 1900 + i).reverse();
 
+// ─── Types ──────────────────────────────────────────────────────────────────
+
+interface CommLineRow { network: string; strength: string; }
+interface ValuationHistoryRow { year: number; month: number; value: string; }
+interface NeighbouringTransactionRow { plot_size: string; year: number; value: string; distance_m: string; }
+
+interface LandDetail {
+  plot_identifier: string; tenure: string; lga: string; city: string; state: string;
+  current_owner: string; dispute_status: string; taxation: string;
+  allocation_records: string[]; land_titles: string[]; historical_transactions: string[];
+  preexisting_landuse: string; current_landuse: string; proposed_landuse: string;
+  zoning: string; dev_control: string;
+  slope: string; elevation: string; soil_type: string; bearing_capacity: string;
+  hydrology: string; vegetation: string;
+  road_type: string; road_category: string; road_condition: string;
+  electricity: string; water_supply: string; sewage: string; other_facilities: string;
+  comm_lines: CommLineRow[];
+  neighbouring_transactions: NeighbouringTransactionRow[];
+  overall_value: string; current_land_value: string; rental_pm: string; rental_pa: string;
+  pre_launch_price_kobo: string; launch_price_kobo: string;
+  valuation_history: ValuationHistoryRow[];
+}
+
+type PlainDetailField = Exclude<
+  keyof LandDetail,
+  "allocation_records" | "land_titles" | "historical_transactions" | "comm_lines" | "neighbouring_transactions" | "valuation_history"
+>;
+
+interface LandForm {
+  title: string; location: string; description: string; size: string;
+  total_units: string; is_available: boolean; polygon: GeoJSONPolygon | null; lat: string; lng: string;
+}
+
+interface LandImage {
+  id: string | number;
+  image_url: string;
+  [key: string]: unknown;
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function emptyDetail() {
+function emptyDetail(): LandDetail {
   return {
     plot_identifier: "", tenure: "", lga: "", city: "", state: "",
     current_owner: "", dispute_status: "", taxation: "",
@@ -42,24 +83,24 @@ function emptyDetail() {
   };
 }
 
-function arrayField(land, key) {
+function arrayField(land: Land, key: string): unknown[] {
   const v = land[key];
   if (!v) return [];
   if (Array.isArray(v)) return v;
-  try { return JSON.parse(v); } catch { return []; }
+  try { return JSON.parse(v as string); } catch { return []; }
 }
 
 /**
  * Extract a GeoJSON Polygon from the API response.
  * Priority: geometry_geojson → geometry
  */
-function extractPolygon(land) {
+function extractPolygon(land: Land): GeoJSONPolygon | null {
   const candidates = [land.geometry_geojson, land.geometry];
   for (const geo of candidates) {
     if (!geo) continue;
     try {
       const parsed = typeof geo === "string" ? JSON.parse(geo) : geo;
-      if (parsed?.type === "Polygon") return parsed;
+      if ((parsed as GeoJSONPolygon)?.type === "Polygon") return parsed as GeoJSONPolygon;
     } catch {
       // not valid JSON / not a polygon — try next candidate
     }
@@ -72,7 +113,7 @@ function extractPolygon(land) {
  * - geometry     → JSON.stringify
  * - array fields → JSON.stringify
  */
-function buildFormData(payload, newImages = [], removeImages = []) {
+function buildFormData(payload: Record<string, unknown>, newImages: File[] = [], removeImages: (string | number)[] = []): FormData {
   const ARRAY_KEYS = [
     "allocation_records", "land_titles", "historical_transactions",
     "comm_lines", "valuation_history", "neighbouring_transactions",
@@ -87,19 +128,19 @@ function buildFormData(payload, newImages = [], removeImages = []) {
     } else if (ARRAY_KEYS.includes(k)) {
       fd.append(k, JSON.stringify(v ?? []));
     } else {
-      fd.append(k, v ?? "");
+      fd.append(k, (v ?? "") as string);
     }
   });
 
   newImages.forEach((img) => fd.append("images[]", img));
-  removeImages.forEach((imgId) => fd.append("remove_images[]", imgId));
+  removeImages.forEach((imgId) => fd.append("remove_images[]", String(imgId)));
 
   return fd;
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function FormSection({ title, icon, children }) {
+function FormSection({ title, icon, children }: { title: string; icon: ReactNode; children: ReactNode }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
       <div className="flex items-center gap-2.5 px-5 py-4 border-b border-white/5 bg-white/5">
@@ -111,7 +152,7 @@ function FormSection({ title, icon, children }) {
   );
 }
 
-function FormField({ label, children }) {
+function FormField({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
       <label className="block text-xs font-bold uppercase tracking-widest text-white/55 mb-2">{label}</label>
@@ -120,7 +161,7 @@ function FormField({ label, children }) {
   );
 }
 
-function DarkInput({ className = "", ...props }) {
+function DarkInput({ className = "", ...props }: InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
       className={`w-full bg-white/5 border border-white/10 hover:border-white/20 focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 text-white placeholder-white/20 px-4 py-3 rounded-xl text-sm outline-none transition-all ${className}`}
@@ -129,7 +170,7 @@ function DarkInput({ className = "", ...props }) {
   );
 }
 
-function DarkSelect({ className = "", children, ...props }) {
+function DarkSelect({ className = "", children, ...props }: SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <select
       className={`w-full bg-[#0D1F1A] border border-white/10 hover:border-white/20 focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 text-white px-4 py-3 rounded-xl text-sm outline-none transition-all ${className}`}
@@ -140,10 +181,10 @@ function DarkSelect({ className = "", children, ...props }) {
   );
 }
 
-function StringListEditor({ value = [], onChange, placeholder }) {
+function StringListEditor({ value = [], onChange, placeholder }: { value: string[]; onChange: (v: string[]) => void; placeholder?: string }) {
   const add    = () => onChange([...value, ""]);
-  const update = (i, v) => { const a = [...value]; a[i] = v; onChange(a); };
-  const remove = (i) => onChange(value.filter((_, idx) => idx !== i));
+  const update = (i: number, v: string) => { const a = [...value]; a[i] = v; onChange(a); };
+  const remove = (i: number) => onChange(value.filter((_, idx) => idx !== i));
   return (
     <div className="space-y-2">
       {value.map((item, i) => (
@@ -163,11 +204,11 @@ function StringListEditor({ value = [], onChange, placeholder }) {
   );
 }
 
-function CommLinesEditor({ value = [], onChange }) {
+function CommLinesEditor({ value = [], onChange }: { value: CommLineRow[]; onChange: (v: CommLineRow[]) => void }) {
   const NETWORKS = ["MTN", "GLO", "Airtel", "Etisalat"];
   const add    = () => onChange([...value, { network: "MTN", strength: "" }]);
-  const update = (i, field, v) => { const a = [...value]; a[i] = { ...a[i], [field]: v }; onChange(a); };
-  const remove = (i) => onChange(value.filter((_, idx) => idx !== i));
+  const update = (i: number, field: keyof CommLineRow, v: string) => { const a = [...value]; a[i] = { ...a[i], [field]: v }; onChange(a); };
+  const remove = (i: number) => onChange(value.filter((_, idx) => idx !== i));
   return (
     <div className="space-y-2">
       {value.map((row, i) => (
@@ -190,10 +231,10 @@ function CommLinesEditor({ value = [], onChange }) {
   );
 }
 
-function ValuationHistoryEditor({ value = [], onChange }) {
+function ValuationHistoryEditor({ value = [], onChange }: { value: ValuationHistoryRow[]; onChange: (v: ValuationHistoryRow[]) => void }) {
   const add    = () => onChange([...value, { year: CURRENT_YEAR, month: 1, value: "" }]);
-  const update = (i, field, v) => { const a = [...value]; a[i] = { ...a[i], [field]: v }; onChange(a); };
-  const remove = (i) => onChange(value.filter((_, idx) => idx !== i));
+  const update = (i: number, field: keyof ValuationHistoryRow, v: string | number) => { const a = [...value]; a[i] = { ...a[i], [field]: v }; onChange(a); };
+  const remove = (i: number) => onChange(value.filter((_, idx) => idx !== i));
 
   const sorted = [...value]
     .map((r, originalIdx) => ({ ...r, originalIdx }))
@@ -239,11 +280,11 @@ function ValuationHistoryEditor({ value = [], onChange }) {
  * Each row: { plot_size, year, value, distance_m }
  * Serialised as array of objects — the controller validates neighbouring_transactions.*.plot_size etc.
  */
-function NeighbouringTransactionsEditor({ value = [], onChange }) {
-  const emptyRow = () => ({ plot_size: "", year: CURRENT_YEAR, value: "", distance_m: "" });
+function NeighbouringTransactionsEditor({ value = [], onChange }: { value: NeighbouringTransactionRow[]; onChange: (v: NeighbouringTransactionRow[]) => void }) {
+  const emptyRow = (): NeighbouringTransactionRow => ({ plot_size: "", year: CURRENT_YEAR, value: "", distance_m: "" });
   const add    = () => onChange([...value, emptyRow()]);
-  const update = (i, field, v) => { const a = [...value]; a[i] = { ...a[i], [field]: v }; onChange(a); };
-  const remove = (i) => onChange(value.filter((_, idx) => idx !== i));
+  const update = (i: number, field: keyof NeighbouringTransactionRow, v: string | number) => { const a = [...value]; a[i] = { ...a[i], [field]: v }; onChange(a); };
+  const remove = (i: number) => onChange(value.filter((_, idx) => idx !== i));
 
   return (
     <div className="space-y-2">
@@ -299,22 +340,23 @@ function NeighbouringTransactionsEditor({ value = [], onChange }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function EditLand() {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const router  = useRouter();
+  const confirm = useConfirm();
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<LandForm>({
     title: "", location: "", description: "", size: "",
     total_units: "", is_available: true, polygon: null, lat: "", lng: "",
   });
-  const [detail, setDetail] = useState(emptyDetail());
+  const [detail, setDetail] = useState<LandDetail>(emptyDetail());
 
   const [currentPriceKobo, setCurrentPriceKobo]   = useState(""); // loaded value
   const [priceKobo, setPriceKobo]                 = useState(""); // editable value
 
-  const [existingImages, setExistingImages]     = useState([]);
-  const [newImages, setNewImages]               = useState([]);
-  const [newImagePreviews, setNewImagePreviews] = useState([]);
-  const [removeImages, setRemoveImages]         = useState([]);
+  const [existingImages, setExistingImages]     = useState<LandImage[]>([]);
+  const [newImages, setNewImages]               = useState<File[]>([]);
+  const [newImagePreviews, setNewImagePreviews] = useState<string[]>([]);
+  const [removeImages, setRemoveImages]         = useState<(string | number)[]>([]);
   const [loading, setLoading]         = useState(false);
   const [compressing, setCompressing] = useState(false);
   const [fetching, setFetching]       = useState(true);
@@ -334,32 +376,33 @@ export default function EditLand() {
         setUsePolygon(hasPolygon);
 
         setForm({
-          title:        land.title        || "",
-          location:     land.location     || "",
-          description:  land.description  || "",
+          title:        (land.title as string)        || "",
+          location:     (land.location as string)     || "",
+          description:  (land.description as string)  || "",
           size:         land.size?.toString()        || "",
           total_units:  land.total_units?.toString() || "",
           lat:  hasPolygon ? "" : (land.lat?.toString() || ""),
           lng:  hasPolygon ? "" : (land.lng?.toString() || ""),
-          is_available: land.is_available ?? true,
+          is_available: (land.is_available as boolean) ?? true,
           polygon,
         });
 
         // Price — prefer latestPrice relationship, fall back to appended accessor
+        const latestPrice = land.latest_price as { price_per_unit_kobo?: number } | undefined;
         const loadedPrice = (
-          land.latest_price?.price_per_unit_kobo ??
-          land.current_price_per_unit_kobo ??
+          latestPrice?.price_per_unit_kobo ??
+          (land.current_price_per_unit_kobo as number) ??
           0
         ).toString();
         setCurrentPriceKobo(loadedPrice);
         setPriceKobo(loadedPrice);
 
-        setSoldUnits(land.units_sold ?? (land.total_units - land.available_units));
-        setExistingImages(land.images || []);
+        setSoldUnits((land.units_sold as number) ?? ((land.total_units as number) - (land.available_units as number)));
+        setExistingImages((land.images as LandImage[]) || []);
 
         // Normalise valuation history from land.valuations relationship
-        const rawHistory = land.valuations ?? arrayField(land, "valuation_history");
-        const valuationHistory = rawHistory.map((r) =>
+        const rawHistory = (land.valuations as unknown[]) ?? arrayField(land, "valuation_history");
+        const valuationHistory: ValuationHistoryRow[] = rawHistory.map((r: any) =>
           Array.isArray(r)
             ? { year: r[0], month: r[1], value: r[2] }
             : { year: Number(r.year), month: Number(r.month), value: r.value }
@@ -367,7 +410,7 @@ export default function EditLand() {
 
         // Normalise comm_lines (stored as [[network, strength], ...])
         const rawComm = arrayField(land, "comm_lines");
-        const commLines = rawComm.map((r) =>
+        const commLines: CommLineRow[] = rawComm.map((r: any) =>
           Array.isArray(r)
             ? { network: r[0] ?? "", strength: r[1] ?? "" }
             : { network: r.network ?? "", strength: r.strength ?? "" }
@@ -375,7 +418,7 @@ export default function EditLand() {
 
         // Normalise neighbouring_transactions (array of objects)
         const rawNeighbouring = arrayField(land, "neighbouring_transactions");
-        const neighbouringTransactions = rawNeighbouring.map((r) =>
+        const neighbouringTransactions: NeighbouringTransactionRow[] = rawNeighbouring.map((r: any) =>
           Array.isArray(r)
             ? { plot_size: r[0] ?? "", year: r[1] ?? CURRENT_YEAR, value: r[2] ?? "", distance_m: r[3] ?? "" }
             : {
@@ -387,35 +430,35 @@ export default function EditLand() {
         );
 
         setDetail({
-          plot_identifier:         land.plot_identifier     || "",
-          tenure:                  land.tenure              || "",
-          lga:                     land.lga                 || "",
-          city:                    land.city                || "",
-          state:                   land.state               || "",
-          current_owner:           land.current_owner       || "",
-          dispute_status:          land.dispute_status      || "",
-          taxation:                land.taxation            || "",
-          allocation_records:      arrayField(land, "allocation_records"),
-          land_titles:             arrayField(land, "land_titles"),
-          historical_transactions: arrayField(land, "historical_transactions"),
-          preexisting_landuse:     land.preexisting_landuse || "",
-          current_landuse:         land.current_landuse     || "",
-          proposed_landuse:        land.proposed_landuse    || "",
-          zoning:                  land.zoning              || "",
-          dev_control:             land.dev_control         || "",
+          plot_identifier:         (land.plot_identifier as string)     || "",
+          tenure:                  (land.tenure as string)              || "",
+          lga:                     (land.lga as string)                 || "",
+          city:                    (land.city as string)                || "",
+          state:                   (land.state as string)               || "",
+          current_owner:           (land.current_owner as string)       || "",
+          dispute_status:          (land.dispute_status as string)      || "",
+          taxation:                (land.taxation as string)            || "",
+          allocation_records:      arrayField(land, "allocation_records") as string[],
+          land_titles:             arrayField(land, "land_titles") as string[],
+          historical_transactions: arrayField(land, "historical_transactions") as string[],
+          preexisting_landuse:     (land.preexisting_landuse as string) || "",
+          current_landuse:         (land.current_landuse as string)     || "",
+          proposed_landuse:        (land.proposed_landuse as string)    || "",
+          zoning:                  (land.zoning as string)              || "",
+          dev_control:             (land.dev_control as string)         || "",
           slope:                   land.slope?.toString()   || "",
           elevation:               land.elevation?.toString() || "",
-          soil_type:               land.soil_type           || "",
-          bearing_capacity:        land.bearing_capacity    || "",
-          hydrology:               land.hydrology           || "",
-          vegetation:              land.vegetation          || "",
-          road_type:               land.road_type           || "",
-          road_category:           land.road_category       || "",
-          road_condition:          land.road_condition      || "",
-          electricity:             land.electricity         || "",
-          water_supply:            land.water_supply        || "",
-          sewage:                  land.sewage              || "",
-          other_facilities:        land.other_facilities    || "",
+          soil_type:               (land.soil_type as string)           || "",
+          bearing_capacity:        (land.bearing_capacity as string)    || "",
+          hydrology:               (land.hydrology as string)           || "",
+          vegetation:              (land.vegetation as string)          || "",
+          road_type:               (land.road_type as string)           || "",
+          road_category:           (land.road_category as string)       || "",
+          road_condition:          (land.road_condition as string)      || "",
+          electricity:             (land.electricity as string)         || "",
+          water_supply:            (land.water_supply as string)        || "",
+          sewage:                  (land.sewage as string)              || "",
+          other_facilities:        (land.other_facilities as string)    || "",
           comm_lines:              commLines,
           neighbouring_transactions: neighbouringTransactions,
           overall_value:           land.overall_value?.toString()      || "",
@@ -436,8 +479,9 @@ export default function EditLand() {
   }, [id]);
 
   // ── Handlers ───────────────────────────────────────────────────────────────
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value, type } = e.target;
+    const checked = (e.target as HTMLInputElement).checked;
     if (["size", "total_units", "lat", "lng"].includes(name) && !/^-?\d*\.?\d*$/.test(value)) return;
     if (name === "total_units" && value !== "" && parseInt(value) < soldUnits) {
       toast.error(`Cannot be less than sold units (${soldUnits})`);
@@ -446,26 +490,26 @@ export default function EditLand() {
     setForm({ ...form, [name]: type === "checkbox" ? checked : value });
   };
 
-  const handlePriceChange = (e) => {
+  const handlePriceChange = (e: ChangeEvent<HTMLInputElement>) => {
     const v = e.target.value;
     if (!/^\d*$/.test(v)) return;
     setPriceKobo(v);
   };
 
-  const setDetailField = (name, value) => setDetail((d) => ({ ...d, [name]: value }));
+  const setDetailField = (name: PlainDetailField, value: string) => setDetail((d) => ({ ...d, [name]: value }));
 
-  const handlePolygonChange = (polygon) => setForm((f) => ({ ...f, polygon }));
+  const handlePolygonChange = (polygon: GeoJSONPolygon | null) => setForm((f) => ({ ...f, polygon }));
 
-  const toggleCoordinateMode = () => {
-    if (!usePolygon && (form.lat || form.lng) && !window.confirm("Switching to polygon will clear lat/lng. Continue?")) return;
-    if (usePolygon && form.polygon && !window.confirm("Switching to point will clear polygon. Continue?")) return;
+  const toggleCoordinateMode = async () => {
+    if (!usePolygon && (form.lat || form.lng) && !(await confirm({ message: "Switching to polygon will clear lat/lng. Continue?" }))) return;
+    if (usePolygon && form.polygon && !(await confirm({ message: "Switching to point will clear polygon. Continue?" }))) return;
     if (!usePolygon) setForm((f) => ({ ...f, lat: "", lng: "", polygon: null }));
     else             setForm((f) => ({ ...f, polygon: null }));
     setUsePolygon((v) => !v);
   };
 
-  const handleImageChange = async (e) => {
-    const files = [...e.target.files];
+  const handleImageChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const files = [...(e.target.files ?? [])];
     if (!files.length) return;
     setCompressing(true);
     try {
@@ -479,17 +523,17 @@ export default function EditLand() {
     }
   };
 
-  const removeExistingImage = (imgId) => {
+  const removeExistingImage = (imgId: string | number) => {
     setRemoveImages((prev) => [...prev, imgId]);
     setExistingImages((prev) => prev.filter((img) => img.id !== imgId));
   };
 
-  const removeNewImage = (i) => {
+  const removeNewImage = (i: number) => {
     setNewImages((prev) => prev.filter((_, idx) => idx !== i));
     setNewImagePreviews((prev) => prev.filter((_, idx) => idx !== i));
   };
 
-  const buildGeometry = () => {
+  const buildGeometry = (): { type: string; coordinates: unknown } | null => {
     if (usePolygon && form.polygon)
       return { type: "Polygon", coordinates: form.polygon.coordinates };
     if (!usePolygon && form.lat && form.lng)
@@ -498,7 +542,7 @@ export default function EditLand() {
   };
 
   // ── Submit ─────────────────────────────────────────────────────────────────
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (usePolygon && !form.polygon)             return toast.error("Please draw a polygon on the map");
     if (!usePolygon && (!form.lat || !form.lng)) return toast.error("Please provide lat and lng");
@@ -587,9 +631,9 @@ export default function EditLand() {
 
       toast.success("Land updated successfully");
       router.push("/admin/lands");
-    } catch (err) {
+    } catch (err: any) {
       if (err.response?.data?.errors) {
-        Object.values(err.response.data.errors).flat().forEach((e) => toast.error(e));
+        Object.values(err.response.data.errors as Record<string, string[]>).flat().forEach((e) => toast.error(e));
       } else {
         toast.error(err.response?.data?.message || "Update failed");
       }
@@ -682,10 +726,10 @@ export default function EditLand() {
                 <span className="normal-case font-normal text-white/15 ml-2">— display only, does not affect purchase price</span>
               </p>
               <div className="space-y-3">
-                {[
+                {([
                   { key: "pre_launch_price_kobo",  label: "Pre-Launch Price"  },
                   { key: "launch_price_kobo",      label: "Launch Price"      },
-                ].map(({ key, label }) => (
+                ] as { key: PlainDetailField; label: string }[]).map(({ key, label }) => (
                   <div key={key} className="grid grid-cols-[140px_1fr] gap-3 items-center">
                     <span className="text-xs text-white/60">{label}</span>
                     <div>
@@ -742,7 +786,7 @@ export default function EditLand() {
             )}
             {usePolygon && form.polygon && (
               <p className="text-xs text-emerald-400 mt-2">
-                ✓ Polygon: {form.polygon.coordinates?.[0]?.length - 1 ?? 0} points
+                ✓ Polygon: {(form.polygon.coordinates?.[0]?.length ?? 1) - 1} points
               </p>
             )}
           </FormSection>
@@ -761,7 +805,7 @@ export default function EditLand() {
               <FormField label="Tenure"><DarkInput value={detail.tenure} onChange={(e) => setDetailField("tenure", e.target.value)} placeholder="e.g. Leasehold, Freehold" /></FormField>
             </div>
             <FormField label="Allocation Records">
-              <StringListEditor value={detail.allocation_records} onChange={(v) => setDetailField("allocation_records", v)} placeholder="e.g. Allocation ref #001" />
+              <StringListEditor value={detail.allocation_records} onChange={(v) => setDetail((d) => ({ ...d, allocation_records: v }))} placeholder="e.g. Allocation ref #001" />
             </FormField>
           </FormSection>
 
@@ -775,10 +819,10 @@ export default function EditLand() {
               <FormField label="Taxation"><DarkInput value={detail.taxation} onChange={(e) => setDetailField("taxation", e.target.value)} placeholder="Nil / description" /></FormField>
             </div>
             <FormField label="Land Titles / Deeds">
-              <StringListEditor value={detail.land_titles} onChange={(v) => setDetailField("land_titles", v)} placeholder="e.g. Certificate of Occupancy" />
+              <StringListEditor value={detail.land_titles} onChange={(v) => setDetail((d) => ({ ...d, land_titles: v }))} placeholder="e.g. Certificate of Occupancy" />
             </FormField>
             <FormField label="Historical Transactions">
-              <StringListEditor value={detail.historical_transactions} onChange={(v) => setDetailField("historical_transactions", v)} placeholder="e.g. Sold to XYZ in 2010" />
+              <StringListEditor value={detail.historical_transactions} onChange={(v) => setDetail((d) => ({ ...d, historical_transactions: v }))} placeholder="e.g. Sold to XYZ in 2010" />
             </FormField>
           </FormSection>
 
@@ -829,7 +873,7 @@ export default function EditLand() {
               <FormField label="Other Facilities"><DarkInput value={detail.other_facilities} onChange={(e) => setDetailField("other_facilities", e.target.value)} placeholder="e.g. Street lighting" /></FormField>
             </div>
             <FormField label="Communication Lines">
-              <CommLinesEditor value={detail.comm_lines} onChange={(v) => setDetailField("comm_lines", v)} />
+              <CommLinesEditor value={detail.comm_lines} onChange={(v) => setDetail((d) => ({ ...d, comm_lines: v }))} />
             </FormField>
           </FormSection>
 
@@ -856,7 +900,7 @@ export default function EditLand() {
                 Valuation History
                 <span className="normal-case font-normal text-white/20 ml-2">— newest entry auto-updates Current Land Value</span>
               </p>
-              <ValuationHistoryEditor value={detail.valuation_history} onChange={(v) => setDetailField("valuation_history", v)} />
+              <ValuationHistoryEditor value={detail.valuation_history} onChange={(v) => setDetail((d) => ({ ...d, valuation_history: v }))} />
             </div>
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white/25 mb-3 pt-2">
@@ -865,7 +909,7 @@ export default function EditLand() {
               </p>
               <NeighbouringTransactionsEditor
                 value={detail.neighbouring_transactions}
-                onChange={(v) => setDetailField("neighbouring_transactions", v)}
+                onChange={(v) => setDetail((d) => ({ ...d, neighbouring_transactions: v }))}
               />
             </div>
           </FormSection>

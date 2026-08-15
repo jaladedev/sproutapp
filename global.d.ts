@@ -18,3 +18,10 @@ declare module "*.png";
 declare module "*.jpg";
 declare module "*.jpeg";
 declare module "*.webp";
+
+// No @types/leaflet or @types/leaflet-draw in package.json — both are only
+// ever dynamically imported client-side (see PolygonMapEditor.tsx) and used
+// through `any`-typed handles at that boundary, so a bare ambient module
+// declaration is sufficient here rather than pulling in a types package.
+declare module "leaflet";
+declare module "leaflet-draw";
