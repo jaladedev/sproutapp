@@ -15,7 +15,7 @@ export const NAV_HIDDEN_ROUTES = [
 /**
  * Routes reachable without an auth token — guest/marketing pages and
  * standalone auth flows. Used to decide:
- *   - proxy.js: which routes bypass the "must be logged in" redirect
+ *   - proxy.ts: which routes bypass the "must be logged in" redirect
  *   - utils/api.js: which pages should never bounce to /login on a 401
  *   - context/AuthContext.jsx: same, for the initial /me check on mount
  *

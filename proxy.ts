@@ -1,9 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { PUBLIC_ROUTES, isPublicRoute } from "./utils/routes";
 
 const ADMIN_ROUTES = ["/admin"];
 
-export function proxy(request) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const token    = request.cookies.get("auth_token")?.value;
@@ -13,10 +13,14 @@ export function proxy(request) {
 
   const isPublic = isPublicRoute(normalizedPath, PUBLIC_ROUTES);
 
-  const isAdminRoute = ADMIN_ROUTES.some((route) =>
-    normalizedPath.startsWith(route)
+  // Exact match or "<route>/..." — not a bare prefix match, so a future
+  // sibling route like "/admin-something" or "/administrator" can never
+  // false-positive as an admin route. No such route exists today, but this
+  // is the correct matching semantics regardless.
+  const isAdminRoute = ADMIN_ROUTES.some(
+    (route) => normalizedPath === route || normalizedPath.startsWith(`${route}/`)
   );
-  
+
   //waitlist redirect
   // if (!token && pathname === "/register") {
   //   return NextResponse.redirect(new URL("/waitlist", request.url));
@@ -35,7 +39,7 @@ export function proxy(request) {
     loginUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(loginUrl);
   }
-  
+
   // Admin route without admin role
   if (isAdminRoute && token && userRole !== "admin") {
     return NextResponse.redirect(new URL("/dashboard", request.url));

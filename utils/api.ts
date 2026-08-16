@@ -118,12 +118,8 @@ export function refreshAccessToken(): Promise<number | null> {
 
   isRefreshing = true;
 
-  return axios
-    .post(
-      `${process.env.NEXT_PUBLIC_API_URL}/refresh`,
-      {},
-      { withCredentials: true, timeout: 10_000 }
-    )
+  return api
+    .post("/refresh", {}, { timeout: 10_000 })
     .then((res) => {
       const expiresAt: number | null = res.data?.expires_at ?? null;
       processQueue(null);

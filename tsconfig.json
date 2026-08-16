@@ -40,7 +40,7 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
-, "app/wallet/page.tsx"  ],
+, "app/wallet/page.tsx", "proxy.ts"  ],
   "exclude": [
     "node_modules"
   ]

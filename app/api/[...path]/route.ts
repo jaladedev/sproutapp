@@ -1,17 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { proxyToBackend } from "../../../utils/apiProxy";
+import { proxyToBackend } from "@/utils/apiProxy";
 
 // ─────────────────────────────────────────────────────────────────────────
 //
 // Why this exists: the frontend and API live on different domains
 // (vercel.app vs onrender.com). A browser calling the API directly is a
 // genuinely cross-site request — cookies set by the API can never be read
-// by this app's own JS (document.cookie) or by proxy.js's server-side
+// by this app's own JS (document.cookie) or by proxy.ts's server-side
 // `request.cookies`, no matter what SameSite/Secure settings are used,
 // because cookie storage is scoped per-domain, not per-SameSite-policy.
 // Routing every API call through this same-origin proxy makes the cookie
 // first-party to sproutapp-eta.vercel.app again, restoring the original
-// auth design (proxy.js route guard + isAuthed() cookie check) without
+// auth design (proxy.ts route guard + isAuthed() cookie check) without
 // weakening SameSite to `None`.
 //
 // See utils/apiProxy.ts for the actual forwarding logic (shared with the

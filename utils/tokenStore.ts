@@ -36,7 +36,7 @@ function erase(name: string): void {
  *     Laravel Sanctum's SPA cookie mode), since JS can no longer attach a
  *     Bearer header — see utils/api.js's `withCredentials: true`.
  *
- * `proxy.js` (Next.js middleware) is unaffected: it reads cookies
+ * `proxy.ts` (Next.js middleware) is unaffected: it reads cookies
  * server-side via `request.cookies`, which works the same whether or not
  * the cookie is httpOnly.
  */

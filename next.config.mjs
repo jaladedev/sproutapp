@@ -1,3 +1,11 @@
+const R2_HOSTNAME = (() => {
+  try {
+    return new URL(process.env.NEXT_PUBLIC_R2_URL || '').hostname;
+  } catch {
+    return 'pub-614b1fbd5c4f46ca8e95d0ccbde016c9.r2.dev';
+  }
+})();
+
 const nextConfig = {
   experimental: {
     optimizeCss: true,
@@ -8,7 +16,7 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'pub-614b1fbd5c4f46ca8e95d0ccbde016c9.r2.dev',
+        hostname: R2_HOSTNAME,
         pathname: '/lands/**',
       },
     ],
