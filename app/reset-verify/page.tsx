@@ -183,7 +183,7 @@ export default function ResetVerify() {
           {/* Resend & back */}
           <div className="mt-6 space-y-3 text-center">
             <p className="text-sm text-white/55">
-              Didn't receive the code?{" "}
+              Didn&apos;t receive the code?{" "}
               <button
                 type="button"
                 onClick={handleResend}

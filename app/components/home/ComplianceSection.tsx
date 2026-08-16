@@ -20,7 +20,7 @@ export default function ComplianceSection({ appname }: ComplianceSectionProps) {
           <SectionLabel>Regulatory & Compliance</SectionLabel>
           <SectionHeading light>Built on a Foundation of Trust</SectionHeading>
           <p className="text-white/60 mt-3 text-sm max-w-lg mx-auto">
-            {appname} operates within Nigeria's regulatory framework so your
+            {appname} operates within Nigeria&apos;s regulatory framework so your
             investment is always on solid legal ground.
           </p>
         </div>

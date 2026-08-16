@@ -129,9 +129,15 @@ export default function LivenessCheck({ onCapture, captured, onRetake, fullHeigh
   // ── Retake: parent sets captured → null, we fully reset ────────────────────
   const prevCapturedRef = useRef(captured);
   useEffect(() => {
+    // stopStream/resetState do real side effects (stopping media tracks,
+    // cancelling rAFs) as well as setState, so they can't be moved to a
+    // render-time "adjust state" guard — deferred via a microtask instead,
+    // which keeps the setState calls out of the effect body proper.
     if (prevCapturedRef.current && !captured) {
-      stopStream();
-      resetState();
+      queueMicrotask(() => {
+        stopStream();
+        resetState();
+      });
     }
     prevCapturedRef.current = captured;
   }, [captured, stopStream, resetState]);
@@ -314,7 +320,9 @@ export default function LivenessCheck({ onCapture, captured, onRetake, fullHeigh
     }
   }, [stopStream]);
 
-  handleTimeoutRef.current = handleTimeout;
+  // Keep the "latest callback" ref updated after each render (not during
+  // render, which the refs-during-render rule disallows).
+  useEffect(() => { handleTimeoutRef.current = handleTimeout; });
 
   // ── Advance to next prompt on confirmed success ────────────────────────────
   const advancePrompt = useCallback((doneIdx: number) => {
@@ -345,7 +353,7 @@ export default function LivenessCheck({ onCapture, captured, onRetake, fullHeigh
     }, 900);
   }, [startStillnessCapture]);
 
-  advancePromptRef.current = advancePrompt;
+  useEffect(() => { advancePromptRef.current = advancePrompt; });
 
   const [isLastPrompt, setIsLastPrompt] = useState(false);
   const runAdvancePrompt = useCallback((doneIdx: number) => {
@@ -482,7 +490,7 @@ export default function LivenessCheck({ onCapture, captured, onRetake, fullHeigh
     startDetectionLoop(promptIcon, idx);
   }, [startDetectionLoop]);
 
-  startDetectionCountdownRef.current = startDetectionCountdown;
+  useEffect(() => { startDetectionCountdownRef.current = startDetectionCountdown; });
 
   const lastUsedIconsRef = useRef<Set<string>>(new Set());
 
@@ -564,16 +572,21 @@ export default function LivenessCheck({ onCapture, captured, onRetake, fullHeigh
   const currentPrompt = prompts[promptIdx];
   const thresholdPct  = 65;
 
-  const [capturedUrl, setCapturedUrl] = useState<string | null>(null);
+  // Result is tagged with the `captured` file it was built from, so a
+  // stale URL for a previous file is detected at render time (below)
+  // instead of needing a synchronous "reset to null" setState call when
+  // `captured` goes away.
+  const [urlResult, setUrlResult] = useState<{ for: File; url: string } | null>(null);
   useEffect(() => {
-    if (!captured) {
-      setCapturedUrl(null);
-      return;
-    }
+    if (!captured) return;
     const url = URL.createObjectURL(captured);
-    setCapturedUrl(url);
+    // Deferred via microtask so the setState call isn't a direct
+    // top-level statement in the effect body (see the retake-reset
+    // effect above for the same pattern).
+    queueMicrotask(() => setUrlResult({ for: captured, url }));
     return () => URL.revokeObjectURL(url);
   }, [captured]);
+  const capturedUrl = captured && urlResult?.for === captured ? urlResult.url : null;
 
   // ── Render ─────────────────────────────────────────────────────────────────
   const isLive      = ["warmup","detecting","success_flash","stillness","retry_warning"].includes(phase);

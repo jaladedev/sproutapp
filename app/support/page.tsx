@@ -298,10 +298,18 @@ export default function SupportPage() {
   const [view, setView]               = useState<SupportView>("init");
   const [selectedId, setSelectedId]   = useState<string | number | null>(null);
 
-  useEffect(() => {
-    if (authLoading) return;
-    setView(user ? "list" : "faq");
-  }, [authLoading, user]);
+  // Resolve the initial view once auth loads. Adjusting state directly
+  // during render (guarded by comparing against the last-seen authLoading)
+  // avoids an effect-based setState just to react to a prop settling.
+  // `prevAuthLoading` starts as `null` — guaranteed unequal to a boolean —
+  // so this also runs on the very first render, not just later changes.
+  const [prevAuthLoading, setPrevAuthLoading] = useState<boolean | undefined | null>(null);
+  if (authLoading !== prevAuthLoading) {
+    setPrevAuthLoading(authLoading);
+    if (!authLoading && view === "init") {
+      setView(user ? "list" : "faq");
+    }
+  }
 
   if (view === "init") return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: BG }}>
@@ -993,7 +1001,7 @@ function FaqView({ onContact }: { onContact: () => void }) {
         <div className="rounded-2xl p-5 flex items-center justify-between gap-4 flex-wrap mt-2"
           style={{ background: "rgba(200,135,58,0.05)", border: "1px solid rgba(200,135,58,0.15)" }}>
           <div>
-            <p className="font-semibold text-white text-sm">Didn't find your answer?</p>
+            <p className="font-semibold text-white text-sm">Didn&apos;t find your answer?</p>
             <p className="text-xs mt-0.5" style={{ color: DIMMED }}>
               {user ? "Open a support ticket and our team will help." : "Send us a message and we'll respond within 24 hours."}
             </p>
@@ -1059,7 +1067,7 @@ function GuestContactForm() {
             Message received!
           </h2>
           <p className="text-sm mt-2" style={{ color: MUTED }}>
-            We'll reply to <span className="text-white font-semibold">{form.email}</span> within 24 hours.
+            We&apos;ll reply to <span className="text-white font-semibold">{form.email}</span> within 24 hours.
           </p>
           {reference && (
             <div className="inline-flex items-center gap-2.5 mt-4 px-4 py-2.5 rounded-xl text-xs font-mono"

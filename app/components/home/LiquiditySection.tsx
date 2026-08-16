@@ -17,7 +17,7 @@ export default function LiquiditySection({ appname }: LiquiditySectionProps) {
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-10">
           <SectionLabel>Liquidity & Exit</SectionLabel>
-          <SectionHeading>You're Never Locked In</SectionHeading>
+          <SectionHeading>You&apos;re Never Locked In</SectionHeading>
           <p className="text-[#5C6B63] mt-3 text-sm max-w-lg mx-auto">
             Unlike traditional real estate, your {appname} units are liquid.
             Exit when you want — on your schedule, not ours.

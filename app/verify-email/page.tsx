@@ -207,7 +207,7 @@ export default function VerifyEmail() {
           {/* Resend */}
           <div className="mt-5 text-center">
             <p className="text-sm text-white/55">
-              Didn't receive the code?{" "}
+              Didn&apos;t receive the code?{" "}
               {cooldown > 0 ? (
                 <span className="text-white/20 cursor-not-allowed">
                   Resend in{" "}

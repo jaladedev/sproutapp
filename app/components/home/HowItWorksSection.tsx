@@ -35,7 +35,7 @@ export default function HowItWorksSection() {
           <SectionHeading>Invest in Land in 3 Simple Steps</SectionHeading>
           <p className="text-[#5C6B63] mt-3 text-sm max-w-lg mx-auto">
             No complex paperwork. No large capital required. Just pick a verified property,
-            choose your units, and own a piece of Nigeria's fastest-growing land market.
+            choose your units, and own a piece of Nigeria&apos;s fastest-growing land market.
           </p>
         </div>
         <div className="grid sm:grid-cols-3 gap-5">

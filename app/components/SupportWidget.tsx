@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { MessageCircle, X, Sparkles, ExternalLink, Bot, HelpCircle, Ticket } from "lucide-react";
 import Link from "next/link";
@@ -16,11 +16,6 @@ export default function SupportWidget() {
   const [tab, setTab]       = useState("chat");
   const [pulse, setPulse]   = useState(true);
 
-  // Stop pulse after first open
-  useEffect(() => {
-    if (open) setPulse(false);
-  }, [open]);
-
   // Guests see a minimal bubble that opens a contact form (no AI chat / ticket tracking)
   if (!user) return <GuestSupportBubble />;
 
@@ -30,7 +25,7 @@ export default function SupportWidget() {
       <div className="fixed bottom-44 sm:bottom-24 right-4 sm:right-6 z-9999" style={{ fontFamily: "'DM Sans', sans-serif" }}>
         {!open && (
           <button
-            onClick={() => setOpen(true)}
+            onClick={() => { setOpen(true); setPulse(false); }}
             aria-label="Open support"
             className="relative w-14 h-14 rounded-2xl flex items-center justify-center shadow-2xl transition-all hover:scale-105 active:scale-95"
             style={{ background: "linear-gradient(135deg, #C8873A 0%, #E8A850 100%)" }}

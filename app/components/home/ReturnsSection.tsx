@@ -15,7 +15,7 @@ export default function ReturnsSection() {
           <SectionLabel>Returns & ROI</SectionLabel>
           <SectionHeading light>What Your Investment Can Earn</SectionHeading>
           <p className="text-white/60 mt-3 text-sm max-w-lg mx-auto">
-            Nigeria's land market is driven by rapid urbanisation, infrastructure
+            Nigeria&apos;s land market is driven by rapid urbanisation, infrastructure
             investment and rising demand in tier-1 cities.
           </p>
         </div>

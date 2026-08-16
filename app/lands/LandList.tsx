@@ -308,13 +308,15 @@ export default function LandList() {
 
   // ── Fetch auth + account status ────────────────────────────────────────────
   useEffect(() => {
-    if (!isAuthed()) {
-      setUser(null);
-      setAuthLoaded(true);
-      return;
-    }
-    getMe()
-      .then((u) => {
+    let cancelled = false;
+    (async () => {
+      if (!isAuthed()) {
+        if (!cancelled) { setUser(null); setAuthLoaded(true); }
+        return;
+      }
+      try {
+        const u = await getMe();
+        if (cancelled) return;
         const hasUser = u && Object.keys(u).length > 0;
         setUser(hasUser ? u : null);
         if (hasUser) {
@@ -322,9 +324,13 @@ export default function LandList() {
           setKycStatus(u.kyc_status ?? (u.is_kyc_verified ? "approved" : "none"));
           setStatusLoaded(true);
         }
-      })
-      .catch(() => setUser(null))
-      .finally(() => setAuthLoaded(true));
+      } catch {
+        if (!cancelled) setUser(null);
+      } finally {
+        if (!cancelled) setAuthLoaded(true);
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   // ── Derived map data ───────────────────────────────────────────────────────

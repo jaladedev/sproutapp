@@ -401,7 +401,7 @@ export default function WalletPage() {
                     <div className="mt-3 flex items-start gap-3 rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3">
                       <AlertCircle size={14} className="text-amber-500 shrink-0 mt-0.5" />
                       <p className="text-xs text-amber-500/70 leading-relaxed">
-                        You'll be redirected to the OPay secure payment page. Your wallet will
+                        You&apos;ll be redirected to the OPay secure payment page. Your wallet will
                         be credited automatically once payment is confirmed.
                       </p>
                     </div>
@@ -410,7 +410,7 @@ export default function WalletPage() {
                     <div className="mt-3 flex items-start gap-3 rounded-xl border border-blue-500/20 bg-blue-500/5 px-4 py-3">
                       <AlertCircle size={14} className="text-blue-400 shrink-0 mt-0.5" />
                       <p className="text-xs text-blue-400/70 leading-relaxed">
-                        You'll be redirected to Paystack's secure checkout to pay with your
+                        You&apos;ll be redirected to Paystack&apos;s secure checkout to pay with your
                         card or bank. Your wallet will be credited automatically once confirmed.
                       </p>
                     </div>
@@ -419,7 +419,7 @@ export default function WalletPage() {
                     <div className="mt-3 flex items-start gap-3 rounded-xl border border-purple-500/20 bg-purple-500/5 px-4 py-3">
                       <AlertCircle size={14} className="text-purple-400 shrink-0 mt-0.5" />
                       <p className="text-xs text-purple-400/70 leading-relaxed">
-                        You'll be redirected to Monnify to complete your deposit via bank
+                        You&apos;ll be redirected to Monnify to complete your deposit via bank
                         transfer or USSD. Your wallet is credited automatically once the
                         transfer is received.
                       </p>

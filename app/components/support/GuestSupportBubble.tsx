@@ -7,10 +7,6 @@ import {
   MessageCircle, X, Send, Paperclip, ChevronDown,
   Sparkles, CheckCircle, Loader2,
 } from "lucide-react";
-// NOTE: this import was missing before the SupportWidget.jsx split — the
-// guest ticket form called createGuestTicket() without ever importing it,
-// which meant the "Send Message" button threw a ReferenceError at runtime
-// for any logged-out visitor. Fixed here.
 import { createGuestTicket } from "../../../services/supportService";
 import { GUEST_CATEGORIES, inputClass, selectClass } from "./constants";
 
@@ -91,7 +87,7 @@ export default function GuestSupportBubble() {
                 </div>
                 <div>
                   <p className="font-bold text-white text-sm">Message received!</p>
-                  <p className="text-white/55 text-xs mt-1">We'll reply to your email within 24 hours.</p>
+                  <p className="text-white/55 text-xs mt-1">We&apos;ll reply to your email within 24 hours.</p>
                   {reference && (
                     <p className="text-amber-500/70 text-xs mt-2 font-mono">Ref: {reference}</p>
                   )}

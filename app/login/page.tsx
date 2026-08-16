@@ -246,7 +246,7 @@ function LoginForm() {
 
           {/* Register link */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-1 text-sm">
-            <span className="text-white/60">Don't have an account?</span>
+            <span className="text-white/60">Don&apos;t have an account?</span>
             <Link href="/register" className="text-amber-500 hover:text-amber-400 font-semibold transition-colors">
               Create one free
             </Link>

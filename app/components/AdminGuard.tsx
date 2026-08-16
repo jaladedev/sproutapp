@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../context/AuthContext";
 
@@ -9,13 +9,12 @@ type Status = "loading" | "authorized" | "unauthorized";
 export default function AdminGuard({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { user, loading } = useAuth() ?? {};
-  const [status, setStatus] = useState<Status>("loading");
 
-  useEffect(() => {
-    if (loading) return;
-    if (!user) { setStatus("unauthorized"); return; }
-    setStatus(user.is_admin === true ? "authorized" : "unauthorized");
-  }, [user, loading]);
+  const status: Status = loading
+    ? "loading"
+    : !user
+      ? "unauthorized"
+      : user.is_admin === true ? "authorized" : "unauthorized";
 
   useEffect(() => {
     if (status === "unauthorized") router.replace("/dashboard");

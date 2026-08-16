@@ -78,9 +78,16 @@ function useCountUp(target: number, duration = 1100, enabled = true) {
 
   useEffect(() => {
     if (raf.current != null) cancelAnimationFrame(raf.current);
-    setValue(0);
 
-    if (!enabled || target === 0) { setValue(target); return; }
+    // All setValue calls happen inside the rAF callback (an async callback,
+    // not the effect body itself) — including the "jump straight to target"
+    // case below — so nothing here is a synchronous setState during the
+    // effect. The first tick of the real animation also lands ease≈0, so
+    // dropping the old separate `setValue(0)` reset is visually a no-op.
+    if (!enabled || target === 0) {
+      raf.current = requestAnimationFrame(() => setValue(target));
+      return () => { if (raf.current != null) cancelAnimationFrame(raf.current); };
+    }
 
     const start = performance.now();
     const tick = (now: number) => {
@@ -242,7 +249,7 @@ export default function Dashboard() {
               </div>
 
               <p className="text-sm text-[#7aab97] mt-1.5">
-                Here's how your investments are performing today.
+                Here&apos;s how your investments are performing today.
               </p>
             </div>
 
@@ -343,7 +350,7 @@ function StatErrorCard({ onRetry }: { onRetry: () => void }) {
   return (
     <div className="col-span-2 lg:col-span-3 rounded-2xl border border-[#3d1f1f] bg-[#1f1414] min-h-32 flex flex-col items-center justify-center gap-3 p-5 text-center">
       <WifiOff size={20} className="text-red-400/60" />
-      <p className="text-sm text-[#7a5555]">Couldn't load stats</p>
+      <p className="text-sm text-[#7a5555]">Couldn&apos;t load stats</p>
       <button
         onClick={onRetry}
         className="px-4 py-1.5 rounded-xl text-xs font-bold border border-[#3d1f1f] text-[#a06060] hover:bg-[#2a1818] transition-all"
@@ -486,7 +493,7 @@ function TransactionsSection({ transactions, loading, error, onRetry }: Transact
       <div className="rounded-2xl border border-[#1e3530] bg-[#132922] overflow-hidden">
         <div className="flex flex-col items-center text-center px-5 py-10 gap-3">
           <WifiOff size={20} className="text-[#8ab9a9]" />
-          <p className="text-sm text-[#7aab97]">Couldn't load transactions</p>
+          <p className="text-sm text-[#7aab97]">Couldn&apos;t load transactions</p>
           <button
             onClick={onRetry}
             className="px-4 py-1.5 rounded-xl text-xs font-bold border border-[#1e3530] text-[#7aab97] hover:bg-[#142D25] transition-all"

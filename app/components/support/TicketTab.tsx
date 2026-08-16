@@ -51,7 +51,7 @@ export default function TicketTab({ user }: TicketTabProps) {
       </div>
       <div>
         <p className="font-bold text-white text-sm">Ticket submitted!</p>
-        <p className="text-white/55 text-xs mt-1">We'll respond to your email within 24 hours.</p>
+        <p className="text-white/55 text-xs mt-1">We&apos;ll respond to your email within 24 hours.</p>
       </div>
       <Link href="/support" className="text-xs text-amber-500 hover:text-amber-400 font-semibold">
         Track your ticket →

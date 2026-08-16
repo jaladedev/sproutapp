@@ -415,7 +415,7 @@ export default function LiveChatView({ onSwitchToAi, initialTicket = null }: Liv
 
       <div>
         <p className="font-bold text-white text-lg" style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
-          You're in the queue
+          You&apos;re in the queue
         </p>
         <p className="text-sm mt-1.5" style={{ color: DIMMED }}>
           Position <span className="font-bold text-white">{queuePos}</span> · An agent will join shortly

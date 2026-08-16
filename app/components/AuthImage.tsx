@@ -8,29 +8,35 @@ type AuthImageProps = {
   onBlobReady?: (objectUrl: string) => void;
 };
 
+interface LoadResult {
+  url: string;
+  src: string | null;
+  error: boolean;
+}
+
 export function AuthImage({ url, alt, className, onBlobReady }: AuthImageProps) {
-  const [src, setSrc] = useState<string | null>(null);
-  const [error, setError] = useState(false);
+  // Result is tagged with the `url` it belongs to, so a stale in-flight
+  // fetch for a previous `url` is detected at render time (below) rather
+  // than needing a synchronous "reset" setState call at the top of the
+  // effect — every setState here happens inside the fetch's .then/.catch.
+  const [result, setResult] = useState<LoadResult | null>(null);
 
   useEffect(() => {
     if (!url) return;
     let objectUrl: string | undefined;
     let cancelled = false;
 
-    setSrc(null);
-    setError(false);
-
     fetchAuthedBlob(toRelativePath(url))
       .then((blob) => {
         if (cancelled) return;
         objectUrl = URL.createObjectURL(blob);
-        setSrc(objectUrl);
+        setResult({ url, src: objectUrl, error: false });
         onBlobReady?.(objectUrl);
       })
       .catch((err) => {
         if (!cancelled) {
           console.error("AuthImage failed:", err?.response?.status, url);
-          setError(true);
+          setResult({ url, src: null, error: true });
         }
       });
 
@@ -39,6 +45,10 @@ export function AuthImage({ url, alt, className, onBlobReady }: AuthImageProps) 
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [url]);
+
+  const isCurrent = !!url && result?.url === url;
+  const src   = isCurrent ? result!.src   : null;
+  const error = isCurrent ? result!.error : false;
 
   if (error) {
     return (

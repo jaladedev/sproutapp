@@ -130,8 +130,16 @@ function HelpCard() {
 }
 
 export default function Settings() {
-  const [activeTab, setActiveTab]   = useState("profile");
-  const [mobilePanel, setMobilePanel] = useState(false);
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window === "undefined") return "profile";
+    const tab = new URLSearchParams(window.location.search).get("tab");
+    return tab && NAV.find((n) => n.id === tab) ? tab : "profile";
+  });
+  const [mobilePanel, setMobilePanel] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const tab = new URLSearchParams(window.location.search).get("tab");
+    return !!(tab && NAV.find((n) => n.id === tab));
+  });
 
   const [kycStatus, setKycStatus]   = useState<string | null>(null);
   const [pinIsSet, setPinIsSet]     = useState<boolean | null>(null);
@@ -156,15 +164,6 @@ export default function Settings() {
             setPinIsSet(false);
           });
       });
-  }, []);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const tab = params.get("tab");
-    if (tab && NAV.find((n) => n.id === tab)) {
-      setActiveTab(tab);
-      setMobilePanel(true);
-    }
   }, []);
 
   const selectTab = (id: string) => { setActiveTab(id); setMobilePanel(true); };

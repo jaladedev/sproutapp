@@ -119,7 +119,7 @@ function RejectModal({ withdrawal, onClose, onDone }: RejectModalProps) {
             <AlertCircle size={15} className="text-red-400 shrink-0 mt-0.5" />
             <p className="text-xs text-red-400/80 leading-relaxed">
               The funds ({fmtNaira(withdrawal.amount_kobo)}) will be immediately returned
-              to <strong className="text-red-400">{withdrawal.user?.name}</strong>'s wallet.
+              to <strong className="text-red-400">{withdrawal.user?.name}</strong>&apos;s wallet.
               This action cannot be undone.
             </p>
           </div>

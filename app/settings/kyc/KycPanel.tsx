@@ -269,7 +269,7 @@ export default function KycPanel({ kycStatus: kycStatusProp, setKycStatus: setKy
             <CheckCircle size={26} className="text-emerald-500" />
           </div>
           <p className="text-xl text-white font-bold mb-1" style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}>
-            You're Verified
+            You&apos;re Verified
           </p>
           <p className="text-white/55 text-sm">All identity checks passed successfully.</p>
         </motion.div>

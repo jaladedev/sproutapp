@@ -157,9 +157,16 @@ interface QueueItemProps {
 }
 
 function QueueItem({ ticket, isActive, onClick }: QueueItemProps) {
-  const color    = CATEGORY_COLORS[ticket.category] || "#6B7280";
+  const color = CATEGORY_COLORS[ticket.category] || "#6B7280";
+
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
   const waitMins = ticket.created_at
-    ? Math.floor((Date.now() - new Date(ticket.created_at).getTime()) / 60000)
+    ? Math.floor((now - new Date(ticket.created_at).getTime()) / 60000)
     : 0;
   const isClaimed = !!ticket.agent_id;
 

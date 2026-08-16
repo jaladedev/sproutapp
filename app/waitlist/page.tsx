@@ -308,7 +308,7 @@ function CheckPositionPanel({ onClose }: { onClose: () => void }) {
             )}
 
             <p className="text-xs text-white/60 leading-relaxed">
-              Enter the email you used to join and we'll show your position and referral link.
+              Enter the email you used to join and we&apos;ll show your position and referral link.
             </p>
 
             <input
@@ -461,18 +461,18 @@ export default function WaitlistPage() {
             className="text-4xl font-bold text-white mb-3"
             style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}
           >
-            You're on the list!
+            You&apos;re on the list!
           </h1>
 
           {position && (
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-amber-500/30 bg-amber-500/10 text-amber-400 text-sm font-bold mb-4">
               <Sparkles size={13} />
-              You're #{position.toLocaleString()} in line
+              You&apos;re #{position.toLocaleString()} in line
             </div>
           )}
 
           <p className="text-white/50 mb-8 leading-relaxed max-w-sm mx-auto">
-            We'll email you as soon as early access opens. Refer friends to move up the list faster.
+            We&apos;ll email you as soon as early access opens. Refer friends to move up the list faster.
           </p>
 
           {userRefCode && (
@@ -775,7 +775,7 @@ export default function WaitlistPage() {
               {refCode && (
                 <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-emerald-500/20 bg-emerald-500/8 text-emerald-400 text-xs">
                   <CheckCircle size={11} />
-                  Referred by a friend — you'll get priority placement
+                  Referred by a friend — you&apos;ll get priority placement
                 </div>
               )}
 
