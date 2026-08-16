@@ -59,18 +59,4 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - name: Build (retries on transient failures, e.g. Google Fonts CDN hiccups)
-        run: |
-          for attempt in 1 2 3; do
-            echo "Build attempt $attempt/3..."
-            if npm run build; then
-              exit 0
-            fi
-            echo "Build attempt $attempt failed."
-            if [ "$attempt" -lt 3 ]; then
-              sleep 15
-            fi
-          done
-          echo "All 3 build attempts failed."
-          exit 1
-          
+      - run: npm run build
