@@ -15,18 +15,11 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
-    # Non-blocking for now: the repo currently has ~63 pre-existing
-    # react/no-unescaped-entities errors (mostly stray apostrophes in JSX
-    # text) plus some next/no-img-element and hook-dependency warnings.
-    # None are functional bugs, but fixing all of them is its own cleanup
-    # task, not something to bundle into standing up CI. Flip this to a
-    # hard gate (remove continue-on-error) once that cleanup lands.
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
       - run: npm ci
       - run: npm run lint
@@ -38,7 +31,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
       - run: npm ci
       - run: npm run typecheck
@@ -63,7 +56,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
       - run: npm ci
       - run: npm run build
