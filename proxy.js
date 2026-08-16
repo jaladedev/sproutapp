@@ -45,7 +45,13 @@ export function proxy(request) {
 }
 
 export const config = {
+  // `api` and `sanctum` are excluded here because those paths are now the
+  // same-origin proxy to the Laravel backend (see app/api/[...path]/route.ts
+  // and app/sanctum/csrf-cookie/route.ts) — this auth-page-redirect logic
+  // must never run in front of them, or e.g. the login POST itself would
+  // get redirected to /login before ever reaching the proxy, since no
+  // auth_token cookie exists yet at that point.
   matcher: [
-    "/((?!_next/static|_next/image|favicon\\.ico|robots\\.txt|sitemap\\.xml|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon\\.ico|robots\\.txt|sitemap\\.xml|api|sanctum|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
