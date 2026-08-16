@@ -116,7 +116,7 @@ export default function CertificatePage() {
       });
 
       // Verify we actually got a PDF back (guards against an auth error JSON)
-      const contentType = res.headers?.["content-type"] ?? "";
+      const contentType = String(res.headers?.["content-type"] ?? "");
       if (!contentType.includes("application/pdf")) {
         throw new Error("Unexpected response type — please try again.");
       }

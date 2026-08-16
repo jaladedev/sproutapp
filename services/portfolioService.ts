@@ -49,6 +49,6 @@ export async function downloadCertificate(
   });
   return {
     blob: res.data,
-    contentType: res.headers?.["content-type"] ?? "",
+    contentType: String(res.headers?.["content-type"] ?? ""),
   };
 }
