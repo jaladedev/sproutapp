@@ -80,39 +80,75 @@ export async function proxyToBackend(
       method: request.method,
       headers: forwardHeaders,
       body: hasBody ? await request.arrayBuffer() : undefined,
-      redirect: "manual",
+      // "follow" (the default), not "manual": with `manual`, a redirect
+      // from the upstream (e.g. a trailing-slash or HTTPS-enforcement
+      // redirect from Laravel) comes back as an opaque-redirect Response
+      // with status 0 — and `new NextResponse(body, { status: 0 })` below
+      // throws a RangeError (valid range is 200–599), which is an
+      // unhandled exception that surfaces to the browser as a bare,
+      // empty-body 500 with no useful trace. Following transparently here
+      // is also just the correct behavior for a proxy: the browser should
+      // see the final response, not have to re-issue the redirect itself
+      // against a URL it was never given (the real backend host is
+      // intentionally hidden from the client).
+      redirect: "follow",
       cache: "no-store",
     });
-  } catch {
+  } catch (err) {
+    console.error(`[apiProxy] fetch to ${targetUrl} failed:`, err);
     return NextResponse.json(
       { message: "Upstream API request failed (network error or timeout)." },
       { status: 502 }
     );
   }
 
-  const responseBody = await backendResponse.arrayBuffer();
-  const response = new NextResponse(responseBody, {
-    status: backendResponse.status,
-    statusText: backendResponse.statusText,
-  });
+  let response: NextResponse;
+  try {
+    const responseBody = await backendResponse.arrayBuffer();
 
-  backendResponse.headers.forEach((value, key) => {
-    if (STRIPPED_RESPONSE_HEADERS.has(key.toLowerCase())) return;
-    if (key.toLowerCase() === "set-cookie") return; // handled separately below
-    response.headers.set(key, value);
-  });
+    // Per the Fetch spec, Responses with status 204/205/304 are "null
+    // body statuses" — passing any body at all (even an empty
+    // ArrayBuffer) throws "Invalid response status code". Sanctum's
+    // csrf-cookie endpoint legitimately returns 204, so this isn't an
+    // edge case to shrug off.
+    const NULL_BODY_STATUSES = new Set([204, 205, 304]);
+    const bodyForResponse = NULL_BODY_STATUSES.has(backendResponse.status)
+      ? null
+      : responseBody;
 
-  // Response.headers.get("set-cookie") collapses multiple cookies into one
-  // comma-joined string in most fetch implementations, which is not
-  // parseable back into individual cookies — getSetCookie() (Node 18.17+/
-  // undici) is the only reliable way to get each Set-Cookie separately.
-  const rawSetCookies =
-    typeof backendResponse.headers.getSetCookie === "function"
-      ? backendResponse.headers.getSetCookie()
-      : [];
+    response = new NextResponse(bodyForResponse, {
+      status: backendResponse.status,
+      statusText: backendResponse.statusText,
+    });
 
-  for (const cookie of rawSetCookies) {
-    response.headers.append("set-cookie", toHostOnlyCookie(cookie));
+    backendResponse.headers.forEach((value, key) => {
+      if (STRIPPED_RESPONSE_HEADERS.has(key.toLowerCase())) return;
+      if (key.toLowerCase() === "set-cookie") return; // handled separately below
+      response.headers.set(key, value);
+    });
+
+    // Response.headers.get("set-cookie") collapses multiple cookies into
+    // one comma-joined string in most fetch implementations, which is not
+    // parseable back into individual cookies — getSetCookie() (Node
+    // 18.17+/undici) is the only reliable way to get each Set-Cookie
+    // separately.
+    const rawSetCookies =
+      typeof backendResponse.headers.getSetCookie === "function"
+        ? backendResponse.headers.getSetCookie()
+        : [];
+
+    for (const cookie of rawSetCookies) {
+      response.headers.append("set-cookie", toHostOnlyCookie(cookie));
+    }
+  } catch (err) {
+    // Anything unexpected past this point (header copying, body reading,
+    // etc.) now fails loud with a real message in Vercel's function logs
+    // and a real JSON body to the client, instead of an opaque empty 500.
+    console.error(`[apiProxy] error building response for ${targetUrl}:`, err);
+    return NextResponse.json(
+      { message: "API proxy failed while building the response." },
+      { status: 500 }
+    );
   }
 
   return response;
