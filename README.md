@@ -15,7 +15,10 @@ to a Laravel Reverb server for real-time notifications and admin live chat.
 - **Leaflet / react-leaflet** for the interactive land maps
 - **Tiptap** for rich-text editing (blog/notes)
 
-No test runner or CI is configured yet.
+CI is configured (see `.github/workflows/ci.yml`), including lint, typecheck,
+test, and build jobs. Tests use **Vitest** (`npm test`), currently covering
+the auth-guarding middleware (`proxy.ts`) and its supporting pure-logic
+helpers (`utils/routes.ts`, `utils/tokenStore.ts`).
 
 ## Getting started
 
@@ -27,7 +30,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-Other scripts: `npm run build`, `npm run start` (production server), `npm run lint`.
+Other scripts: `npm run build`, `npm run start` (production server), `npm run lint`, `npm run typecheck`, `npm test` (`npm run test:watch` for watch mode).
 
 ## Environment variables
 

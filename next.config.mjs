@@ -1,8 +1,13 @@
 const R2_HOSTNAME = (() => {
   try {
-    return new URL(process.env.NEXT_PUBLIC_R2_URL || '').hostname;
+    const hostname = new URL(process.env.NEXT_PUBLIC_R2_URL || '').hostname;
+    if (!hostname) throw new Error('empty hostname');
+    return hostname;
   } catch {
-    return 'pub-614b1fbd5c4f46ca8e95d0ccbde016c9.r2.dev';
+    throw new Error(
+      'NEXT_PUBLIC_R2_URL is missing or invalid — set it in your environment ' +
+      '(see .env.example).'
+    );
   }
 })();
 

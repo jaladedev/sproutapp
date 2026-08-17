@@ -170,6 +170,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Intentionally once on mount
 
+  // Re-validate on navigation to a protected route. Guarded by isAuthed()
+  // so this doesn't fire (and doesn't force a network call) on public
+  // pages or when there's no session flag to begin with — checkAuth()
+  // already no-ops in that case, but checking here avoids the effect even
+  // running its body on every public-route navigation.
+  useEffect(() => {
+    if (isPublicRoute(pathname, PUBLIC_ROUTES)) return;
+    if (!isAuthed()) return;
+    checkAuth();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
+
   // ── login ────────────────────────────────────────────────────────────────
 
   const login = async (email: string, password: string): Promise<AuthUser | null> => {
@@ -177,12 +189,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const res       = await api.post("/login", { email, password });
     const expiresAt = res.data?.expires_at ?? null;
 
-    let userData: AuthUser | null;
-    try {
-      const meRes = await api.get("/me"); // cookie already set by /login's response
-      userData    = meRes.data?.data ?? meRes.data?.user ?? meRes.data;
-    } catch {
-      userData = res.data?.user ?? res.data?.data?.user ?? null;
+    let userData: AuthUser | null =
+      res.data?.user ?? res.data?.data?.user ?? res.data?.data ?? null;
+
+    if (!userData) {
+      // /login didn't include user data in its body — fall back to /me.
+      try {
+        const meRes = await api.get("/me"); // cookie already set by /login's response
+        userData    = meRes.data?.data ?? meRes.data?.user ?? meRes.data;
+      } catch {
+        userData = null;
+      }
     }
     applySession(userData, expiresAt);
     return userData;
