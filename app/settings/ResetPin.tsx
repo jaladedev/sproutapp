@@ -51,13 +51,20 @@ export default function ResetPin() {
     }
   };
 
-  // Step 2 — verify the 6-digit code; capture the returned reset_token
+  // Step 2 — verify the 8-digit code; capture the returned reset_token
   const handleVerifyCode = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!email) return;
+
+    const trimmed = code.trim();
+    if (!/^\d{8}$/.test(trimmed)) {
+      toast.error("Please enter the 8-digit code from your email.");
+      return;
+    }
+
     setLoading(true);
     try {
-      const res = await verifyPinCode(email, code);
+      const res = await verifyPinCode(email, trimmed);
       setResetToken(res.reset_token); // ← capture single-use token
       toast.success("Code verified! Enter your new PIN.");
       setStep(3);
@@ -179,9 +186,14 @@ export default function ResetPin() {
             </label>
             <input
               type="text"
+              inputMode="numeric"
               value={code}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setCode(e.target.value)}
-              placeholder="Enter 6-digit code sent to your email"
+              onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                const val = e.target.value.replace(/\D/g, "").slice(0, 8);
+                setCode(val);
+              }}
+              placeholder="Enter 8-digit code sent to your email"
+              maxLength={8}
               required
               className="w-full bg-white/5 border border-white/10 hover:border-white/20 focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 text-white placeholder-white/20 px-4 py-3 rounded-xl text-sm outline-none transition-all tracking-widest text-center"
             />
