@@ -145,6 +145,18 @@ export default function Settings() {
   const [pinIsSet, setPinIsSet]     = useState<boolean | null>(null);
   const activeNav = NAV.find((n) => n.id === activeTab);
 
+  const [isDesktop, setIsDesktop] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(min-width: 640px)").matches;
+  });
+
+  useEffect(() => {
+    const mql = window.matchMedia("(min-width: 640px)");
+    const onChange = () => setIsDesktop(mql.matches);
+    mql.addEventListener("change", onChange);
+    return () => mql.removeEventListener("change", onChange);
+  }, []);
+
   // Load KYC + PIN status on mount
   useEffect(() => {
     getAccountStatus()
@@ -178,6 +190,8 @@ export default function Settings() {
       default:        return null;
     }
   };
+
+  const panel = renderPanel();
 
   return (
     <div className="min-h-screen bg-[#0D1F1A] text-white" style={{ fontFamily: "var(--font-dm-sans), 'Helvetica Neue', sans-serif" }}>
@@ -260,7 +274,7 @@ export default function Settings() {
                 </div>
 
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-                  {renderPanel()}
+                  {!isDesktop && panel}
                 </div>
               </motion.div>
             )}
@@ -288,7 +302,7 @@ export default function Settings() {
                   className="p-6 sm:p-8"
                 >
                   {activeTab !== "kyc" && activeNav && <PanelHeader item={activeNav} />}
-                  {renderPanel()}
+                  {isDesktop && panel}
                 </motion.div>
               </AnimatePresence>
             </div>
