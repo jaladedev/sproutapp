@@ -5,7 +5,7 @@ import { useAuth } from "../../context/AuthContext";
 import { MessageCircle, X, Sparkles, ExternalLink, Bot, HelpCircle, Ticket } from "lucide-react";
 import Link from "next/link";
 import { appname } from "./support/constants";
-import ChatTab from "./support/ChatTab";
+// import ChatTab from "./support/ChatTab";
 import FaqTab from "./support/FaqTab";
 import TicketTab from "./support/TicketTab";
 import GuestSupportBubble from "./support/GuestSupportBubble";
@@ -13,7 +13,7 @@ import GuestSupportBubble from "./support/GuestSupportBubble";
 export default function SupportWidget() {
   const { user } = useAuth() ?? {};
   const [open, setOpen]     = useState(false);
-  const [tab, setTab]       = useState("chat");
+  const [tab, setTab]       = useState("faq");
   const [pulse, setPulse]   = useState(true);
 
   // Guests see a minimal bubble that opens a contact form (no AI chat / ticket tracking)
@@ -82,7 +82,7 @@ export default function SupportWidget() {
             {/* Tabs */}
             <div className="flex border-b border-white/8">
               {[
-                { id: "chat",   icon: <Bot size={13} />,      label: "AI Chat"  },
+                // { id: "chat",   icon: <Bot size={13} />,      label: "AI Chat"  },
                 { id: "faq",    icon: <HelpCircle size={13} />, label: "FAQ"    },
                 { id: "ticket", icon: <Ticket size={13} />,   label: "Ticket"   },
               ].map(t => (
@@ -100,7 +100,7 @@ export default function SupportWidget() {
 
             {/* Tab content */}
             <div className="flex-1 overflow-hidden flex flex-col">
-              {tab === "chat"   && <ChatTab user={user} onEscalate={() => setTab("ticket")} />}
+              {/* {tab === "chat"   && <ChatTab user={user} onEscalate={() => setTab("ticket")} />} */}
               {tab === "faq"    && <FaqTab />}
               {tab === "ticket" && <TicketTab user={user} />}
             </div>
