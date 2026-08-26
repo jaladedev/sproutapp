@@ -47,7 +47,23 @@ export default function GuestSupportBubble() {
   };
 
   return (
-    <div className="fixed bottom-4 sm:bottom-24 right-4 sm:right-6 z-9999" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+    <div
+      className={
+        open
+          ? "fixed inset-0 z-9999 flex items-end justify-center sm:items-start sm:justify-end sm:inset-auto sm:bottom-24 sm:right-6"
+          : "fixed bottom-4 sm:bottom-24 right-4 sm:right-6 z-9999"
+      }
+      style={{ fontFamily: "'DM Sans', sans-serif" }}
+    >
+      {/* Backdrop — mobile only, tap outside to close */}
+      {open && (
+        <div
+          onClick={() => setOpen(false)}
+          className="absolute inset-0 bg-black/50 sm:hidden"
+          aria-hidden
+        />
+      )}
+
       {!open && (
         <button onClick={() => setOpen(true)} aria-label="Contact support"
           className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-2xl transition-all hover:scale-105 active:scale-95"
@@ -57,8 +73,13 @@ export default function GuestSupportBubble() {
       )}
 
       {open && (
-        <div className="w-85 rounded-2xl overflow-hidden shadow-2xl flex flex-col"
-          style={{ background: "#0b1e17", border: "1px solid rgba(255,255,255,0.1)", maxHeight: "min(520px, calc(100vh - 100px))" }}>
+        <div className="relative w-full h-[85vh] sm:h-auto sm:w-85 sm:max-w-85 rounded-t-3xl sm:rounded-2xl overflow-hidden shadow-2xl flex flex-col"
+          style={{
+            background: "#0b1e17",
+            border: "1px solid rgba(255,255,255,0.1)",
+            maxHeight: "min(85vh, 680px)",
+            paddingBottom: "env(safe-area-inset-bottom)",
+          }}>
 
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3.5 border-b border-white/8"

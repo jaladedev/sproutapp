@@ -22,7 +22,23 @@ export default function SupportWidget() {
   return (
     <>
       {/* Floating bubble */}
-      <div className="fixed bottom-4 sm:bottom-24 right-4 sm:right-6 z-9999" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+      <div
+        className={
+          open
+            ? "fixed inset-0 z-9999 flex items-end justify-center sm:items-start sm:justify-end sm:inset-auto sm:bottom-24 sm:right-6"
+            : "fixed bottom-4 sm:bottom-24 right-4 sm:right-6 z-9999"
+        }
+        style={{ fontFamily: "'DM Sans', sans-serif" }}
+      >
+        {/* Backdrop — mobile only, tap outside to close */}
+        {open && (
+          <div
+            onClick={() => setOpen(false)}
+            className="absolute inset-0 bg-black/50 sm:hidden"
+            aria-hidden
+          />
+        )}
+
         {!open && (
           <button
             onClick={() => { setOpen(true); setPulse(false); }}
@@ -43,11 +59,12 @@ export default function SupportWidget() {
         {/* Panel */}
         {open && (
           <div
-            className="w-90 rounded-2xl overflow-hidden shadow-2xl flex flex-col"
+            className="relative w-full h-[85vh] sm:h-auto sm:w-90 sm:max-w-90 rounded-t-3xl sm:rounded-2xl overflow-hidden shadow-2xl flex flex-col"
             style={{
               background: "#0b1e17",
               border: "1px solid rgba(255,255,255,0.1)",
-              maxHeight: "min(560px, calc(100vh - 100px))",
+              maxHeight: "min(85vh, 720px)",
+              paddingBottom: "env(safe-area-inset-bottom)",
             }}
           >
             {/* Header */}
