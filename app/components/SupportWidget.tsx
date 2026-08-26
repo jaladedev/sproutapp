@@ -22,7 +22,7 @@ export default function SupportWidget() {
   return (
     <>
       {/* Floating bubble */}
-      <div className="fixed bottom-44 sm:bottom-24 right-4 sm:right-6 z-9999" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+      <div className="fixed bottom-4 sm:bottom-24 right-4 sm:right-6 z-9999" style={{ fontFamily: "'DM Sans', sans-serif" }}>
         {!open && (
           <button
             onClick={() => { setOpen(true); setPulse(false); }}

@@ -47,7 +47,7 @@ export default function GuestSupportBubble() {
   };
 
   return (
-    <div className="fixed bottom-44 sm:bottom-24 right-4 sm:right-6 z-9999" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+    <div className="fixed bottom-4 sm:bottom-24 right-4 sm:right-6 z-9999" style={{ fontFamily: "'DM Sans', sans-serif" }}>
       {!open && (
         <button onClick={() => setOpen(true)} aria-label="Contact support"
           className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-2xl transition-all hover:scale-105 active:scale-95"

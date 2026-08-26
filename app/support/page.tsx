@@ -333,7 +333,7 @@ export default function SupportPage() {
   const tabs = user ? authTabs : guestTabs;
 
   return (
-    <div className="min-h-screen relative" style={{ background: BG, fontFamily: "'DM Sans','Helvetica Neue',sans-serif" }}>
+    <div className="min-h-screen relative overflow-x-hidden" style={{ background: BG, fontFamily: "'DM Sans','Helvetica Neue',sans-serif" }}>
 
       {/* ── Atmospheric background ── */}
       <div className="absolute inset-0 pointer-events-none" style={{

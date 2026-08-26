@@ -282,7 +282,7 @@ export default function WalletPage() {
 
   /* ─── RENDER ────────────────────────────────────────────────────────── */
   return (
-    <div className="min-h-screen bg-[#0D1F1A] relative"
+    <div className="min-h-screen bg-[#0D1F1A] relative overflow-x-hidden"
       style={{ fontFamily: "var(--font-dm-sans), 'Helvetica Neue', sans-serif" }}>
 
       {/* Dot grid */}
@@ -302,7 +302,7 @@ export default function WalletPage() {
         </div>
 
         {/* Balance Card */}
-        <div className="relative rounded-2xl border border-amber-500/20 p-6 sm:p-8"
+        <div className="relative rounded-2xl border border-amber-500/20 p-6 sm:p-8 overflow-hidden"
           style={{ background: "linear-gradient(135deg, rgba(200,135,58,0.15) 0%, rgba(13,31,26,0.8) 60%)" }}>
           <div className="absolute top-0 right-0 w-64 h-64 rounded-full opacity-10 pointer-events-none"
             style={{ background: "radial-gradient(circle, #E8A850, transparent)", transform: "translate(30%, -30%)" }} />
