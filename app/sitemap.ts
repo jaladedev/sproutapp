@@ -1,11 +1,16 @@
 import type { MetadataRoute } from "next";
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://reu.ng";
-const API_URL  = process.env.NEXT_PUBLIC_API_URL;
+
+const BACKEND_ROOT = (
+  process.env.API_PROXY_TARGET ||
+  (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/api\/?$/, "")
+).replace(/\/$/, "");
 
 async function getLandSlugs(): Promise<string[]> {
+  if (!BACKEND_ROOT) return [];
   try {
-    const res = await fetch(`${API_URL}/land`, {
+    const res = await fetch(`${BACKEND_ROOT}/api/land`, {
       next: { revalidate: 3600 },
       signal: AbortSignal.timeout(8000),
     });

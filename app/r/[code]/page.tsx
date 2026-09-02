@@ -6,26 +6,33 @@ import ReferralRedirect from "./ReferralRedirect";
 const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || "REU.ng";
 const APP_URL  = process.env.NEXT_PUBLIC_APP_URL  || "reu.ng";
 
+const BACKEND_ROOT = (
+  process.env.API_PROXY_TARGET ||
+  (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/api\/?$/, "")
+).replace(/\/$/, "");
+
 // ─── OG Metadata ──────────────────────────────────────────────────────────────
 
 export async function generateMetadata({ params }: { params: Promise<{ code?: string }> }) {
   const { code = "" } = await params;
 
   let referrerName = null;
-  try {
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/referrals/info/${code}`,
-      { next: { revalidate: 3600 }, signal: AbortSignal.timeout(8000) }
-    );
-    if (res.ok) {
-      const json = await res.json();
-      referrerName =
-        json?.data?.name ??
-        json?.data?.referrer_name ??
-        json?.name ??
-        null;
-    }
-  } catch {}
+  if (BACKEND_ROOT) {
+    try {
+      const res = await fetch(
+        `${BACKEND_ROOT}/api/referrals/info/${code}`,
+        { next: { revalidate: 3600 }, signal: AbortSignal.timeout(8000) }
+      );
+      if (res.ok) {
+        const json = await res.json();
+        referrerName =
+          json?.data?.name ??
+          json?.data?.referrer_name ??
+          json?.name ??
+          null;
+      }
+    } catch {}
+  }
 
   const title = referrerName
     ? `${referrerName} invited you to ${APP_NAME}`
