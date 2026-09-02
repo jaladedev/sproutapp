@@ -8,7 +8,7 @@ import type { MeResponse } from "@/services/userService";
 import type { BlogPost } from "@/services/blogService";
 import { ArrowLeft, Clock, Eye, Folder, Tag, Calendar } from "lucide-react";
 
-const API = process.env.NEXT_PUBLIC_API_URL;
+const API = process.env.NEXT_PUBLIC_API_URL || "";
 
 const fmtDate = (d?: string | null) =>
   d ? new Date(d).toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" }) : "";

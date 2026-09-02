@@ -11,7 +11,7 @@ import { getSavedReferralCode } from "../components/RefCapture";
 
 // ── Config ────────────────────────────────────────────────────────────────────
 const appname = process.env.NEXT_PUBLIC_APP_NAME || "REU.ng";
-const API_URL  = process.env.NEXT_PUBLIC_API_URL  || "https://api.reu.ng";
+const API_URL  = process.env.NEXT_PUBLIC_API_URL  || "";
 
 const BUDGET_OPTIONS = [
   { value: "5k_50k",    label: "₦5,000 – ₦50,000"   },

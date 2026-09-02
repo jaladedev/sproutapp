@@ -11,7 +11,7 @@ import type {
 } from "../../services/blogService";
 
 const appname = process.env.NEXT_PUBLIC_APP_NAME || "REU.ng";
-const API = process.env.NEXT_PUBLIC_API_URL;
+const API = process.env.NEXT_PUBLIC_API_URL || "";
 
 const fmtDate = (d?: string | null) =>
   d ? new Date(d).toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" }) : "";

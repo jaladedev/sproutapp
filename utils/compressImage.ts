@@ -23,12 +23,22 @@ export async function compressImage(file: File, {
   minQuality = 0.50,
   mimeType   = "image/jpeg",
 }: CompressImageOptions = {}): Promise<File> {
-  // Non-image or tiny files pass through untouched
+  // Non-image files pass through untouched
   if (!file.type.startsWith("image/")) return file;
-  if (file.size <= maxBytes) return file;
 
   const bitmap = await createImageBitmap(file);
   const { width: w, height: h } = bitmap;
+
+  // Small-enough files are only skipped if their dimensions are also
+  // within maxPx — a heavily-compressed phone/drone photo can be well
+  // under maxBytes while still being 4000px+ on a side, and letting
+  // those through unresized is what was causing Vercel's Image
+  // Optimization API to reject them (source image too large) even
+  // though most uploads compressed down fine.
+  if (file.size <= maxBytes && Math.max(w, h) <= maxPx) {
+    bitmap.close();
+    return file;
+  }
 
   // Scale to fit within maxPx × maxPx, preserving aspect ratio
   const scale  = Math.min(1, maxPx / Math.max(w, h));
