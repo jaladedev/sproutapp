@@ -32,3 +32,20 @@ html, body {
   50%  { background-position: 100% center; }
   100% { background-position: 0% center; }
 }
+
+/* React can't see Chrome/Safari autofill (incl. Chrome's "suggest strong
+   password") setting an input's value — the native property setter used
+   for autofill doesn't reliably dispatch a React-visible input event, so
+   controlled state silently goes stale. This animation only plays while
+   the browser's :-webkit-autofill pseudo-class is applied, which fires a
+   real `animationstart` DOM event we *can* listen for (see
+   onAnimationStart in app/register/page.tsx) and use to resync state. */
+@keyframes autofill-detect {
+  from {}
+  to {}
+}
+
+.autofill-detect-target:-webkit-autofill {
+  animation-name: autofill-detect;
+  animation-duration: 1ms;
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense, type ChangeEvent, type FormEvent, type ReactNode } from "react";
+import React, { useState, useEffect, Suspense, type ChangeEvent, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
@@ -138,7 +138,6 @@ function RegisterForm() {
   const [loading, setLoading]               = useState(false);
   const [error, setError]                   = useState("");
   const [showPassword, setShowPassword]     = useState(false);
-  const [pwFocused, setPwFocused]           = useState(false);
   const [showReferral, setShowReferral]     = useState(false);
   const [referralLocked, setReferralLocked] = useState(false);
   const [step, setStep]                     = useState<1 | 2>(1);
@@ -159,6 +158,22 @@ function RegisterForm() {
     setForm(prev => ({ ...prev, [field]: e.target.value }));
     if (error) setError("");
   };
+
+  // Chrome's "suggested strong password" (and most password-manager
+  // autofill) sets the input value via the native property setter, which
+  // does not reliably fire a React-visible input/change event — so
+  // form.password silently goes stale and the requirement checklist,
+  // strength bar, and submit-button validity never update. There's no
+  // real onAutoFillStart event; the standard workaround is a CSS
+  // animation that only plays while :-webkit-autofill is applied, which
+  // we can listen for via animationstart and use as a signal to
+  // re-sync state from the input's actual current value.
+  const syncFromAutofill = (field: "password" | "password_confirmation") =>
+    (e: React.AnimationEvent<HTMLInputElement>) => {
+      if (e.animationName !== "autofill-detect") return;
+      const value = e.currentTarget.value;
+      setForm(prev => (prev[field] === value ? prev : { ...prev, [field]: value }));
+    };
 
   const passedChecks       = PASSWORD_CHECKS.filter(c => c.test.test(form.password)).length;
   const passwordsMatch     = !!(form.password && form.password_confirmation && form.password === form.password_confirmation);
@@ -415,9 +430,8 @@ function RegisterForm() {
                         placeholder="••••••••"
                         type={showPassword ? "text" : "password"}
                         autoComplete="new-password"
-                        onFocus={() => setPwFocused(true)}
-                        onBlur={() => setPwFocused(false)}
-                        className={inputCls("pl-11 pr-12",
+                        onAnimationStart={syncFromAutofill("password")}
+                        className={inputCls("pl-11 pr-12 autofill-detect-target",
                           passedChecks === PASSWORD_CHECKS.length ? "success" : "default"
                         )}
                         required
@@ -440,25 +454,21 @@ function RegisterForm() {
                       </div>
                     )}
 
-                    <AnimatePresence>
-                      {form.password && pwFocused && (
-                        <motion.ul
-                          initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="mt-3 space-y-1.5 rounded-2xl border border-white/7 bg-white/3 p-3.5"
-                        >
-                          {PASSWORD_CHECKS.map((check, i) => {
-                            const passed = check.test.test(form.password);
-                            return (
-                              <li key={i} className={`flex items-center gap-2 text-xs transition-colors ${passed ? "text-emerald-400" : "text-white/25"}`}>
-                                <span className="w-3 text-center text-[10px]">{passed ? "✓" : "○"}</span>
-                                {check.label}
-                              </li>
-                            );
-                          })}
-                        </motion.ul>
-                      )}
-                    </AnimatePresence>
+                    {/* Always visible on step 2 — previously required both a
+                        non-empty value AND focus, so the checklist vanished
+                        the moment the field lost focus (e.g. tabbing to
+                        Confirm password) even with unmet requirements. */}
+                    <ul className="mt-3 space-y-1.5 rounded-2xl border border-white/7 bg-white/3 p-3.5">
+                      {PASSWORD_CHECKS.map((check, i) => {
+                        const passed = check.test.test(form.password);
+                        return (
+                          <li key={i} className={`flex items-center gap-2 text-xs transition-colors ${passed ? "text-emerald-400" : "text-white/25"}`}>
+                            <span className="w-3 text-center text-[10px]">{passed ? "✓" : "○"}</span>
+                            {check.label}
+                          </li>
+                        );
+                      })}
+                    </ul>
                   </Field>
 
                   <Field label="Confirm password" index={1}>
@@ -468,7 +478,8 @@ function RegisterForm() {
                         placeholder="••••••••"
                         type={showPassword ? "text" : "password"}
                         autoComplete="new-password"
-                        className={inputCls("pl-11 pr-12",
+                        onAnimationStart={syncFromAutofill("password_confirmation")}
+                        className={inputCls("pl-11 pr-12 autofill-detect-target",
                           passwordsMatch ? "success" : passwordsDontMatch ? "error" : "default"
                         )}
                         required
