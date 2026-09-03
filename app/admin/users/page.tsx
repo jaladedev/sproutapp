@@ -2,7 +2,11 @@
 
 import { useEffect, useState, useRef, ReactNode } from "react";
 import Link from "next/link";
-import { getAdminUsers, getAdminUser, performUserAction } from "../../../services/adminService";
+import {
+  getAdminUsers, getAdminUser, performUserAction,
+  getAdminRoles, getUserRoles, assignUserRole, revokeUserRole,
+  type AdminRole,
+} from "../../../services/adminService";
 import toast from "react-hot-toast";
 import { useConfirm } from "../../../stores/useUIStore";
 import {
@@ -10,6 +14,7 @@ import {
   ArrowLeft, Eye, MoreVertical,
   Crown, UserX, UserCheck, Trash2,
   ChevronLeft, ChevronRight, Filter, X, AlertCircle,
+  Shield, KeyRound, Plus,
 } from "lucide-react";
 
 type KycStatus = "approved" | "pending" | "rejected" | "resubmit" | "not_submitted";
@@ -114,6 +119,7 @@ function UserMenuItems({
   return (
     <>
       {item(onView, <Eye size={14} />, "View Details")}
+      {item(onView, <Shield size={14} />, "Manage Roles", "text-cyan-400")}
       {!user.is_admin && <>
         {user.is_suspended
           ? item(() => onAction("unsuspend", user), <UserCheck size={14}/>, "Unsuspend", "text-emerald-400")
@@ -145,6 +151,12 @@ export default function AdminUsersPage() {
   const [menuOpen, setMenuOpen]     = useState<string | number | null>(null);
   const menuRef                     = useRef<HTMLDivElement>(null);
   const confirm                     = useConfirm();
+
+  const [allRoles, setAllRoles]         = useState<AdminRole[]>([]);
+  const [userRoles, setUserRoles]       = useState<AdminRole[]>([]);
+  const [rolesLoading, setRolesLoading] = useState(false);
+  const [roleToAdd, setRoleToAdd]       = useState("");
+  const [roleActionLoading, setRoleActionLoading] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 400);
@@ -184,10 +196,67 @@ export default function AdminUsersPage() {
       const body: any = await getAdminUser(userId);
       setSelectedUser(body.data);
       setShowModal(true);
+      fetchRolesFor(userId);
     } catch { toast.error("Failed to load user details"); }
   };
 
-  const closeModal = () => { setShowModal(false); setSelectedUser(null); };
+  const closeModal = () => {
+    setShowModal(false);
+    setSelectedUser(null);
+    setUserRoles([]);
+    setRoleToAdd("");
+  };
+
+  const fetchRolesFor = async (userId: string | number) => {
+    setRolesLoading(true);
+    try {
+      const [all, mine] = await Promise.all([
+        allRoles.length ? Promise.resolve(allRoles) : getAdminRoles(),
+        getUserRoles(userId),
+      ]);
+      if (!allRoles.length) setAllRoles(all);
+      setUserRoles(mine);
+    } catch {
+      toast.error("Failed to load roles");
+    } finally {
+      setRolesLoading(false);
+    }
+  };
+
+  const handleAssignRole = async () => {
+    if (!selectedUser || !roleToAdd) return;
+    setRoleActionLoading(true);
+    try {
+      await assignUserRole(selectedUser.id, roleToAdd);
+      toast.success("Role assigned");
+      setRoleToAdd("");
+      fetchRolesFor(selectedUser.id);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to assign role");
+    } finally {
+      setRoleActionLoading(false);
+    }
+  };
+
+  const handleRevokeRole = async (role: AdminRole) => {
+    if (!selectedUser) return;
+    const ok = await confirm({
+      message: `Remove the "${role.label}" role from ${selectedUser.name}?`,
+      danger: true,
+      confirmLabel: "Remove",
+    });
+    if (!ok) return;
+    setRoleActionLoading(true);
+    try {
+      await revokeUserRole(selectedUser.id, role.id);
+      toast.success("Role removed");
+      fetchRolesFor(selectedUser.id);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to remove role");
+    } finally {
+      setRoleActionLoading(false);
+    }
+  };
 
   const doAction = async (action: ActionType, user: AdminUser, confirmMsg?: string) => {
     if (confirmMsg) {
@@ -441,6 +510,71 @@ export default function AdminUsersPage() {
                     <div className="text-sm font-semibold text-white">{item.value}</div>
                   </div>
                 ))}
+              </div>
+
+              {/* Roles */}
+              <div className="space-y-3 pt-1">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold uppercase tracking-widest text-white/55">Staff Roles</p>
+                  <Link href="/admin/roles" className="text-[11px] text-amber-400 hover:text-amber-300 flex items-center gap-1">
+                    <KeyRound size={11} /> View permissions
+                  </Link>
+                </div>
+
+                {rolesLoading ? (
+                  <div className="flex items-center justify-center py-6">
+                    <div className="w-5 h-5 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : (
+                  <>
+                    {userRoles.length === 0 ? (
+                      <p className="text-xs text-white/40 bg-white/5 border border-white/5 rounded-xl p-3">
+                        No roles assigned.
+                      </p>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        {userRoles.map((role) => (
+                          <span
+                            key={role.id}
+                            className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1.5 rounded-full text-xs font-semibold bg-cyan-500/10 border border-cyan-500/25 text-cyan-300"
+                          >
+                            <Shield size={11} /> {role.label}
+                            <button
+                              onClick={() => handleRevokeRole(role)}
+                              disabled={roleActionLoading}
+                              className="w-4 h-4 rounded-full hover:bg-cyan-500/20 flex items-center justify-center transition-colors disabled:opacity-50"
+                              aria-label={`Remove ${role.label} role`}
+                            >
+                              <X size={10} />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="flex gap-2">
+                      <select
+                        value={roleToAdd}
+                        onChange={(e) => setRoleToAdd(e.target.value)}
+                        className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white/85 focus:outline-none focus:border-cyan-500/40"
+                      >
+                        <option value="" className="bg-[#0f2820]">Select a role to add…</option>
+                        {allRoles
+                          .filter((r) => !userRoles.some((ur) => ur.id === r.id))
+                          .map((r) => (
+                            <option key={r.id} value={r.name} className="bg-[#0f2820]">{r.label}</option>
+                          ))}
+                      </select>
+                      <button
+                        onClick={handleAssignRole}
+                        disabled={!roleToAdd || roleActionLoading}
+                        className="shrink-0 px-3 rounded-xl border border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 disabled:opacity-40 transition-all flex items-center gap-1.5 text-sm font-semibold"
+                      >
+                        <Plus size={14} /> Add
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
 
               {!selectedUser.is_admin ? (

@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { getAdminDashboardStats, type AdminDashboardStats } from "../../services/adminService";
+import { useAuth } from "../../context/AuthContext";
 import toast from "react-hot-toast";
 import { PageSpinner } from "../components/Spinner";
 import {
@@ -27,6 +28,12 @@ const EMPTY_STATS: AdminDashboardStats = {
 export default function AdminDashboard() {
   const [stats, setStats] = useState<AdminDashboardStats>(EMPTY_STATS);
   const [loading, setLoading] = useState(true);
+  const { user } = useAuth() ?? {};
+
+  // is_admin already comes through as having every permission (see /me),
+  // so this is just a plain membership check against that list.
+  const can = (permission: string): boolean =>
+    Array.isArray(user?.permissions) && (user!.permissions as string[]).includes(permission);
 
   useEffect(() => { fetchDashboardStats(); }, []);
 
@@ -219,6 +226,7 @@ export default function AdminDashboard() {
         <div className="grid md:grid-cols-2 gap-5 mb-5">
 
           {/* Land Management */}
+          {can("lands.manage") && (
           <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
             <div className="flex items-center justify-between px-5 sm:px-6 py-5 border-b border-white/10">
               <div className="flex items-center gap-3">
@@ -239,8 +247,10 @@ export default function AdminDashboard() {
               <ManagementRow href="/admin/lands/create" icon={<Plus size={15} />} title="Add New Land"   subtitle="Create a new property listing"           accent="#C8873A" />
             </div>
           </div>
+          )}
 
           {/* KYC Management */}
+          {can("kyc.view") && (
           <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
             <div className="flex items-center justify-between px-5 sm:px-6 py-5 border-b border-white/10">
               <div className="flex items-center gap-3">
@@ -263,8 +273,10 @@ export default function AdminDashboard() {
               <ManagementRow href="/admin/kyc"                icon={<Eye  size={15} />} title="All Submissions"  subtitle="View all KYC verifications"              accent="white" />
             </div>
           </div>
+          )}
 
           {/* User Management */}
+          {can("users.view") && (
           <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
             <div className="flex items-center justify-between px-5 sm:px-6 py-5 border-b border-white/10">
               <div className="flex items-center gap-3">
@@ -283,10 +295,13 @@ export default function AdminDashboard() {
             <div className="p-4 space-y-2">
               <ManagementRow href="/admin/users"                icon={<Eye         size={15} />} title="All Users"       subtitle={`Manage ${stats.users.total} accounts`}        accent="white" />
               <ManagementRow href="/admin/users?suspended=true" icon={<AlertCircle size={15} />} title="Suspended Users" subtitle={`${stats.users.suspended} suspended accounts`} accent="#EF4444" highlight={stats.users.suspended > 0} />
+              <ManagementRow href="/admin/roles"                icon={<Shield      size={15} />} title="Roles & Permissions" subtitle="Staff roles and what each one can do" accent="#06B6D4" />
             </div>
           </div>
+          )}
 
           {/* Support */}
+          {can("support.tickets.view") && (
           <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
             <div className="flex items-center justify-between px-5 sm:px-6 py-5 border-b border-white/10">
               <div className="flex items-center gap-3">
@@ -309,8 +324,10 @@ export default function AdminDashboard() {
               <ManagementRow href="/admin/support"             icon={<Eye         size={15} />} title="All Tickets"  subtitle="View full ticket history"               accent="white" />
             </div>
           </div>
+          )}
 
           {/* Blog Management */}
+          {can("blog.manage") && (
           <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
             <div className="flex items-center justify-between px-5 sm:px-6 py-5 border-b border-white/10">
               <div className="flex items-center gap-3">
@@ -331,8 +348,10 @@ export default function AdminDashboard() {
               <ManagementRow href="/admin/blog?status=draft" icon={<Clock size={15} />} title="Drafts"    subtitle={`${stats.blog.draft} drafts`}       accent="#F59E0B" />
             </div>
           </div>
+          )}
 
           {/* Referral System */}
+          {can("referrals.view") && (
           <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
             <div className="flex items-center justify-between px-5 sm:px-6 py-5 border-b border-white/10">
               <div className="flex items-center gap-3">
@@ -353,8 +372,10 @@ export default function AdminDashboard() {
               <ManagementRow href="/admin/referrals?status=pending"  icon={<Clock      size={15} />} title="Pending Referrals" subtitle={`${stats.referrals.pending} awaiting purchase`}                  accent="#F59E0B" />
             </div>
           </div>
+          )}
 
           {/* Withdrawals */}
+          {can("withdrawals.view") && (
           <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
             <div className="flex items-center justify-between px-5 sm:px-6 py-5 border-b border-white/10">
               <div className="flex items-center gap-3">
@@ -377,8 +398,10 @@ export default function AdminDashboard() {
               <ManagementRow href="/admin/withdrawals"                icon={<Wallet size={15} />} title="All Withdrawals"     subtitle="Full withdrawal history"                         accent="white" />
             </div>
           </div>
+          )}
 
           {/* Compliance */}
+          {can("compliance.view") && (
           <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
             <div className="flex items-center justify-between px-5 sm:px-6 py-5 border-b border-white/10">
               <div className="flex items-center gap-3">
@@ -414,7 +437,9 @@ export default function AdminDashboard() {
               />
             </div>
           </div>
+          )}
           {/* ── Live Support (new) ── */}
+          {can("live_chat.manage") && (
           <div className="rounded-2xl border border-emerald-500/20 bg-white/5 overflow-hidden">
             <div className="flex items-center justify-between px-5 sm:px-6 py-5 border-b border-white/10">
               <div className="flex items-center gap-3">
@@ -455,6 +480,7 @@ export default function AdminDashboard() {
               />
             </div>
           </div>
+          )}
 
         </div>
 
@@ -530,4 +556,4 @@ function ManagementRow({ href, icon, title, subtitle, accent, highlight }: Manag
       <ArrowRight size={14} className="text-white/20 group-hover:text-white/50 group-hover:translate-x-1 transition-all shrink-0" />
     </Link>
   );
-} ``
+}

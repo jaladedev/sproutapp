@@ -64,6 +64,50 @@ export async function performUserAction(
   return res.data;
 }
 
+/* ── Roles (RBAC) ────────────────────────────────────────────────────── */
+
+export interface AdminPermission {
+  id: number;
+  name: string;
+  label: string;
+}
+
+export interface AdminRole {
+  id: number;
+  name: string;
+  label: string;
+  description?: string;
+  permissions: AdminPermission[];
+}
+
+export async function getAdminRoles(): Promise<AdminRole[]> {
+  const res = await api.get("/admin/roles");
+  return res.data.data ?? [];
+}
+
+export async function getUserRoles(
+  userId: string | number
+): Promise<AdminRole[]> {
+  const res = await api.get(`/admin/users/${userId}/roles`);
+  return res.data.data ?? [];
+}
+
+export async function assignUserRole(
+  userId: string | number,
+  role: string
+): Promise<{ message?: string }> {
+  const res = await api.post(`/admin/users/${userId}/roles`, { role });
+  return res.data;
+}
+
+export async function revokeUserRole(
+  userId: string | number,
+  roleId: string | number
+): Promise<{ message?: string }> {
+  const res = await api.delete(`/admin/users/${userId}/roles/${roleId}`);
+  return res.data;
+}
+
 /* ── Waitlist ────────────────────────────────────────────────────────── */
 
 export async function getWaitlistStats(): Promise<unknown> {

@@ -27,6 +27,9 @@ export interface MeResponse {
   bank_name?: string;
   account_number?: string;
   account_name?: string;
+  is_admin?: boolean;
+  permissions?: string[];
+  role_names?: string[];
   [key: string]: unknown;
 }
 
