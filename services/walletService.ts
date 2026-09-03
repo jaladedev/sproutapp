@@ -24,14 +24,23 @@ export async function depositFunds(
   return res.data;
 }
 
-/* POST /withdraw */
+/* POST /withdraw
+   `idempotencyKey` should be a UUID generated once per withdrawal attempt
+   and reused across retries of that same attempt (see app/wallet/page.tsx)
+   so the backend's idempotency middleware can dedupe a resubmission after
+   a timeout instead of processing the withdrawal twice. */
 export async function withdrawFunds(
   amountNaira: number,
-  pin: string
+  pin: string,
+  idempotencyKey: string
 ): Promise<WithdrawResponse> {
-  const res = await api.post("/withdraw", {
-    amount: amountNaira * 100,
-    transaction_pin: pin,
-  });
+  const res = await api.post(
+    "/withdraw",
+    {
+      amount: amountNaira * 100,
+      transaction_pin: pin,
+    },
+    { headers: { "Idempotency-Key": idempotencyKey } }
+  );
   return res.data;
 }

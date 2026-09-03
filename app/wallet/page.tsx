@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import type { AxiosError } from "axios";
 import handleApiError from "../../utils/handleApiError";
@@ -91,6 +91,26 @@ export default function WalletPage() {
   const [isLoadingData, setIsLoadingData]   = useState(true);
   const [loadError, setLoadError]           = useState<LoadErrorKind>(null);
   const [serverError, setServerError]       = useState("");
+
+  // Persists across retries of the SAME withdrawal attempt (e.g. the user
+  // hits Submit again after a timeout) so the server's idempotency
+  // middleware can recognize the replay and avoid double-processing.
+  // Cleared after a successful withdrawal so the next, genuinely new
+  // withdrawal gets a fresh key rather than colliding with this one.
+  const withdrawIdempotencyKey = useRef<string | null>(null);
+
+  // Changing the amount or PIN after a failed attempt means the user
+  // intends a genuinely different request, not a retry of the last one —
+  // so any in-flight key must be dropped or the server would replay the
+  // stale cached response instead of processing the new values.
+  const updateWithdrawAmount = (value: string) => {
+    withdrawIdempotencyKey.current = null;
+    setWithdrawAmount(value);
+  };
+  const updateWithdrawPin = (value: string) => {
+    withdrawIdempotencyKey.current = null;
+    setPin(value);
+  };
   const router = useRouter();
 
   /* ─── FETCH ─────────────────────────────────────────────────────────── */
@@ -177,10 +197,15 @@ export default function WalletPage() {
     if (amountNaira > balance / 100) return toast.error("Insufficient balance");
     if (!/^\d{4}$/.test(pin))        return toast.error("PIN must be 4 digits");
 
+    if (!withdrawIdempotencyKey.current) {
+      withdrawIdempotencyKey.current = crypto.randomUUID();
+    }
+
     setLoading("withdraw");
     try {
-      const res = await withdrawFunds(amountNaira, pin);
+      const res = await withdrawFunds(amountNaira, pin, withdrawIdempotencyKey.current);
       toast.success(res.message || "Withdrawal successful!");
+      withdrawIdempotencyKey.current = null; // done — next attempt is a new withdrawal
       setWithdrawAmount("");
       setPin("");
       fetchWalletData();
@@ -506,7 +531,7 @@ export default function WalletPage() {
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/55 font-semibold">₦</span>
                     <input
                       type="number" min={1000} max={balance / 100} value={withdrawAmount}
-                      onChange={(e) => setWithdrawAmount(e.target.value)}
+                      onChange={(e) => updateWithdrawAmount(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && handleWithdraw()}
                       placeholder="1,000 minimum"
                       className="w-full bg-white/5 border border-white/10 hover:border-white/20 focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 text-white placeholder-white/20 pl-10 pr-4 py-3 rounded-xl text-sm outline-none transition-all"
@@ -514,13 +539,13 @@ export default function WalletPage() {
                   </div>
                   <div className="flex flex-wrap gap-2 mt-3">
                     {QUICK_AMOUNTS.filter((a) => a <= balance / 100).map((a) => (
-                      <button key={a} type="button" onClick={() => setWithdrawAmount(a.toString())}
+                      <button key={a} type="button" onClick={() => updateWithdrawAmount(a.toString())}
                         className="px-3 py-1.5 text-xs font-bold bg-white/5 border border-white/10 hover:border-amber-500/30 hover:text-amber-400 text-white/60 rounded-lg transition-all">
                         ₦{a.toLocaleString()}
                       </button>
                     ))}
                     {balance / 100 >= 1000 && (
-                      <button type="button" onClick={() => setWithdrawAmount(Math.floor(balance / 100).toString())}
+                      <button type="button" onClick={() => updateWithdrawAmount(Math.floor(balance / 100).toString())}
                         className="px-3 py-1.5 text-xs font-bold text-[#0D1F1A] rounded-lg transition-all"
                         style={{ background: "linear-gradient(135deg, #C8873A 0%, #E8A850 100%)" }}>
                         Max
@@ -533,7 +558,7 @@ export default function WalletPage() {
                   <label className="block text-xs font-bold uppercase tracking-widest text-white/55 mb-2">Transaction PIN</label>
                   <input
                     type="password" inputMode="numeric" maxLength={4} value={pin}
-                    onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                    onChange={(e) => updateWithdrawPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
                     onKeyDown={(e) => e.key === "Enter" && handleWithdraw()}
                     placeholder="••••"
                     className="w-full bg-white/5 border border-white/10 hover:border-white/20 focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 text-white placeholder-white/20 px-4 py-3 rounded-xl text-center text-2xl tracking-[0.5em] outline-none transition-all"
@@ -659,3 +684,4 @@ function ActionButton({ onClick, loading, disabled, label }: ActionButtonProps) 
     </button>
   );
 }
+  

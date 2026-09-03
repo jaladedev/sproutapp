@@ -38,6 +38,14 @@ function toHostOnlyCookie(setCookieValue: string): string {
   return setCookieValue.replace(/;\s*domain=[^;]*/i, "");
 }
 
+const UNSAFE_PATH_SEGMENT = /^\.\.?$/;
+
+function isSafePathSegments(segments: string[]): boolean {
+  return segments.every(
+    (seg) => seg.length > 0 && !UNSAFE_PATH_SEGMENT.test(seg) && !seg.includes("/")
+  );
+}
+
 export async function proxyToBackend(
   request: NextRequest,
   backendPath: string
@@ -49,8 +57,21 @@ export async function proxyToBackend(
     );
   }
 
+  // backendPath is e.g. "/api/users/me" or "/sanctum/csrf-cookie" — split
+  // on "/" and drop the empty strings produced by the leading slash (and by
+  // any accidental "//") to get the real segments, then validate each one
+  // before it's used to build the upstream URL.
+  const segments = backendPath.split("/").filter(Boolean);
+  if (!isSafePathSegments(segments)) {
+    return NextResponse.json({ message: "Invalid path." }, { status: 400 });
+  }
+
   const search = request.nextUrl.search; // includes leading "?" or ""
-  const targetUrl = `${BACKEND_ROOT}${backendPath}${search}`;
+  // Rebuild from the validated, individually re-encoded segments (rather
+  // than reusing the original backendPath string) so nothing decoded out
+  // of one segment can reintroduce a "/" or ".." once joined.
+  const safePath = "/" + segments.map(encodeURIComponent).join("/");
+  const targetUrl = `${BACKEND_ROOT}${safePath}${search}`;
 
   const forwardHeaders = new Headers();
   const passthroughRequestHeaders = [
