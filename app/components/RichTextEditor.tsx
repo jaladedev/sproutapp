@@ -21,6 +21,7 @@ function ToolbarButton({
   return (
     <button
       type="button"
+      onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
       disabled={disabled}
       title={title}
@@ -74,7 +75,7 @@ export default function RichTextEditor({
   return (
     <div className="rounded-xl border border-white/10 bg-white/5 focus-within:border-amber-500/40 transition-all overflow-hidden">
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-0.5 px-2 py-1.5 border-b border-white/10 bg-white/[0.03]">
+      <div className="flex flex-wrap items-center gap-0.5 px-2 py-1.5 border-b border-white/10 bg-white/3">
         <ToolbarButton title="Bold" active={editor.isActive("bold")}
           onClick={() => editor.chain().focus().toggleBold().run()}>
           <Bold size={14} />
