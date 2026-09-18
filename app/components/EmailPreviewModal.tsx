@@ -55,9 +55,9 @@ export default function EmailPreviewModal({
                     <tbody>
                       {/* Logo */}
                       <tr>
-                        <td align="center" style={{ paddingBottom: 32 }}>
+                        <td align="center" style={{ paddingBottom: 28 }}>
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src="/reu_ng_logo.png" alt="REU.ng" width={120} style={{ display: "block", height: "auto", maxWidth: 120 }} />
+                          <img src="/reu_ng_logo.png" alt="REU.ng" width={84} style={{ display: "block", height: "auto", maxWidth: 84 }} />
                         </td>
                       </tr>
 
