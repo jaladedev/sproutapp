@@ -10,7 +10,7 @@ import {
   MapPin, ShieldCheck, Gift, Wallet, FileText,
   ArrowRight, TrendingUp, Clock, CheckCircle,
   XCircle, Plus, Eye, MessageSquare, AlertCircle, Users,
-  LucideWalletCards, HeadphonesIcon, Shield, Ban 
+  LucideWalletCards, HeadphonesIcon, Shield, Ban, Mail
 } from "lucide-react";
 
 const EMPTY_STATS: AdminDashboardStats = {
@@ -504,6 +504,7 @@ export default function AdminDashboard() {
                 { href: "/admin/withdrawals?status=pending", icon: <Wallet          size={20} />, label: "Withdrawals",  accent: "#2D7A55" },
                 { href: "/admin/live-chat",                  icon: <HeadphonesIcon  size={20} />, label: "Live Chat",    accent: "#10B981" },
                 { href: "/admin/compliance",                 icon: <Shield          size={20} />, label: "Compliance",   accent: "#EF4444" },
+                { href: "/admin/marketing",                  icon: <Mail            size={20} />, label: "Marketing",    accent: "#C8873A" },
               ].map((action) => (
                 <Link key={action.label} href={action.href}
                   className="flex flex-col items-center gap-2.5 p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 hover:-translate-y-1 transition-all text-center group">

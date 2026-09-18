@@ -270,3 +270,63 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
     },
   };
 }
+
+/* ── Marketing / bulk mail campaigns ────────────────────────────────────── */
+
+export interface MailCampaign {
+  id: number;
+  name: string;
+  subject: string;
+  body_html: string;
+  audience_filter: { segment: "all" | "verified_no_purchase" | "custom"; user_ids?: number[] };
+  status: "draft" | "scheduled" | "sending" | "completed" | "cancelled";
+  scheduled_at: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  total_recipients: number;
+  sent_count: number;
+  failed_count: number;
+  skipped_count: number;
+  created_by: number;
+  creator?: { id: number; name: string; email: string };
+  pending_count?: number;
+  created_at: string;
+}
+
+export async function getMailCampaigns(params: string): Promise<unknown> {
+  const res = await api.get(`/admin/mail-campaigns?${params}`);
+  return res.data;
+}
+
+export async function getMailCampaign(id: string | number): Promise<{ data: MailCampaign }> {
+  const res = await api.get(`/admin/mail-campaigns/${id}`);
+  return res.data;
+}
+
+export interface CreateMailCampaignPayload {
+  name: string;
+  subject: string;
+  body_html: string;
+  audience_filter: { segment: "all" | "verified_no_purchase" | "custom"; user_ids?: number[] };
+  scheduled_at?: string | null;
+}
+
+export async function createMailCampaign(payload: CreateMailCampaignPayload): Promise<{ data: MailCampaign }> {
+  const res = await api.post("/admin/mail-campaigns", payload);
+  return res.data;
+}
+
+export async function scheduleMailCampaign(
+  id: string | number,
+  scheduledAt?: string | null
+): Promise<{ data: MailCampaign }> {
+  const res = await api.patch(`/admin/mail-campaigns/${id}/schedule`, {
+    scheduled_at: scheduledAt ?? undefined,
+  });
+  return res.data;
+}
+
+export async function cancelMailCampaign(id: string | number): Promise<{ data: MailCampaign }> {
+  const res = await api.patch(`/admin/mail-campaigns/${id}/cancel`);
+  return res.data;
+}
