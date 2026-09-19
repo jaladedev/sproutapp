@@ -163,6 +163,7 @@ export interface AdminDashboardStats {
   withdrawals: { pending: number; processing: number };
   liveChat: { queued: number; active: number };
   compliance: { pendingReview: number; blocked: number; flagged: number };
+  marketing: { total: number; sending: number; scheduled: number };
 }
 
 /* Fetches the ~18 lightweight count endpoints the admin dashboard needs
@@ -188,6 +189,9 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
     api.get("/admin/withdrawals?status=processing&per_page=1"),
     api.get("/admin/live-chat/queue"),
     api.get("/admin/compliance/stats"),
+    api.get("/admin/mail-campaigns?per_page=1"),
+    api.get("/admin/mail-campaigns?per_page=1&status=sending"),
+    api.get("/admin/mail-campaigns?per_page=1&status=scheduled"),
   ]);
 
   const get = (index: number) =>
@@ -209,6 +213,7 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
     blogAllRes, blogPublishedRes, blogDraftRes,
     withdrawalsPendingRes, withdrawalsProcessingRes,
     liveChatQueueRes, complianceRes,
+    marketingAllRes, marketingSendingRes, marketingScheduledRes,
   ] = results.map((_, i) => get(i));
 
   const landsData = landsRes?.data?.data?.data ?? landsRes?.data?.data ?? [];
@@ -240,6 +245,10 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
   const lcQueued = queueData.filter((t: any) => !t.agent_id).length;
   const lcActive = queueData.filter((t: any) => !!t.agent_id).length;
 
+  const marketingTotal = marketingAllRes?.data?.data?.total ?? 0;
+  const marketingSending = marketingSendingRes?.data?.data?.total ?? 0;
+  const marketingScheduled = marketingScheduledRes?.data?.data?.total ?? 0;
+
   return {
     lands: {
       total: landsTotal,
@@ -267,6 +276,11 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
       pendingReview: compliance.pending_review ?? 0,
       blocked: compliance.blocked_users ?? 0,
       flagged: compliance.flagged_users ?? 0,
+    },
+    marketing: {
+      total: marketingTotal,
+      sending: marketingSending,
+      scheduled: marketingScheduled,
     },
   };
 }
