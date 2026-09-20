@@ -135,6 +135,15 @@ export default function Header() {
               </div>
             </>
           )}
+
+          {!user && (
+            <Link
+              href="/login"
+              className="shrink-0 text-sm font-medium text-white/70 hover:text-white transition-colors px-4 py-2 rounded-lg hover:bg-white/5"
+            >
+              Log in
+            </Link>
+          )}
         </div>
       </header>
 
