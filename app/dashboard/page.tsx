@@ -174,8 +174,7 @@ export default function Dashboard() {
   }, [user]);
 
   useEffect(() => {
-    if (!loadingUser && !user) router.replace("/login");
-    if (authTimedOut && !loadingUser && !user) router.replace("/login");
+    if (!user && (!loadingUser || authTimedOut)) router.replace("/login");
   }, [loadingUser, user, router, authTimedOut]);
 
   if (loadingUser || !user) {
