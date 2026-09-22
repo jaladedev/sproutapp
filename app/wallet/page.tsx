@@ -16,6 +16,7 @@ import {
 const FEE_PERCENT   = 2;
 const FEE_CAP       = 3000;
 const QUICK_AMOUNTS = [1000, 5000, 10000, 50000];
+const MIN_WITHDRAWAL = 5000; // must match WithdrawalController::requestWithdrawal() min:500000 kobo
 
 interface Gateway {
   id: string;
@@ -210,8 +211,8 @@ export default function WalletPage() {
 
   const handleWithdraw = async () => {
     const amountNaira = Number(withdrawAmount);
-    if (!Number.isInteger(amountNaira) || amountNaira < 1000)
-      return toast.error("Minimum withdrawal is ₦1,000");
+    if (!Number.isInteger(amountNaira) || amountNaira < MIN_WITHDRAWAL)
+      return toast.error(`Minimum withdrawal is ₦${MIN_WITHDRAWAL.toLocaleString()}`);
     if (amountNaira > balance / 100) return toast.error("Insufficient balance");
     if (!/^\d{4}$/.test(pin))        return toast.error("PIN must be 4 digits");
 
@@ -548,21 +549,22 @@ export default function WalletPage() {
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/55 font-semibold">₦</span>
                     <input
-                      type="number" min={1000} max={balance / 100} value={withdrawAmount}
+                      type="number" min={MIN_WITHDRAWAL} max={balance / 100} value={withdrawAmount}
                       onChange={(e) => updateWithdrawAmount(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && handleWithdraw()}
-                      placeholder="1,000 minimum"
+                      placeholder={`${MIN_WITHDRAWAL.toLocaleString()} minimum`}
                       className="w-full bg-white/5 border border-white/10 hover:border-white/20 focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 text-white placeholder-white/20 pl-10 pr-4 py-3 rounded-xl text-sm outline-none transition-all"
                     />
                   </div>
+                  <p className="text-[11px] text-white/25 mt-1.5">Minimum withdrawal: ₦{MIN_WITHDRAWAL.toLocaleString()}</p>
                   <div className="flex flex-wrap gap-2 mt-3">
-                    {QUICK_AMOUNTS.filter((a) => a <= balance / 100).map((a) => (
+                    {QUICK_AMOUNTS.filter((a) => a >= MIN_WITHDRAWAL && a <= balance / 100).map((a) => (
                       <button key={a} type="button" onClick={() => updateWithdrawAmount(a.toString())}
                         className="px-3 py-1.5 text-xs font-bold bg-white/5 border border-white/10 hover:border-amber-500/30 hover:text-amber-400 text-white/60 rounded-lg transition-all">
                         ₦{a.toLocaleString()}
                       </button>
                     ))}
-                    {balance / 100 >= 1000 && (
+                    {balance / 100 >= MIN_WITHDRAWAL && (
                       <button type="button" onClick={() => updateWithdrawAmount(Math.floor(balance / 100).toString())}
                         className="px-3 py-1.5 text-xs font-bold text-[#0D1F1A] rounded-lg transition-all"
                         style={{ background: "linear-gradient(135deg, #C8873A 0%, #E8A850 100%)" }}>
