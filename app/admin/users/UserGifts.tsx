@@ -10,6 +10,7 @@ import {
   type UserGift,
 } from "../../../services/adminService";
 import handleApiError from "../../../utils/handleApiError";
+import { formatNaira } from "../../../utils/currency";
 
 interface Props {
   userId: string | number;
@@ -117,6 +118,11 @@ export default function UserGifts({ userId, refreshKey, onReversed }: Props) {
                   <p className="text-sm font-semibold text-white">
                     {g.units.toLocaleString()} unit(s) · {g.land_title ?? "Property"}
                   </p>
+                  {g.value_kobo > 0 && (
+                    <span className="text-[11px] font-semibold text-amber-300 tabular-nums">
+                      {formatNaira(g.value_kobo)}
+                    </span>
+                  )}
                   {g.reversed && (
                     <span className="text-[10px] font-bold uppercase tracking-wider text-white/50 bg-white/10 rounded-full px-2 py-0.5">
                       Reversed
@@ -154,7 +160,8 @@ export default function UserGifts({ userId, refreshKey, onReversed }: Props) {
               <div className="min-w-0 flex-1 pr-3">
                 <h3 className="text-base font-bold text-white">Reverse gift</h3>
                 <p className="text-white/60 text-xs mt-0.5">
-                  Return {target.units.toLocaleString()} unit(s) of {target.land_title ?? "this property"} to platform inventory.
+                  Return {target.units.toLocaleString()} unit(s) of {target.land_title ?? "this property"}
+                  {target.value_kobo > 0 ? ` (${formatNaira(target.value_kobo)} at current price)` : ""} to platform inventory.
                 </p>
               </div>
               <button

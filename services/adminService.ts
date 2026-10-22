@@ -80,6 +80,9 @@ export interface GiftUnitsResponse {
     recipient: { id: number | string; name: string; email: string };
     land: { id: number | string; title: string };
     units: number;
+    /** Current price per unit and total value of the gift (units × price), in kobo. */
+    price_per_unit_kobo: number;
+    value_kobo: number;
     remaining_units: number;
     certificate: { cert_number: string; units: number } | null;
   };
@@ -107,6 +110,9 @@ export interface UserGift {
   land_id: number | string;
   land_title: string | null;
   units: number;
+  /** Current price per unit and value (units × price) in kobo — not the price at gift time. */
+  price_per_unit_kobo: number;
+  value_kobo: number;
   reason: string | null;
   gifted_at: string | null;
   reversed: boolean;
@@ -148,6 +154,8 @@ export interface GiftableLand {
   location?: string;
   available_units: number;
   total_units: number;
+  /** Appended by the backend's Land model; 0 when no price has been set. */
+  current_price_per_unit_kobo?: number;
 }
 
 const GIFTABLE_LANDS_MAX_PAGES = 25;

@@ -125,3 +125,18 @@ describe("reverseGift", () => {
     expect(mockedApi.post.mock.calls[0][0]).toBe("/admin/users/1/gifts/GFT-a%2Fb/reverse");
   });
 });
+
+describe("unitsValueKobo", () => {
+  it("multiplies units by the per-unit price", async () => {
+    const { unitsValueKobo } = await import("../utils/currency");
+    expect(unitsValueKobo(5, 100_000)).toBe(500_000);
+    expect(unitsValueKobo("3", "250000")).toBe(750_000);
+  });
+
+  it("returns 0 for missing or non-numeric input", async () => {
+    const { unitsValueKobo } = await import("../utils/currency");
+    expect(unitsValueKobo(5, undefined)).toBe(0);
+    expect(unitsValueKobo(5, null)).toBe(0);
+    expect(unitsValueKobo("abc", 100)).toBe(0);
+  });
+});
